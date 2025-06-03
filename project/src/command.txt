@@ -1,0 +1,2 @@
+python -m src.scripts.print_extracted_answers --provider GoogleGemini --model gemini-1.5-flash-latest
+python -m src.scripts.print_extracted_answers --provider OpenAI --model gpt-4o

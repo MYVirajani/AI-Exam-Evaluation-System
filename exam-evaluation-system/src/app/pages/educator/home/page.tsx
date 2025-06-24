@@ -14,7 +14,7 @@ import {
 export default function Home() {
   return (
     <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-4xl mx-auto">
+      {/* <div className="max-w-4xl mx-auto"> */}
         {/* <Header /> */}
 
         <section className="mt-8">
@@ -65,7 +65,7 @@ export default function Home() {
         </section>
 
         <Divider />
-      </div>
+      {/* </div> */}
     </main>
   );
 }

@@ -10,8 +10,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
   const router = useRouter()
 
   const handleClick = () => {
-    router.push(`/pages/educator/evaluate?courseId=${courseId}`)
-    // or router.push('/upload') if you don't need courseId
+    router.push(`/educator/evaluate?courseId=${courseId}`)
   }
 
   return (

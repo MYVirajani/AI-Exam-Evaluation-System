@@ -58,7 +58,7 @@ export default function Home() {
               <StatsCard 
                 key={`module-${index}`} 
                 {...module} 
-                courseId={`course-${index}`} // Add courseId
+                courseId={`course-${index}`}
               />
             ))}
           </div>

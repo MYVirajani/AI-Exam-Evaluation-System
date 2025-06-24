@@ -10,7 +10,7 @@ const Header: React.FC<HeaderProps> = ({
   className = '' 
 }) => {
   return (
-    <header className={`header p-4 rounded-lg shadow-sm mb-6 ${className}`}>
+    <header className={`header p-4 shadow-sm mb-6 ${className}`}>
       <h1 className="text-2xl font-bold">{title}</h1>
       {siteConfig.description && (
         <p className="text-sm opacity-80 mt-1">{siteConfig.description}</p>
@@ -20,3 +20,4 @@ const Header: React.FC<HeaderProps> = ({
 }
 
 export default Header
+

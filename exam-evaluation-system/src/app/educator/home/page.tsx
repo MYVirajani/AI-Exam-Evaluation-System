@@ -149,7 +149,6 @@ const EducatorHomePage: React.FC = () => {
 
   return (
     <div className="w-full min-h-screen space-y-12 px-4 py-6">
-      {/* Upcoming Events Section */}
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Upcoming Events</h2>

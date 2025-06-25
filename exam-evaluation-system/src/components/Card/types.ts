@@ -1,6 +1,6 @@
 export interface CardProps {
   title: string
-  courseCode: string
+  moduleCode: string
   uploads: string
   dateType: 'due' | 'scheduled'
   date: string

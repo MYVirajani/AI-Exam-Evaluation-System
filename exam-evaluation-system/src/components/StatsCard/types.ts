@@ -1,5 +1,5 @@
 export interface StatsCardProps {
-  courseCode: string
+  moduleCode: string
   enrolled: string
-  courseId?:string
+  moduleId?:string
 }

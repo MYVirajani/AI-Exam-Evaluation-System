@@ -1,4 +1,4 @@
 export interface ModuleCardProps {
-  courseCode: string
+  moduleCode: string
   enrolled: string
 }

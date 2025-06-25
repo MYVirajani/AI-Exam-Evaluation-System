@@ -1,7 +1,7 @@
 export interface EventItem {
   title: string;
-  courseCode: string;
-  courseName: string;
+  moduleCode: string;
+  moduleName: string;
   uploads?: string;
   dueOrScheduled: string;
   date: string;
@@ -10,8 +10,8 @@ export interface EventItem {
 }
 
 export interface ModuleItem {
-  courseCode: string;
-  courseName: string;
+  moduleCode: string;
+  moduleName: string;
   enrolled: string;
   total: string;
 }

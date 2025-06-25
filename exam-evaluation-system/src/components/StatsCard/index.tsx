@@ -3,14 +3,14 @@ import { useRouter } from 'next/navigation'
 import { StatsCardProps } from './types'
 
 const StatsCard: React.FC<StatsCardProps> = ({ 
-  courseCode, 
+  moduleCode, 
   enrolled,
-  courseId // Add this new prop
+  moduleId // Add this new prop
 }) => {
   const router = useRouter()
 
   const handleClick = () => {
-    router.push(`/educator/evaluate?courseId=${courseId}`)
+    router.push(`/educator/evaluate?moduleId=${moduleId}`)
   }
 
   return (
@@ -18,7 +18,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
       className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
       onClick={handleClick}
     >
-      <h3 className="font-medium text-gray-900">{courseCode}</h3>
+      <h3 className="font-medium text-gray-900">{moduleCode}</h3>
       <p className="text-sm text-gray-500 mt-2">Total enrolled - {enrolled}</p>
     </div>
   )

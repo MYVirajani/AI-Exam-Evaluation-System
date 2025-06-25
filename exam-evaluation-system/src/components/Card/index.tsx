@@ -3,7 +3,7 @@ import { CardProps } from './types'
 
 const Card: React.FC<CardProps> = ({ 
   title, 
-  courseCode, 
+  moduleCode, 
   uploads, 
   dateType, 
   date 
@@ -13,7 +13,7 @@ const Card: React.FC<CardProps> = ({
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-medium text-gray-900">{title}</h3>
-          <p className="text-sm text-gray-500">{courseCode}</p>
+          <p className="text-sm text-gray-500">{moduleCode}</p>
         </div>
         <span className="text-sm text-gray-500">{uploads}</span>
       </div>

@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const type = formData.get('type') as string
-    const courseId = formData.get('courseId') as string | null
+    const moduleId = formData.get('moduleId') as string | null
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 
     // Generate unique filename
     const timestamp = Date.now()
-    const fileName = `${type}_${courseId || 'unknown'}_${timestamp}${fileExtension}`
+    const fileName = `${type}_${moduleId || 'unknown'}_${timestamp}${fileExtension}`
     const filePath = path.join(uploadDir, fileName)
 
     // Convert file to buffer and save

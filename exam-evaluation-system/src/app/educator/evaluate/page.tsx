@@ -6,7 +6,7 @@ import Button from '@/components/Button'
 
 export default function UploadPage() {
   const searchParams = useSearchParams()
-  const courseId = searchParams.get('courseId')
+  const moduleId = searchParams.get('moduleId')
   
   // State for tracking uploaded files
   const [uploadedFiles, setUploadedFiles] = useState({
@@ -61,7 +61,7 @@ export default function UploadPage() {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', type)
-    if (courseId) formData.append('courseId', courseId)
+    if (moduleId) formData.append('moduleId', moduleId)
 
     try {
       setUploadProgress(prev => ({ ...prev, [file.name]: 0 }))
@@ -114,7 +114,7 @@ export default function UploadPage() {
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          Exam Paper Evaluation {courseId ? `- ${courseId}` : ''}
+          Exam Paper Evaluation {moduleId ? `- ${moduleId}` : ''}
         </h1>
         
         {/* Hidden file inputs */}

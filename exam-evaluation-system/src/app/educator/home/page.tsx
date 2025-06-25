@@ -42,14 +42,14 @@ export default function Home() {
         <section className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">
-              Your Courses
+              Your Modules
             </h2>
             <Button 
               variant="primary" 
               size="sm"
               onClick={() => console.log('Button clicked')}
             >
-              Add Course
+              New Module
             </Button>
           </div>
 
@@ -58,7 +58,7 @@ export default function Home() {
               <StatsCard 
                 key={`module-${index}`} 
                 {...module} 
-                courseId={`course-${index}`}
+                moduleId={`module-${index}`}
               />
             ))}
           </div>

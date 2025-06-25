@@ -48,12 +48,12 @@ const modules = [
     image: "/images/hpc.png",
     event: "Quiz 1",
   },
-  // {
-  //   id: 4,
-  //   title: "EC 7205 Cloud Computing",
-  //   image: "/images/cloud_computing.png",
-  //   event: "No upcoming events",
-  // },
+  {
+    id: 4,
+    title: "EC 7205 Cloud Computing",
+    image: "/images/cloud_computing.png",
+    event: "No upcoming events",
+  },
 ];
 
 const StudentHomePage: React.FC = () => {

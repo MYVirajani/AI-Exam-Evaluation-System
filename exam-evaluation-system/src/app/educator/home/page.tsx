@@ -1,5 +1,4 @@
 'use client'
-import Header from "@/components/Header";
 import Card from "@/components/Card";
 import Divider from "@/components/Divider";
 import StatsCard from "@/components/StatsCard";
@@ -18,9 +17,21 @@ export default function Home() {
         {/* <Header /> */}
 
         <section className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          {/* <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Upcoming Events
-          </h2>
+          </h2> */}
+           <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Upcoming Events
+            </h2>
+            <Button 
+              variant="primary" 
+              size="sm"
+              onClick={() => console.log('Button clicked')}
+            >
+              New Event
+            </Button>
+          </div>
 
           <div className="space-y-4">
             {assignments.map((assignment, index) => (

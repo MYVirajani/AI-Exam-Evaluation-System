@@ -72,19 +72,29 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const onFormSubmit = async (data: ModuleFormData) => {
-    try {
-      await onSubmit(data);
-      toast.success("Module created successfully!");
-      reset();
-      setImagePreview(null);
-      onClose();
-    } catch (error) {
-      toast.error("Failed to create module. Please try again.");
-      console.error("Module creation error:", error);
-    }
-  };
-
+  // const onFormSubmit = async (data: ModuleFormData) => {
+  //   try {
+  //     await onSubmit(data);
+  //     toast.success("Module created successfully!");
+  //     reset();
+  //     setImagePreview(null);
+  //     onClose();
+  //   } catch (error) {
+  //     toast.error("Failed to create module. Please try again.");
+  //     console.error("Module creation error:", error);
+  //   }
+  // };
+const onFormSubmit = async (data: ModuleFormData) => {
+  try {
+    await onSubmit(data);
+    toast.success('Module created successfully!');
+    reset();
+    setImagePreview(null);
+    onClose();
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Failed to create module');
+  }
+};
   if (!isOpen) return null;
 
   return (
@@ -125,7 +135,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                   className={`mt-1 text-sm italic ${
                     errors.moduleCode.type === "required"
                       ? "text-red-600"
-                      : "text-blue-600"
+                      : "text-blue-900"
                   }`}
                 >
                   {errors.moduleCode.message}

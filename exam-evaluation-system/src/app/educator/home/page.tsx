@@ -4,7 +4,7 @@ import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import EducatorEventCard from './EducatorEventCard';
 import EducatorModuleCard from './EducatorModuleCard';
 import ModuleCreationForm, { ModuleFormData } from './ModuleCreationForm';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 
 const upcomingEvents = [
   {
@@ -60,6 +60,41 @@ const createdModules = [
   }
 ];
 
+const handleCreateModule = async (moduleData: ModuleFormData) => {
+  try {
+    const formData = new FormData();
+    
+    // Append all form data
+    formData.append('moduleCode', moduleData.moduleCode);
+    formData.append('moduleName', moduleData.moduleName);
+    formData.append('educationInstitute', moduleData.educationInstitute);
+    formData.append('maxStudents', moduleData.maxStudents.toString());
+    
+    if (moduleData.semester) formData.append('semester', moduleData.semester);
+    if (moduleData.learningOutcomes) formData.append('learningOutcomes', moduleData.learningOutcomes);
+    if (moduleData.enrollmentKey) formData.append('enrollmentKey', moduleData.enrollmentKey);
+    if (moduleData.moduleImage) formData.append('moduleImage', moduleData.moduleImage);
+
+    const response = await fetch('/api/educator/modules', {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to create module');
+    }
+
+    toast.success('Module created successfully!');
+    // Here you would typically refresh the module list
+    return result;
+  } catch (error) {
+    console.error('Module creation error:', error);
+    throw error;
+  }
+};
+
 const EducatorHomePage: React.FC = () => {
   const moduleScrollRef = useRef<HTMLDivElement>(null);
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -72,18 +107,18 @@ const EducatorHomePage: React.FC = () => {
     moduleScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
   };
 
-  const handleCreateModule = async (moduleData: ModuleFormData) => {
-    // Simulate API call
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        console.log('Creating module with data:', moduleData);
-        // Here you would typically:
-        // 1. Send data to your API
-        // 2. Update local state if successful
-        resolve();
-      }, 1500);
-    });
-  };
+  // const handleCreateModule = async (moduleData: ModuleFormData) => {
+  //   // Simulate API call
+  //   return new Promise<void>((resolve) => {
+  //     setTimeout(() => {
+  //       console.log('Creating module with data:', moduleData);
+  //       // Here you would typically:
+  //       // 1. Send data to your API
+  //       // 2. Update local state if successful
+  //       resolve();
+  //     }, 1500);
+  //   });
+  // };
 
   return (
     <div className="w-full min-h-screen space-y-12 px-4 py-6">

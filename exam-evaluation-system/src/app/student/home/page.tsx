@@ -45,7 +45,7 @@ const modules = [
   {
     id: 3,
     title: "EC 7207 High Performance Computing",
-    image: "/images/hpc.png",
+    image: "/images/hpc.jpg",
     event: "Quiz 1",
   },
   {

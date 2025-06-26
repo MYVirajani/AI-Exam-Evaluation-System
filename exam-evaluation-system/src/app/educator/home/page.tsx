@@ -1,86 +1,10 @@
-// 'use client'
-// import Card from "@/components/Card";
-// import Divider from "@/components/Divider";
-// import StatsCard from "@/components/StatsCard";
-// import Button from "@/components/Button";
-// import {
-//   assignments,
-//   quizzes,
-//   exams,
-//   modules,
-// } from "@/constants/data";
-
-// export default function Home() {
-//   return (
-//     <main className="min-h-screen p-8 bg-gray-50">
-
-//         <section className="mt-8">
-//            <div className="flex items-center justify-between mb-4">
-//             <h2 className="text-xl font-semibold text-gray-800">
-//               Upcoming Events
-//             </h2>
-//             <Button 
-//               variant="primary" 
-//               size="sm"
-//               onClick={() => console.log('Button clicked')}
-//             >
-//               New Event
-//             </Button>
-//           </div>
-
-//           <div className="space-y-4">
-//             {assignments.map((assignment, index) => (
-//               <Card key={`assignment-${index}`} {...assignment} />
-//             ))}
-
-//             {quizzes.map((quiz, index) => (
-//               <Card key={`quiz-${index}`} {...quiz} />
-//             ))}
-
-//             {exams.map((exam, index) => (
-//               <Card key={`exam-${index}`} {...exam} />
-//             ))}
-//           </div>
-//         </section>
-
-//         <Divider />
-
-//         <section className="mt-8">
-//           <div className="flex items-center justify-between mb-4">
-//             <h2 className="text-xl font-semibold text-gray-800">
-//               Your Modules
-//             </h2>
-//             <Button 
-//               variant="primary" 
-//               size="sm"
-//               onClick={() => console.log('Button clicked')}
-//             >
-//               New Module
-//             </Button>
-//           </div>
-
-//           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//             {modules.map((module, index) => (
-//               <StatsCard 
-//                 key={`module-${index}`} 
-//                 {...module} 
-//                 moduleId={`module-${index}`}
-//               />
-//             ))}
-//           </div>
-//         </section>
-
-//         <Divider />
-//       {/* </div> */}
-//     </main>
-//   );
-// }
-
 'use client'
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import EducatorEventCard from './EducatorEventCard';
 import EducatorModuleCard from './EducatorModuleCard';
+import ModuleCreationForm, { ModuleFormData } from './ModuleCreationForm';
+import { Toaster } from 'react-hot-toast';
 
 const upcomingEvents = [
   {
@@ -138,6 +62,7 @@ const createdModules = [
 
 const EducatorHomePage: React.FC = () => {
   const moduleScrollRef = useRef<HTMLDivElement>(null);
+  const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
 
   const scrollLeft = () => {
     moduleScrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
@@ -147,8 +72,22 @@ const EducatorHomePage: React.FC = () => {
     moduleScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
   };
 
+  const handleCreateModule = async (moduleData: ModuleFormData) => {
+    // Simulate API call
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        console.log('Creating module with data:', moduleData);
+        // Here you would typically:
+        // 1. Send data to your API
+        // 2. Update local state if successful
+        resolve();
+      }, 1500);
+    });
+  };
+
   return (
     <div className="w-full min-h-screen space-y-12 px-4 py-6">
+      <Toaster position="top-right" />
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Upcoming Events</h2>
@@ -168,10 +107,14 @@ const EducatorHomePage: React.FC = () => {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Created Modules</h2>
-          <button className="bg-blue-900 text-white text-sm px-4 py-2 rounded-md">
+          <button 
+            onClick={() => setIsModuleModalOpen(true)}
+            className="bg-blue-900 text-white text-sm px-4 py-2 rounded-md"
+          >
             + New Module
           </button>
         </div>
+
 
         <div className="relative">
           <button
@@ -198,6 +141,11 @@ const EducatorHomePage: React.FC = () => {
           </button>
         </div>
       </div>
+       <ModuleCreationForm
+        isOpen={isModuleModalOpen}
+        onClose={() => setIsModuleModalOpen(false)}
+        onSubmit={handleCreateModule}
+      />
     </div>
   );
 };

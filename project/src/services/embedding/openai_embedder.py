@@ -24,7 +24,6 @@ class OpenAIEmbedder(AbstractEmbedder):
         return self.model_name
 
     def get_embedding_dimension(self):
-        # You can dynamically return it based on model name
         if self.model_name == "text-embedding-3-small":
             return 1536
-        return 1536  # default fallback
+        return 1536  

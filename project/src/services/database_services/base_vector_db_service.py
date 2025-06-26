@@ -4,10 +4,9 @@ from psycopg2 import sql
 from dotenv import load_dotenv
 import logging
 
-# Load environment variables
 load_dotenv()
 
-# Setup logger
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 

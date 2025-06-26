@@ -75,7 +75,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract student answers from DOCX using LLMs")
     parser.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini"], help="LLM provider")
     parser.add_argument("--model", required=True, help="Model name (e.g., gpt-4o, gemini-pro)")
-    parser.add_argument("--file", default="data/Answer_Scripts/student_answer1.docx", help="Path to DOCX answer script")
+    parser.add_argument("--file", default="data/Answer_Scripts/EE6250_EG-2020-4247.docx", help="Path to DOCX answer script")
 
     args = parser.parse_args()
 

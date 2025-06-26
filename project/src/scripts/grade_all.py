@@ -19,8 +19,8 @@ def grade_all_answers(provider: str = "OpenAI"):
             if question and model_ans:
                 result = service.grade_answer(question, model_ans, student_ans)
                 print(f"\n🔹 Q: {question.text}")
-                print(f"✅ Score: {result['score']}/2")
-                print(f"💬 Feedback: {result['feedback']}\n")
+                print(f" Score: {result['score']}/2")
+                print(f"Feedback: {result['feedback']}\n")
 
 if __name__ == "__main__":
     grade_all_answers()

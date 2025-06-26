@@ -158,7 +158,7 @@
 
 from .base_relational_db import BaseRelationalDB
 from ...models.student_answer import StudentAnswer
-from typing import List
+from typing import Dict, Tuple, List
 import json
 
 class StudentAnswerService(BaseRelationalDB):
@@ -195,3 +195,55 @@ class StudentAnswerService(BaseRelationalDB):
         """, (student_index, module_code, year, month))
         result = self.cursor.fetchone()
         return result[0] if result else {}
+    def get_all_answers_for_embedding(self, student_index: str, module_code: str, year: int, month: str) -> List[StudentAnswer]:
+        self.cursor.execute("""
+            SELECT answers FROM student_answers
+            WHERE student_index = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
+        """, (student_index, module_code, year, month))
+
+        result = self.cursor.fetchone()
+        if not result:
+            return []
+
+        raw_answers = result[0]  # This is a dict of {question_id: answer_text}
+        structured_answers = []
+
+        for full_qid, answer_text in raw_answers.items():
+            parts = full_qid.split("_")
+            structured_answers.append(
+                StudentAnswer(
+                    question_id=parts[0],
+                    sub_question_id=parts[1] if len(parts) > 1 else None,
+                    sub_sub_question_id=parts[2] if len(parts) > 2 else None,
+                    answer_text=answer_text,
+                    student_index=student_index,
+                    module_code=module_code,
+                    exam_year=year,
+                    exam_month=month
+                )
+            )
+        return structured_answers
+
+    def get_all_answers_grouped(self) -> Dict[Tuple[str, str, int, str], List[StudentAnswer]]:
+        self.cursor.execute("SELECT student_index, module_code, exam_year, exam_month, answers FROM student_answers")
+        rows = self.cursor.fetchall()
+        
+        grouped = {}
+
+        for student_index, module_code, year, month, answers_json in rows:
+            structured_answers = []
+            for full_qid, answer_text in answers_json.items():
+                parts = full_qid.split("_")
+                structured_answers.append(StudentAnswer(
+                    question_id=parts[0],
+                    sub_question_id=parts[1] if len(parts) > 1 else None,
+                    sub_sub_question_id=parts[2] if len(parts) > 2 else None,
+                    answer_text=answer_text,
+                    student_index=student_index,
+                    module_code=module_code,
+                    exam_year=year,
+                    exam_month=month
+                ))
+            grouped[(student_index, module_code, year, month)] = structured_answers
+
+        return grouped

@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id           String  @id
+  first_name        String
+  last_name         String
+  title             String
+  role              String
+  username          String  @unique
+  password          String
+  email             String  @unique
+  address           String?
+  phone_number      String
+  country           String?
+  city              String?
+  profile_image_url String?
+
+  educator Educator?
+}
+
+model Educator {
+  official_email      String             @id
+  education_institute String
+  user_id             String             @unique
+  user                User               @relation(fields: [user_id], references: [user_id])
+  modules             Module[]
+  question_grades     Question_Grade[]
+  assessment_grades   Assessment_Grade[]
+}
+
+model Student {
+  registration_number String       @id
+  education_institute String
+  enrollments         Enrollment[]
+  submissions         Submission[]
+}
+
+model Module {
+  module_id           String  @id
+  module_code         String
+  module_name         String
+  semester            String
+  education_institute String
+  max_enrollments     Int
+  learning_outcomes   String?
+  enrollment_key      String?
+  module_image_url    String?
+  created_by          String
+
+  educator    Educator     @relation(fields: [created_by], references: [user_id])
+  assessments Assessment[]
+  enrollments Enrollment[]
+}
+
+model Enrollment {
+  enrollement_id String @id
+  student_id     String
+  module_id      String
+
+  student Student @relation(fields: [student_id], references: [registration_number])
+  module  Module  @relation(fields: [module_id], references: [module_id])
+}
+
+model Assessment {
+  assessment_id         String   @id
+  type                  String
+  title                 String
+  description           String
+  deadline              DateTime
+  module_id             String
+  created_by            String
+  question_paper_id     String   @unique
+  model_answer_paper_id String   @unique
+  marking_scheme_id     String   @unique
+
+  module             Module             @relation(fields: [module_id], references: [module_id])
+  question_paper     Question_Paper     @relation(fields: [question_paper_id], references: [question_paper_id])
+  model_answer_paper Model_Answer_Paper @relation(fields: [model_answer_paper_id], references: [model_answer_paper_id])
+  marking_scheme     Marking_Scheme     @relation(fields: [marking_scheme_id], references: [marking_scheme_id])
+  submissions        Submission[]
+}
+
+model Question_Paper {
+  question_paper_id String      @id
+  assessment        Assessment?
+
+  file_url   String
+  created_on DateTime
+  questions  Question[]
+}
+
+model Question {
+  question_id       String @id
+  question_paper_id String
+  type              String
+  question_number   String
+  question          String
+  marks_allocated   Int
+
+  question_paper Question_Paper   @relation(fields: [question_paper_id], references: [question_paper_id])
+  grades         Question_Grade[]
+}
+
+model Model_Answer_Paper {
+  model_answer_paper_id String      @id
+  assessment            Assessment?
+
+  file_url   String
+  created_on DateTime
+}
+
+model Marking_Scheme {
+  marking_scheme_id String      @id
+  assessment        Assessment?
+
+  file_url   String
+  created_on DateTime
+}
+
+model Submission {
+  submission_id   String   @id
+  assessment_id   String
+  student_id      String
+  file_url        String
+  submission_time DateTime
+
+  assessment       Assessment        @relation(fields: [assessment_id], references: [assessment_id])
+  student          Student           @relation(fields: [student_id], references: [registration_number])
+  question_grades  Question_Grade[]
+  assessment_grade Assessment_Grade?
+}
+
+model Question_Grade {
+  q_grade_id    String   @id
+  question_id   String
+  submission_id String
+  marks_awarded Int
+  grading_time  DateTime
+  auto_graded   Boolean
+  feedback      String
+  educator_id   String?
+  model_id      String?
+
+  question         Question          @relation(fields: [question_id], references: [question_id])
+  submission       Submission        @relation(fields: [submission_id], references: [submission_id])
+  educator         Educator?         @relation(fields: [educator_id], references: [user_id])
+  evaluation_model Evaluation_Model? @relation(fields: [model_id], references: [model_id])
+}
+
+model Assessment_Grade {
+  grade_id      String   @id
+  submission_id String   @unique
+  total_marks   Int
+  marks_awarded Int
+  feedback      String
+  grading_time  DateTime
+  auto_graded   Boolean
+  educator_id   String?
+  model_id      String?
+
+  submission       Submission        @relation(fields: [submission_id], references: [submission_id])
+  educator         Educator?         @relation(fields: [educator_id], references: [user_id])
+  evaluation_model Evaluation_Model? @relation(fields: [model_id], references: [model_id])
+}
+
+model Evaluation_Model {
+  model_id        String @id
+  model_name      String
+  pricing_plan_id String
+
+  pricing_plan      Pricing_Plan       @relation(fields: [pricing_plan_id], references: [pricing_plan_id])
+  question_grades   Question_Grade[]
+  assessment_grades Assessment_Grade[]
+}
+
+model Pricing_Plan {
+  pricing_plan_id String @id
+  name            String
+  duration        Int
+  price           Float
+  description     String
+  payment_method  String
+
+  evaluation_models Evaluation_Model[]
+}

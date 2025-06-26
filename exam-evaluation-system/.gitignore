@@ -48,3 +48,5 @@ next-env.d.ts
 # # But keep the directories themselves
 # !/public/module-images/
 # !/public/modules/
+/src/generated/prisma
+.next/

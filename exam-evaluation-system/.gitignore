@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Ignore uploaded module images
+/public/module-images/*
+
+# Ignore module JSON files
+/public/modules/*
+
+# # But keep the directories themselves
+# !/public/module-images/
+# !/public/modules/

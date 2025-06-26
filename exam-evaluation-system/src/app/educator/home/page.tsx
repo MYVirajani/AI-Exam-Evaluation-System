@@ -86,7 +86,7 @@ const handleCreateModule = async (moduleData: ModuleFormData) => {
       throw new Error(result.error || 'Failed to create module');
     }
 
-    toast.success('Module created successfully!');
+    // toast.success('Module created successfully!');
     // Here you would typically refresh the module list
     return result;
   } catch (error) {

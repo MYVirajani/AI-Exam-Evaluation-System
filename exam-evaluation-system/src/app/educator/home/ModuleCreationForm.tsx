@@ -15,7 +15,7 @@ export interface ModuleFormData {
   moduleName: string;
   semester?: string;
   educationInstitute: string;
-  maxStudents: number;
+  maxStudents?: number;
   learningOutcomes?: string;
   enrollmentKey?: string;
   moduleImage?: File | null;
@@ -72,29 +72,19 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // const onFormSubmit = async (data: ModuleFormData) => {
-  //   try {
-  //     await onSubmit(data);
-  //     toast.success("Module created successfully!");
-  //     reset();
-  //     setImagePreview(null);
-  //     onClose();
-  //   } catch (error) {
-  //     toast.error("Failed to create module. Please try again.");
-  //     console.error("Module creation error:", error);
-  //   }
-  // };
-const onFormSubmit = async (data: ModuleFormData) => {
-  try {
-    await onSubmit(data);
-    toast.success('Module created successfully!');
-    reset();
-    setImagePreview(null);
-    onClose();
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Failed to create module');
-  }
-};
+  const onFormSubmit = async (data: ModuleFormData) => {
+    try {
+      await onSubmit(data);
+      toast.success("Module created successfully!");
+      reset();
+      setImagePreview(null);
+      onClose();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create module"
+      );
+    }
+  };
   if (!isOpen) return null;
 
   return (
@@ -192,7 +182,9 @@ const onFormSubmit = async (data: ModuleFormData) => {
                   required: "Please specify the institute name",
                 })}
                 className={`w-full px-3 py-2 border rounded-md text-gray-800 ${
-                  errors.educationInstitute ? "border-red-500" : "border-gray-300"
+                  errors.educationInstitute
+                    ? "border-red-500"
+                    : "border-gray-300"
                 }`}
               />
               {errors.educationInstitute && (
@@ -202,14 +194,14 @@ const onFormSubmit = async (data: ModuleFormData) => {
               )}
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Maximum Students <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 {...register("maxStudents", {
-                  required: "Please enter a valid number",
+                  // required: "Please enter a valid number",
                   min: {
                     value: 0,
                     message: "Please enter valid number",
@@ -230,6 +222,32 @@ const onFormSubmit = async (data: ModuleFormData) => {
                       : "text-blue-600"
                   }`}
                 >
+                  {errors.maxStudents.message}
+                </p>
+              )}
+            </div> */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Maximum Students
+              </label>
+              <input
+                type="number"
+                {...register("maxStudents", {
+                  min: {
+                    value: 0,
+                    message: "Please enter valid number",
+                  },
+                  validate: (value) =>
+                    Number.isInteger(value) || "Only whole numbers allowed",
+                  valueAsNumber: true,
+                })}
+                defaultValue={0}
+                className={`w-full px-3 py-2 border rounded-md text-gray-800 ${
+                  errors.maxStudents ? "border-red-500" : "border-gray-300"
+                }`}
+              />
+              {errors.maxStudents && (
+                <p className={`mt-1 text-sm italic text-blue-600`}>
                   {errors.maxStudents.message}
                 </p>
               )}

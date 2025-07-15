@@ -1,50 +1,9 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Virtual environment
+# Ignore virtual environment
 venv/
-ENV/
-env/
-.venv/
-.ENV/
 
-# Environment variables
+# Ignore environment variables file
 .env
 
-# VS Code settings
-.vscode/
-
-# macOS
-.DS_Store
-
-# Logs and databases
-*.log
-*.sqlite3
-
-# Test cache
-.pytest_cache/
-
-# MyPy cache
-.mypy_cache/
-
-# Coverage reports
-htmlcov/
-coverage.xml
-*.cover
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
-# PyInstaller
-dist/
-build/
-*.spec
-
-# Local config or output folders
-.idea/
-*.swp
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]

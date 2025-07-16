@@ -70,7 +70,7 @@ export default function UploadPage() {
       setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }))
       setUploadErrors((prev) => ({ ...prev, [file.name]: '' }))
 
-      const response = await fetch('/api/educator', {
+      const response = await fetch('/api/educator/upload', {
         method: 'POST',
         body: formData,
       })

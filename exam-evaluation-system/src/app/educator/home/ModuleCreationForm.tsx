@@ -194,38 +194,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
               )}
             </div>
 
-            {/* <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Maximum Students <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                {...register("maxStudents", {
-                  // required: "Please enter a valid number",
-                  min: {
-                    value: 0,
-                    message: "Please enter valid number",
-                  },
-                  validate: (value) =>
-                    Number.isInteger(value) || "Only whole numbers allowed",
-                  valueAsNumber: true,
-                })}
-                className={`w-full px-3 py-2 border rounded-md text-gray-800 ${
-                  errors.maxStudents ? "border-red-500" : "border-gray-300"
-                }`}
-              />
-              {errors.maxStudents && (
-                <p
-                  className={`mt-1 text-sm italic ${
-                    errors.maxStudents.type === "required"
-                      ? "text-red-600"
-                      : "text-blue-600"
-                  }`}
-                >
-                  {errors.maxStudents.message}
-                </p>
-              )}
-            </div> */}
+           
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Maximum Students
@@ -246,6 +215,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                   errors.maxStudents ? "border-red-500" : "border-gray-300"
                 }`}
               />
+              
               {errors.maxStudents && (
                 <p className={`mt-1 text-sm italic text-blue-600`}>
                   {errors.maxStudents.message}

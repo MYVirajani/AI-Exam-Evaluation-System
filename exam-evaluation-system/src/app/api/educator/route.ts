@@ -1,137 +1,58 @@
-// import { NextResponse } from 'next/server'
-// import fs from 'fs'
-// import path from 'path'
+import { NextResponse } from "next/server";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
+import { PrismaClient } from "@/generated/prisma"; // adjust path if needed
 
-// export async function POST(request: Request) {
-//   try {
-//     const formData = await request.formData()
-//     const file = formData.get('file') as File
-//     const type = formData.get('type') as string
-//     const courseId = formData.get('courseId') as string | null
-
-//     if (!file) {
-//       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-//     }
-
-//     const projectRoot = process.cwd()
-    
-//     // Get the parent directory of your project
-//     const parentDir = path.dirname(projectRoot)
-    
-//     // Create the parallel data directory path
-//     const baseDir = path.join(parentDir, 'data')
-//     const uploadDir = type === 'answerScripts' 
-//       ? path.join(baseDir, 'Answer_Scripts') 
-//       : path.join(baseDir, 'Model_Answers')
-
-//     if (!fs.existsSync(baseDir)) {
-//       fs.mkdirSync(baseDir)
-//     }
-//     if (!fs.existsSync(uploadDir)) {
-//       fs.mkdirSync(uploadDir, { recursive: true })
-//     }
-
-//     // Generate unique filename
-//     const timestamp = Date.now()
-//     const fileExtension = path.extname(file.name)
-//     const fileName = `${type}_${courseId || 'unknown'}_${timestamp}${fileExtension}`
-//     const filePath = path.join(uploadDir, fileName)
-
-//     // Convert file to buffer and save
-//     const buffer = Buffer.from(await file.arrayBuffer())
-//     fs.writeFileSync(filePath, buffer)
-
-//     return NextResponse.json({ 
-//       success: true, 
-//       filePath: filePath 
-//     })
-//   } catch (error) {
-//     console.error('Upload error:', error)
-//     return NextResponse.json(
-//       { error: 'Internal server error' },
-//       { status: 500 }
-//     )
-//   }
-// }
-
-// src/app/api/upload/route.ts
-import { NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
+const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const type = formData.get('type') as string
-    const moduleId = formData.get('moduleId') as string | null
+    const formData = await request.formData();
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    // Create directories if not exist
+    const imagesDir = path.join(process.cwd(), "public", "module-images");
+    await mkdir(imagesDir, { recursive: true });
+
+    // Process uploaded image
+    const imageFile = formData.get("moduleImage") as File | null;
+    let imageUrl: string | null = null;
+
+    if (imageFile) {
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      const imageExtension = imageFile.name.split(".").pop();
+      const imageName = `${uuidv4()}.${imageExtension}`;
+      const imagePath = path.join(imagesDir, imageName);
+
+      await writeFile(imagePath, buffer);
+      imageUrl = `/module-images/${imageName}`; // relative URL to access image
     }
 
-    // Validate file size
-    const maxSize = type === 'answerScripts' ? 50 : type === 'examPaper' ? 10 : 5
-    if (file.size > maxSize * 1024 * 1024) {
-      return NextResponse.json(
-        { error: `File size exceeds ${maxSize}MB limit` },
-        { status: 400 }
-      )
-    }
 
-    // Validate file types
-    const validExtensions: Record<string, string[]> = {
-      examPaper: ['.pdf', '.docx'],
-      answerScripts: ['.pdf'],
-      modelAnswer: ['.pdf', '.docx'],
-      markingScheme: ['.pdf', '.xlsx']
-    }
+    // Create module in the DB using Prisma
+    const newModule = await prisma.module.create({
+      data: {
+        module_id: uuidv4(),
+        module_code: formData.get("moduleCode") as string,
+        module_name: formData.get("moduleName") as string,
+        semester: formData.get("semester") as string,
+        education_institute: formData.get("educationInstitute") as string,
+        max_enrollments:parseInt(formData.get("maxStudents") as string),
+        learning_outcomes: formData.get("learningOutcomes") as string | null,
+        enrollment_key: formData.get("enrollmentKey") as string | null,
+        module_image_url: imageUrl,
+        created_by: "12345",
+      },
+    });
 
-    const fileExtension = path.extname(file.name).toLowerCase()
-    if (!validExtensions[type].includes(fileExtension)) {
-      return NextResponse.json(
-        { error: `Invalid file type for ${type}` },
-        { status: 400 }
-      )
-    }
+    return NextResponse.json({ success: true, module: newModule });
 
-    const projectRoot = process.cwd()
-    
-    // Get the parent directory of your project
-    const parentDir = path.dirname(projectRoot)
-    
-    // Create the parallel data directory path
-    const baseDir = path.join(parentDir, 'data')
-    const uploadDir = type === 'answerScripts' 
-      ? path.join(baseDir, 'Answer_Scripts') 
-      : path.join(baseDir, 'Model_Answers')
-
-    if (!fs.existsSync(baseDir)) {
-      fs.mkdirSync(baseDir)
-    }
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now()
-    const fileName = `${type}_${moduleId || 'unknown'}_${timestamp}${fileExtension}`
-    const filePath = path.join(uploadDir, fileName)
-
-    // Convert file to buffer and save
-    const buffer = Buffer.from(await file.arrayBuffer())
-    fs.writeFileSync(filePath, buffer)
-
-    return NextResponse.json({ 
-      success: true, 
-      filePath: filePath,
-      fileName: fileName
-    })
+    // return NextResponse.json({ success: true, module });
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error("Error creating module:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: "Failed to create module" },
       { status: 500 }
-    )
+    );
   }
 }

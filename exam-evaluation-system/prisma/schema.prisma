@@ -35,6 +35,7 @@ model Educator {
   modules             Module[]
   question_grades     Question_Grade[]
   assessment_grades   Assessment_Grade[]
+  assessments         Assessment[]
 }
 
 model Student {
@@ -80,7 +81,7 @@ model Enrollment {
 
 model Assessment {
   assessment_id         String   @id
-  type                  String
+  type                  assessmentType
   title                 String
   description           String
   deadline              DateTime
@@ -91,10 +92,17 @@ model Assessment {
   marking_scheme_id     String   @unique
 
   module             Module             @relation(fields: [module_id], references: [module_id])
+  educator           Educator           @relation(fields: [created_by], references: [user_id])
   question_paper     Question_Paper     @relation(fields: [question_paper_id], references: [question_paper_id])
   model_answer_paper Model_Answer_Paper @relation(fields: [model_answer_paper_id], references: [model_answer_paper_id])
   marking_scheme     Marking_Scheme     @relation(fields: [marking_scheme_id], references: [marking_scheme_id])
   submissions        Submission[]
+}
+enum assessmentType {
+  endExam
+  midExam
+  assignment
+  quiz
 }
 
 model Question_Paper {

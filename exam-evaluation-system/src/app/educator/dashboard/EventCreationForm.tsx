@@ -1,15 +1,16 @@
 "use client";
 
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import toast from 'react-hot-toast';
-import { FaTag, FaClock } from 'react-icons/fa';
+import React from "react";
+import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
+import { FaTag, FaClock } from "react-icons/fa";
+import { siteConfig } from "@/config/site";
 
 export interface EventFormData {
-  type: 'assignment' | 'quiz' | 'exam';
+  type: "assignment" | "quiz" | "exam";
   title: string;
   description?: string;
-  deadline: string;    // ISO string from datetime-local input
+  deadline: string; // ISO string from datetime-local input
   moduleId: string;
 }
 
@@ -26,16 +27,21 @@ export default function EventCreationForm({
   onSubmit,
   modules,
 }: EventCreationFormProps) {
-  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<EventFormData>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<EventFormData>();
 
   const submit = async (data: EventFormData) => {
     try {
       await onSubmit(data);
-      toast.success('Event created successfully!');
+      toast.success("Event created successfully!");
       reset();
       onClose();
     } catch {
-      toast.error('Failed to create event');
+      toast.error("Failed to create event");
     }
   };
 
@@ -59,53 +65,71 @@ export default function EventCreationForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type <span className="text-red-500">*</span>
+              </label>
               <select
-                {...register('type', { required: true })}
+                {...register("type", { required: true })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
               >
                 <option value="">Select event type</option>
-                <option value="assignment">Assignment</option>
-                <option value="quiz">Quiz</option>
-                <option value="exam">Exam</option>
+                {siteConfig.enums.assessmentType.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
-              {errors.type && <p className="text-red-600 text-sm mt-1">Type is required</p>}
+              {errors.type && (
+                <p className="text-red-600 text-sm mt-1">Type is required</p>
+              )}
             </div>
 
             {/* Module */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Module <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Module <span className="text-red-500">*</span>
+              </label>
               <select
-                {...register('moduleId', { required: true })}
+                {...register("moduleId", { required: true })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
               >
                 <option value="">Select module</option>
-                {modules.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
+                {modules.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
                 ))}
               </select>
-              {errors.moduleId && <p className="text-red-600 text-sm mt-1">Module is required</p>}
+              {errors.moduleId && (
+                <p className="text-red-600 text-sm mt-1">Module is required</p>
+              )}
             </div>
 
             {/* Title */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <FaTag className="absolute left-3 top-3 text-gray-500" />
                 <input
-                  {...register('title', { required: true })}
+                  {...register("title", { required: true })}
                   placeholder="Event title"
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-gray-800"
                 />
               </div>
-              {errors.title && <p className="text-red-600 text-sm mt-1">Title is required</p>}
+              {errors.title && (
+                <p className="text-red-600 text-sm mt-1">Title is required</p>
+              )}
             </div>
 
             {/* Description */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
               <textarea
-                {...register('description')}
+                {...register("description")}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
                 placeholder="Optional description"
@@ -114,16 +138,22 @@ export default function EventCreationForm({
 
             {/* Deadline */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Deadline <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Deadline <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <FaClock className="absolute left-3 top-3 text-gray-500" />
                 <input
                   type="datetime-local"
-                  {...register('deadline', { required: true })}
+                  {...register("deadline", { required: true })}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-              {errors.deadline && <p className="text-red-600 text-sm mt-1">Deadline is required</p>}
+              {errors.deadline && (
+                <p className="text-red-600 text-sm mt-1">
+                  Deadline is required
+                </p>
+              )}
             </div>
           </div>
 
@@ -142,12 +172,28 @@ export default function EventCreationForm({
               disabled={isSubmitting}
             >
               {isSubmitting ? (
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
               ) : null}
-              {isSubmitting ? 'Creating...' : 'Create Event'}
+              {isSubmitting ? "Creating..." : "Create Event"}
             </button>
           </div>
         </form>

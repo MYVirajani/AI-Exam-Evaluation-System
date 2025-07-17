@@ -17,6 +17,9 @@ interface SiteConfig {
       mono: string;
     };
   };
+   enums: {
+    assessmentType: Array<{ value: string; label: string }>;
+  };
 }
 
 // Default configuration
@@ -37,6 +40,14 @@ export const defaultConfig: SiteConfig = {
       sans: "Arial, Helvetica, sans-serif",
       mono: "monospace",
     },
+  },
+  enums: {
+    assessmentType: [
+      { value: "endExam",     label: "End Exam"     },
+      { value: "midExam",     label: "Mid Exam"     },
+      { value: "assignment",  label: "Assignment"  },
+      { value: "quiz",        label: "Quiz"        },
+    ],
   },
 };
 

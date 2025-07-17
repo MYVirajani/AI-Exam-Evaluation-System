@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { PrismaClient } from "@/generated/prisma"; // adjust path if needed
+import { Prisma, PrismaClient } from "@/generated/prisma"; // adjust path if needed
 
 const prisma = new PrismaClient();
 
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     // return NextResponse.json({ success: true, module });
   } catch (error) {
     console.error("Error creating module:", error);
+
     return NextResponse.json(
       { success: false, error: "Failed to create module" },
       { status: 500 }

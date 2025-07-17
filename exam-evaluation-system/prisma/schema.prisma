@@ -9,27 +9,28 @@ datasource db {
 }
 
 model User {
-  user_id           String  @id
+  user_id           String   @id @default(uuid())
   first_name        String
   last_name         String
   title             String
-  role              String
-  username          String  @unique
+  role              Role     
+  username          String   @unique
   password          String
-  email             String  @unique
+  email             String   @unique
   address           String?
   phone_number      String
   country           String?
   city              String?
   profile_image_url String?
 
-  educator Educator?
+  educator          Educator?
+  student           Student?
 }
 
 model Educator {
-  official_email      String             @id
+  official_email      String             @unique
   education_institute String
-  user_id             String             @unique
+  user_id             String             @id
   user                User               @relation(fields: [user_id], references: [user_id])
   modules             Module[]
   question_grades     Question_Grade[]
@@ -37,10 +38,18 @@ model Educator {
 }
 
 model Student {
-  registration_number String       @id
+  user_id             String       @id
+  registration_number String       @unique
   education_institute String
+  user                User         @relation(fields: [user_id], references: [user_id])
   enrollments         Enrollment[]
   submissions         Submission[]
+}
+
+enum Role {
+  admin
+  educator
+  student
 }
 
 model Module {

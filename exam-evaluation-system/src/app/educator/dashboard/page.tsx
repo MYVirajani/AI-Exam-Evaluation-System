@@ -1,5 +1,5 @@
 // EducatorHomePage.tsx
-'use client';
+"use client";
 
 import React, { useRef, useState, useEffect } from "react";
 import { FiChevronLeft, FiChevronRight, FiLoader } from "react-icons/fi";
@@ -29,27 +29,31 @@ interface AssessmentAPI {
 export default function EducatorHomePage() {
   const moduleScrollRef = useRef<HTMLDivElement>(null);
 
-  const [upcomingEvents, setUpcomingEvents] = useState<{
-    id: string;
-    title: string;
-    module: string;
-    uploads: string;
-    date: string;
-    label: string;
-  }[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<
+    {
+      id: string;
+      title: string;
+      module: string;
+      uploads: string;
+      date: string;
+      label: string;
+    }[]
+  >([]);
 
-  const [createdModules, setCreatedModules] = useState<{
-    id: string;
-    title: string;
-    image: string;
-    enrolled: string;
-  }[]>([]);
+  const [createdModules, setCreatedModules] = useState<
+    {
+      id: string;
+      title: string;
+      image: string;
+      enrolled: string;
+    }[]
+  >([]);
 
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreateModule = async (moduleData: ModuleFormData) => {
     const formData = new FormData();
@@ -60,30 +64,41 @@ export default function EducatorHomePage() {
       formData.append("maxStudents", moduleData.maxStudents.toString());
     }
     if (moduleData.semester) formData.append("semester", moduleData.semester);
-    if (moduleData.learningOutcomes) formData.append("learningOutcomes", moduleData.learningOutcomes);
-    if (moduleData.enrollmentKey) formData.append("enrollmentKey", moduleData.enrollmentKey);
-    if (moduleData.moduleImage) formData.append("moduleImage", moduleData.moduleImage);
+    if (moduleData.learningOutcomes)
+      formData.append("learningOutcomes", moduleData.learningOutcomes);
+    if (moduleData.enrollmentKey)
+      formData.append("enrollmentKey", moduleData.enrollmentKey);
+    if (moduleData.moduleImage)
+      formData.append("moduleImage", moduleData.moduleImage);
 
-    const res = await fetch("/api/educator", { method: "POST", body: formData });
+    const res = await fetch("/api/educator", {
+      method: "POST",
+      body: formData,
+    });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Failed to create module");
     return json;
   };
 
   const handleCreateEvent = async (data: EventFormData) => {
-    try {
-      const res = await fetch("/api/assessment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to create event");
-      return json;
-    } catch (err) {
-      console.error("Event creation error:", err);
-      throw err;
+    const form = new FormData();
+    form.append("type", data.type);
+    form.append("title", data.title);
+    form.append("description", data.description || "");
+    form.append("deadline", data.deadline);
+    form.append("moduleId", data.moduleId);
+
+    if (data.questionPaper && data.questionPaper.length > 0) {
+      form.append("questionPaper", data.questionPaper[0]);
     }
+  
+    const res = await fetch("/api/educator/assessment", {
+      method: "POST",
+      body: form,
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Failed to create event");
+    return json;
   };
 
   useEffect(() => {
@@ -91,13 +106,16 @@ export default function EducatorHomePage() {
       try {
         const res = await fetch("/api/educator/12345/dashboard");
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        const { modules, assessments }: {
+        const {
+          modules,
+          assessments,
+        }: {
           modules: ModuleAPI[];
           assessments: AssessmentAPI[];
         } = await res.json();
 
         // Map modules
-        const mappedModules = modules.map(m => ({
+        const mappedModules = modules.map((m) => ({
           id: m.module_id,
           title: `${m.module_code}: ${m.module_name}`,
           image: m.module_image_url ?? "/images/default-module.png",
@@ -105,8 +123,8 @@ export default function EducatorHomePage() {
         }));
 
         // Map assessments to events
-        const mappedEvents = assessments.map(a => {
-          const mod = modules.find(m => m.module_id === a.module_id);
+        const mappedEvents = assessments.map((a) => {
+          const mod = modules.find((m) => m.module_id === a.module_id);
           const moduleTitle = mod
             ? `${mod.module_code} ${mod.module_name}`
             : "";
@@ -176,7 +194,7 @@ export default function EducatorHomePage() {
           <p className="text-gray-600">No upcoming events yet.</p>
         ) : (
           <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
-            {upcomingEvents.map(evt => (
+            {upcomingEvents.map((evt) => (
               <EducatorEventCard key={evt.id} {...evt} />
             ))}
             <FiChevronRight className="text-2xl text-black cursor-pointer" />
@@ -209,7 +227,7 @@ export default function EducatorHomePage() {
               ref={moduleScrollRef}
               className="flex space-x-4 overflow-x-auto scrollbar-hide px-8"
             >
-              {createdModules.map(mod => (
+              {createdModules.map((mod) => (
                 <EducatorModuleCard key={mod.id} {...mod} />
               ))}
             </div>
@@ -235,7 +253,7 @@ export default function EducatorHomePage() {
         isOpen={isEventModalOpen}
         onClose={() => setIsEventModalOpen(false)}
         onSubmit={handleCreateEvent}
-        modules={createdModules.map(m => ({
+        modules={createdModules.map((m) => ({
           id: m.id,
           name: m.title,
         }))}

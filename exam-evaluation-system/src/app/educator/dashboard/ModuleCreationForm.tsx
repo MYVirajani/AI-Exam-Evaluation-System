@@ -303,7 +303,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md"
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-800"
               disabled={isSubmitting}
             >
               Cancel

@@ -1,3 +1,4 @@
+// src/components/EventCreationForm.tsx
 "use client";
 
 import React from "react";
@@ -8,10 +9,13 @@ import { siteConfig } from "@/config/site";
 
 export interface EventFormData {
   type: "assignment" | "quiz" | "exam";
+  moduleId: string;
   title: string;
   description?: string;
   deadline: string; // ISO string from datetime-local input
-  moduleId: string;
+  questionPaper?: FileList;
+  modelAnswerPaper?: FileList;
+  markingScheme?: FileList;
 }
 
 interface EventCreationFormProps {
@@ -62,6 +66,7 @@ export default function EventCreationForm({
         </div>
 
         <form onSubmit={handleSubmit(submit)} className="space-y-4">
+          {/* core fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Type */}
             <div>
@@ -146,7 +151,7 @@ export default function EventCreationForm({
                 <input
                   type="datetime-local"
                   {...register("deadline", { required: true })}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-gray-800"
                 />
               </div>
               {errors.deadline && (
@@ -157,11 +162,51 @@ export default function EventCreationForm({
             </div>
           </div>
 
+          {/* optional file uploads */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Question Paper (optional)
+              </label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                {...register("questionPaper")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
+              />
+            </div>
+
+            {/* <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Model Answer Paper (optional)
+              </label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                {...register("modelAnswerPaper")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Marking Scheme (optional)
+              </label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                {...register("markingScheme")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
+              />
+            </div> */}
+          </div>
+
+          {/* action buttons */}
           <div className="flex justify-end space-x-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md"
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-800"
               disabled={isSubmitting}
             >
               Cancel

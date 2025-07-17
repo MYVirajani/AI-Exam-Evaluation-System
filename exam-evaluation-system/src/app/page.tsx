@@ -20,7 +20,7 @@ export default function Home() {
             onClick={() => setIsLoginOpen(true)}
             className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800"
           >
-            Login
+            Sign In
           </button>
           <button
             onClick={() => setIsSignupOpen(true)}

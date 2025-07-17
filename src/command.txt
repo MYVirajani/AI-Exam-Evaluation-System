@@ -1,2 +1,43 @@
-python -m src.scripts.print_extracted_answers --provider GoogleGemini --model gemini-1.5-flash-latest
+python -m src.scripts.embed_lecture_materials --provider OpenAI --model text-embedding-3-small --embedder text-embedding-3-small --root data/Lecture_Materials --module EE6250
+ python -m src.scripts.extract_student_answers `
+>>   --provider OpenAI `
+>>   --model gpt-4o `
+>>   --path data/Answer_Scripts/student_answer1.pdf `
+>>   --embedder text-embedding-3-small
+
 python -m src.scripts.print_extracted_answers --provider OpenAI --model gpt-4o
+
+python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --file data/Answer_Scripts/EE6250_EG-2020-4247.docx
+
+ python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embeGet-ChildItem -Path "data/Answer_Scripts" -Include *.docx, *.pdf -Recurse | ForEach-Object { 
+>>     python -m src.scripts.run_extract_and_save `
+>>         --provider OpenAI `     
+>>         --model gpt-4o `
+>>         --file $_.FullName
+>> }
+
+python -m src.scripts.embed_from_db --provider OpenAI --model gpt-4o     
+
+python -m src.scripts.embed_from_db `                                                             
+>>   --provider OpenAI `
+>>   --model text-embedding-3-small
+
+python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answers
+
+
+python -m src.scripts.mark_single_paper `
+>>   --index EG/2020/4247 `
+>>   --module EE6250 `
+>>   --year 2024 `
+>>   --month June `
+>>   --provider OpenAI `
+>>   --llm gpt-4o `
+>>   --embedder text-embedding-3-small
+
+python -m src.scripts.mark_all_papers `
+>>   --provider OpenAI `
+>>   --llm gpt-4o `
+>>   --embedder text-embedding-3-small `
+>>   --module EE6250 `
+>>   --year 2025 `
+>>   --month June

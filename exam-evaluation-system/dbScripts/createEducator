@@ -1,0 +1,9 @@
+INSERT INTO "Educator" (
+  user_id,
+  official_email,
+  education_institute
+) VALUES (
+  '12345', 
+  'john.doe@example.com', 
+  'Faculty of Engineering, University of Ruhuna'
+);

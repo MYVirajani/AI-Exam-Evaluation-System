@@ -1,0 +1,29 @@
+INSERT INTO "User" (
+  user_id,
+  first_name,
+  last_name,
+  title,
+  role,
+  username,
+  password,
+  email,
+  address,
+  phone_number,
+  country,
+  city,
+  profile_image_url
+) VALUES (
+  '12345',                       
+  'Jane',                        
+  'Doe',                         
+  'Dr.',                         
+  'educator',                    
+  'jane.doe',                    
+  'YOUR_HASHED_PASSWORD_HERE',   
+  'jane.doe@example.com',        
+  NULL,                          
+  '+94-77-1234567',              
+  NULL,                          
+  NULL,                          
+  NULL                           
+);

@@ -1,14 +1,14 @@
-// app/api/educator/[educatorId]/dashboard/route.ts
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@/generated/prisma';
+import { NextResponse } from 'next/server'
+import { PrismaClient } from '@/generated/prisma'
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
 export async function GET(
   request: Request,
   { params }: { params: { educatorId: string } }
 ) {
-  const { educatorId } = params;
+  // now pulling educatorId directly from the destructured params
+  const educatorId = params.educatorId
 
   try {
     // 1) Fetch all modules created by this educator
@@ -25,7 +25,7 @@ export async function GET(
         enrollment_key: true,
         module_image_url: true,
       },
-    });
+    })
 
     // 2) Fetch all assessments authored by this educator
     const assessments = await prisma.assessment.findMany({
@@ -41,14 +41,14 @@ export async function GET(
         model_answer_paper_id: true,
         marking_scheme_id: true,
       },
-    });
+    })
 
-    return NextResponse.json({ modules, assessments });
+    return NextResponse.json({ modules, assessments })
   } catch (error) {
-    console.error('Error fetching educator dashboard:', error);
+    console.error('Error fetching educator dashboard:', error)
     return NextResponse.json(
       { error: 'Failed to load modules and assessments' },
       { status: 500 }
-    );
+    )
   }
 }

@@ -35,7 +35,7 @@ const EducatorModuleCard: React.FC<EducatorModuleCardProps> = ({
   const src = image?.trim() ? image : getRandomFallback()
 
   return (
-    <div className="w-[250px] bg-white rounded-2xl shadow p-0 text-center">
+    <div className="min-w-[250px] bg-gray-100 rounded-2xl shadow p-0 text-center">
       {/* Image */}
       <div className="relative w-full h-32 rounded-t-2xl overflow-hidden">
         <Image

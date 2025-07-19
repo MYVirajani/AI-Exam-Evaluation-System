@@ -68,6 +68,7 @@ model Module {
   educator    Educator     @relation(fields: [created_by], references: [user_id])
   assessments Assessment[]
   enrollments Enrollment[]
+  lessons     Lesson[]
 }
 
 model Enrollment {
@@ -78,6 +79,27 @@ model Enrollment {
   student Student @relation(fields: [student_id], references: [registration_number])
   module  Module  @relation(fields: [module_id], references: [module_id])
 }
+
+model Lesson {
+  lesson_id    String    @id @default(uuid())
+  module_id    String
+  title        String
+  created_on   DateTime  @default(now())
+
+  module       Module            @relation(fields: [module_id], references: [module_id])
+  materials    LectureMaterial[] 
+}
+
+model LectureMaterial {
+  material_id String    @id @default(uuid())
+  lesson_id   String
+  file_url    String
+  uploaded_on DateTime  @default(now())
+  description String?   
+
+  lesson      Lesson    @relation(fields: [lesson_id], references: [lesson_id])
+}
+
 
 model Assessment {
   assessment_id         String   @id

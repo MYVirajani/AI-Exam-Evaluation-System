@@ -142,8 +142,8 @@ class GradingResult:
 
     full_question_id: str   # e.g. Q1_i_a
 
-    mark:             int   # score awarded
-    max_marks:        int   # maximum available for that question
+    mark:             float   # score awarded
+    max_marks:        float   # maximum available for that question
 
     reason:           str   # brief justification from the LLM
     grading_method:   GradingMethod

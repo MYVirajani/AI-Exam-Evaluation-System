@@ -27,8 +27,8 @@ class GradingResultDB(BaseRelationalDB):
             exam_year          INT,
             exam_month         TEXT,
             full_question_id   TEXT,
-            mark               INT,
-            max_marks          INT,
+            mark               FLOAT,
+            max_marks          FLOAT,
             reason             TEXT,
             graded_at          TIMESTAMP DEFAULT NOW(),
             UNIQUE (student_index,module_code,exam_year,exam_month,full_question_id)
@@ -40,8 +40,8 @@ class GradingResultDB(BaseRelationalDB):
             module_code    TEXT,
             exam_year      INT,
             exam_month     TEXT,
-            total_marks    INT,
-            total_possible INT,
+            total_marks    FLOAT,
+            total_possible FlOAT,
             graded_at      TIMESTAMP DEFAULT NOW(),
             UNIQUE (student_index,module_code,exam_year,exam_month)
         );
@@ -68,7 +68,7 @@ class GradingResultDB(BaseRelationalDB):
     def save_paper_total(self,
                          student_index: str, module: str,
                          year: int, month: str,
-                         total: int, possible: int):
+                         total: float, possible: float):
         self.cursor.execute("""
         INSERT INTO student_paper_results
           (student_index,module_code,exam_year,exam_month,

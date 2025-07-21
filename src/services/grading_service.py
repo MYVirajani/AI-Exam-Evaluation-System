@@ -128,7 +128,7 @@ class GradingService:
     
     def _grade_with_rag(self, question: Question, student_answer: StudentAnswer, 
                        sub_question: Optional[SubQuestion], model_answer: str, 
-                       max_marks: int) -> Optional[GradingResult]:
+                       max_marks: float) -> Optional[GradingResult]:
         """Grade using RAG-assisted approach."""
         try:
             # Get relevant context
@@ -182,7 +182,7 @@ class GradingService:
     
     def _grade_with_llm(self, question: Question, student_answer: StudentAnswer, 
                        sub_question: Optional[SubQuestion], model_answer: str, 
-                       max_marks: int) -> GradingResult:
+                       max_marks: float) -> GradingResult:
         """Grade using direct LLM approach without RAG."""
         from openai import OpenAI
         
@@ -234,7 +234,7 @@ class GradingService:
             )
     
     def _perform_rag_grading(self, question_text: str, model_answer: str, 
-                           student_answer: str, context: str, max_marks: int) -> Tuple[float, str, float]:
+                           student_answer: str, context: str, max_marks: float) -> Tuple[float, str, float]:
         """Perform the actual RAG-assisted grading."""
         from openai import OpenAI
         
@@ -359,7 +359,7 @@ class GradingService:
     
     def _create_empty_answer_result(self, question: Question, student_answer: StudentAnswer, 
                                   sub_question: Optional[SubQuestion], model_answer: str, 
-                                  max_marks: int) -> GradingResult:
+                                  max_marks: float) -> GradingResult:
         """Create result for empty answers."""
         return GradingResult(
             question_id=question.id,
@@ -376,7 +376,7 @@ class GradingService:
     
     def _create_irrelevant_answer_result(self, question: Question, student_answer: StudentAnswer, 
                                        sub_question: Optional[SubQuestion], model_answer: str, 
-                                       max_marks: int) -> GradingResult:
+                                       max_marks: float) -> GradingResult:
         """Create result for irrelevant answers."""
         return GradingResult(
             question_id=question.id,
@@ -393,7 +393,7 @@ class GradingService:
     
     def _create_error_fallback_result(self, question: Question, student_answer: StudentAnswer, 
                                     sub_question: Optional[SubQuestion], model_answer: str, 
-                                    max_marks: int, error_message: str) -> GradingResult:
+                                    max_marks: float, error_message: str) -> GradingResult:
         """Create result when grading fails."""
         # Use similarity-based scoring as fallback
         similarity_score = self._calculate_similarity(model_answer, student_answer.answer_text)

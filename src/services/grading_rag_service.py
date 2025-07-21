@@ -768,7 +768,7 @@ class RAGGrader:
         )
         return "\n---\n".join(d.page_content for d in docs)
 
-    def _call_llm(self, student_answer_text: str, ma_dict, retrieved) -> tuple[int, str]:
+    def _call_llm(self, student_answer_text: str, ma_dict, retrieved) -> tuple[float, str]:
         """Return (score, reason) from LLM based on student answer, model, and lecture chunks."""
         prompt = PromptTemplate.from_template(RAGPrompts.GRADING_PROMPT).format(
             question_text=ma_dict["question_text"] or "",
@@ -785,7 +785,7 @@ class RAGGrader:
 
         try:
             data = json.loads(response)
-            return int(data["score"]), data["reason"]
+            return float(data["score"]), data["reason"]
         except Exception as e:
             log.error("❌ JSON parse error: %s\nRaw LLM response: %s", e, response)
             return 0, "Invalid LLM response"

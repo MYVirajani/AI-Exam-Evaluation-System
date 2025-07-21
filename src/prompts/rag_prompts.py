@@ -428,13 +428,13 @@ INSTRUCTIONS:
 -------------
 1. Compare the student’s answer with the model answer and guideline.
 2. Use the context *only* to clarify the subject, not as a primary grading source.
-3. Assign an INTEGER score from 0 to {max_marks}.
+3. Assign an FLOAT score from 0 to {max_marks}.
 4. Provide a concise justification for the score.
 
 OUTPUT (JSON only, no markdown):
 --------------------------------
 {{
-  "score": <int>,
+  "score": <float>,
   "reason": "<one-sentence explanation>"
 }}
 """

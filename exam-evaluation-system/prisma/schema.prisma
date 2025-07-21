@@ -22,6 +22,7 @@ model User {
   country           String?
   city              String?
   profile_image_url String?
+  created_on        DateTime  @default(now())
 
   educator          Educator?
   student           Student?

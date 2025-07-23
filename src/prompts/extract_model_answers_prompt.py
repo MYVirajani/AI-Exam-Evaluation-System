@@ -96,7 +96,7 @@ You will receive the full text of an *official model-answer or marking guide*.
    - "question": The actual question text (if available, else use "")
    - "answer": The model answer content
    - "guideline": Bullet points or marking instructions (or empty string if not present)
-   - "marks": Maximum marks (as an integer, or null if not available)
+   - "marks": Maximum marks (as a decimal, or null if not available)
 
 -----------------------------
 **Output Format (JSON only)**

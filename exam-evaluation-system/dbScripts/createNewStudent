@@ -1,0 +1,45 @@
+BEGIN;
+
+-- 1) Create the base User record
+INSERT INTO "User" (
+  user_id,
+  first_name,
+  last_name,
+  title,
+  role,
+  username,
+  password,
+  email,
+  address,
+  phone_number,
+  country,
+  city,
+  profile_image_url
+) VALUES (
+  '54321',                      
+  'Alice',                     
+  'Smith',                     
+  'Ms.',                        
+  'student',                    
+  'alice.smith',                
+  '$2b$10$…hashed-password…',    
+  'alice.smith@example.com',    
+  '42 Example Street',          
+  '+94-77-5551234',             
+  'Sri Lanka',                  
+  'Colombo',                    
+  NULL                          
+);
+
+
+INSERT INTO "Student" (
+  user_id,
+  registration_number,
+  education_institute
+) VALUES (
+  '54321',                                  
+  'REG123',                             
+  'Faculty of Engineering, University of Ruhuna'
+);
+
+COMMIT;

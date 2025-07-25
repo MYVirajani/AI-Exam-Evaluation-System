@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import StudentEventCard from "./StudentEventCard";
 import StudentModuleCard, { getRandomFallback } from "./StudentModuleCard";
@@ -25,18 +26,12 @@ const StudentHomePage: React.FC = () => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null); // store userId here
 
-  const fetchEnrolledModules = async () => {
+  const fetchEnrolledModules = async (currentUserId: string) => {
     setLoading(true);
     try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const userId = user.user_id;
-
-      if (!userId) {
-        throw new Error("User ID not found. Please log in again.");
-      }
-
-      const res = await fetch(`/api/student/enrollments?user_id=${userId}`);
+      const res = await fetch(`/api/student/enrollments?user_id=${currentUserId}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setModules(data.modules || []);
@@ -49,7 +44,13 @@ const StudentHomePage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchEnrolledModules();
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user.user_id) {
+      setUserId(user.user_id);
+      fetchEnrolledModules(user.user_id);
+    } else {
+      toast.error("User ID not found. Please log in again.");
+    }
   }, []);
 
   const allAssessments = modules.flatMap((mod) =>
@@ -63,9 +64,7 @@ const StudentHomePage: React.FC = () => {
     <div className="w-full min-h-screen space-y-12 px-0 sm:px-2 overflow-auto">
       {/* Upcoming Events */}
       <div>
-        <h2 className="text-xl font-bold text-blue-900 mb-4">
-          Upcoming Events
-        </h2>
+        <h2 className="text-xl font-bold text-blue-900 mb-4">Upcoming Events</h2>
         {loading ? (
           <p>Loading events...</p>
         ) : allAssessments.length === 0 ? (
@@ -91,11 +90,7 @@ const StudentHomePage: React.FC = () => {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Enrolled Modules</h2>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setPopupOpen(true)}
-          >
+          <Button variant="primary" size="sm" onClick={() => setPopupOpen(true)}>
             Enroll New Module
           </Button>
         </div>
@@ -103,8 +98,7 @@ const StudentHomePage: React.FC = () => {
           <p>Loading enrolled modules...</p>
         ) : modules.length === 0 ? (
           <p className="text-gray-600">
-            You are not enrolled in any modules yet. Please enroll to start
-            learning.
+            You are not enrolled in any modules yet. Please enroll to start learning.
           </p>
         ) : (
           <div className="flex items-center space-x-4 overflow-x-auto">
@@ -124,12 +118,14 @@ const StudentHomePage: React.FC = () => {
         )}
       </div>
 
-      <EnrollModulePopup
-        isOpen={popupOpen}
-        onClose={() => setPopupOpen(false)}
-        userId={JSON.parse(localStorage.getItem("user") || "{}").user_id}
-        onSuccess={fetchEnrolledModules}
-      />
+      {userId && (
+        <EnrollModulePopup
+          isOpen={popupOpen}
+          onClose={() => setPopupOpen(false)}
+          userId={userId}
+          onSuccess={() => fetchEnrolledModules(userId)}
+        />
+      )}
     </div>
   );
 };

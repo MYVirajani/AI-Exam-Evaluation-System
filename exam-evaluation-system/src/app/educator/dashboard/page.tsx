@@ -8,6 +8,7 @@ import EducatorModuleCard from "./EducatorModuleCard";
 import ModuleCreationForm, { ModuleFormData } from "./ModuleCreationForm";
 import EventCreationPopup, { EventFormData } from "./EventCreationForm";
 import Link from "next/link";
+import Button from "@/components/Button";
 
 interface ModuleAPI {
   module_id: string;
@@ -187,12 +188,19 @@ export default function EducatorHomePage() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Upcoming Events</h2>
-          <button
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsEventModalOpen(true)}
+          >
+            + New Event
+          </Button>
+          {/* <button
             onClick={() => setIsEventModalOpen(true)}
             className="bg-blue-900 text-white text-sm px-4 py-2 rounded-md"
           >
             + New Event
-          </button>
+          </button> */}
         </div>
         {upcomingEvents.length === 0 ? (
           <p className="text-gray-600">No upcoming events yet.</p>
@@ -210,12 +218,19 @@ export default function EducatorHomePage() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Created Modules</h2>
-          <button
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsModuleModalOpen(true)}
+          >
+           + New Module
+          </Button>
+          {/* <button
             onClick={() => setIsModuleModalOpen(true)}
             className="bg-blue-900 text-white text-sm px-4 py-2 rounded-md"
           >
             + New Module
-          </button>
+          </button> */}
         </div>
         {createdModules.length === 0 ? (
           <p className="text-gray-600">You have not created any modules yet.</p>

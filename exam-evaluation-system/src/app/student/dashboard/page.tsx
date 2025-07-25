@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import StudentEventCard from "./StudentEventCard";
-import StudentModuleCard from "./StudentModuleCard";
+import StudentModuleCard, { getRandomFallback } from "./StudentModuleCard";
 import Button from "@/components/Button";
 import toast from "react-hot-toast";
 import EnrollModulePopup from "./ModuleEnrollPopup";
@@ -63,7 +63,9 @@ const StudentHomePage: React.FC = () => {
     <div className="w-full min-h-screen space-y-12 px-0 sm:px-2 overflow-auto">
       {/* Upcoming Events */}
       <div>
-        <h2 className="text-xl font-bold text-blue-900 mb-4">Upcoming Events</h2>
+        <h2 className="text-xl font-bold text-blue-900 mb-4">
+          Upcoming Events
+        </h2>
         {loading ? (
           <p>Loading events...</p>
         ) : allAssessments.length === 0 ? (
@@ -110,7 +112,11 @@ const StudentHomePage: React.FC = () => {
               <StudentModuleCard
                 key={mod.module_id}
                 title={`${mod.module_code} ${mod.module_name}`}
-                image={mod.module_image_url || "/images/module_default.jpg"}
+                image={
+                  mod.module_image_url?.trim()
+                    ? mod.module_image_url
+                    : getRandomFallback()
+                }
                 event={mod.assessments[0]?.title || "No upcoming events"}
               />
             ))}

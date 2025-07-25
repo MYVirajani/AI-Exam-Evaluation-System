@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 interface EnrollModulePopupProps {
   isOpen: boolean;
   onClose: () => void;
-  registrationNumber: string;
+  userId: string;
   onSuccess: () => void;
 }
 
@@ -19,16 +19,16 @@ interface ModuleOption {
 const EnrollModulePopup: React.FC<EnrollModulePopupProps> = ({
   isOpen,
   onClose,
-  registrationNumber,
+  userId,
   onSuccess,
 }) => {
   const [modules, setModules] = useState<ModuleOption[]>([]);
-  const [selectedModuleId, setSelectedModuleId] = useState<string>("");
+  const [selectedModuleCode, setSelectedModuleCode] = useState<string>("");
   const [enrollmentKey, setEnrollmentKey] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loadingModules, setLoadingModules] = useState(false);
 
-  // Fetch all modules
+  // Fetch all modules when popup opens
   useEffect(() => {
     if (!isOpen) return;
 
@@ -51,19 +51,20 @@ const EnrollModulePopup: React.FC<EnrollModulePopupProps> = ({
   }, [isOpen]);
 
   const handleEnroll = async () => {
-    if (!selectedModuleId || !enrollmentKey.trim()) {
+    if (!selectedModuleCode || !enrollmentKey.trim()) {
       toast.error("Please select a module and enter the enrollment key");
       return;
     }
 
     setSubmitting(true);
     try {
+      // Call enrollment API
       const res = await fetch("/api/student/enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          registration_number: registrationNumber,
-          module_id: selectedModuleId,
+          user_id: userId,
+          module_code: selectedModuleCode,
           enrollment_key: enrollmentKey,
         }),
       });
@@ -74,7 +75,7 @@ const EnrollModulePopup: React.FC<EnrollModulePopupProps> = ({
       toast.success("Enrolled successfully!");
       onClose();
       setEnrollmentKey("");
-      setSelectedModuleId("");
+      setSelectedModuleCode("");
       onSuccess();
     } catch (error: any) {
       toast.error(error.message || "Failed to enroll");
@@ -94,14 +95,14 @@ const EnrollModulePopup: React.FC<EnrollModulePopupProps> = ({
 
           <label className="block text-sm text-gray-700 mb-1">Select Module</label>
           <select
-            value={selectedModuleId}
-            onChange={(e) => setSelectedModuleId(e.target.value)}
+            value={selectedModuleCode}
+            onChange={(e) => setSelectedModuleCode(e.target.value)}
             disabled={submitting || loadingModules}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800 mb-4"
           >
             <option value="">-- Select a Module --</option>
             {modules.map((mod) => (
-              <option key={mod.module_id} value={mod.module_id}>
+              <option key={mod.module_id} value={mod.module_code}>
                 {mod.module_code} - {mod.module_name}
               </option>
             ))}

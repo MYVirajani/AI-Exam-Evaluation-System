@@ -27,7 +27,6 @@ interface AssessmentAPI {
   module_id: string;
 }
 
-// point this at an actual image you have under public/background-images
 const FALLBACK_IMAGES = Array.from(
   { length: 13 },
   (_, i) => `/background-images/image${i + 1}.jpg`
@@ -36,30 +35,13 @@ const FALLBACK_IMAGES = Array.from(
 export default function EducatorHomePage() {
   const moduleScrollRef = useRef<HTMLDivElement>(null);
 
-  const [upcomingEvents, setUpcomingEvents] = useState<
-    {
-      id: string;
-      title: string;
-      module: string;
-      uploads: string;
-      date: string;
-      label: string;
-    }[]
-  >([]);
-
-  const [createdModules, setCreatedModules] = useState<
-    {
-      id: string;
-      title: string;
-      image: string;
-      enrolled: string;
-    }[]
-  >([]);
-
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [createdModules, setCreatedModules] = useState<any[]>([]);
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [educatorId, setEducatorId] = useState<string | null>(null);
 
   const handleCreateModule = async (moduleData: ModuleFormData) => {
     const formData = new FormData();
@@ -106,9 +88,23 @@ export default function EducatorHomePage() {
   };
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const userId = user.user_id;
+    if (!userId) {
+      setError("Educator ID not found. Please login again.");
+      setLoading(false);
+      return;
+    }
+    setEducatorId(userId);
+  }, []);
+
+  useEffect(() => {
+    if (!educatorId) return;
+
     async function loadData() {
+      setLoading(true);
       try {
-        const res = await fetch("/api/educator/12345/dashboard");
+        const res = await fetch(`/api/educator/${educatorId}/dashboard`);
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
         const {
           modules,
@@ -116,18 +112,15 @@ export default function EducatorHomePage() {
         }: { modules: ModuleAPI[]; assessments: AssessmentAPI[] } =
           await res.json();
 
-        // Map modules → card data, using a real fallback
         const mappedModules = modules.map((m, idx) => ({
           id: m.module_id,
           title: `${m.module_code}: ${m.module_name}`,
-          // use uploaded image if present, otherwise pick one fallback by index
           image:
             m.module_image_url || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length],
           enrolled: `0/${m.max_enrollments}`,
         }));
         setCreatedModules(mappedModules);
 
-        // Map assessments → event cards
         const mappedEvents = assessments.map((a) => {
           const mod = modules.find((m) => m.module_id === a.module_id);
           const moduleTitle = mod
@@ -144,7 +137,6 @@ export default function EducatorHomePage() {
           };
         });
 
-        setCreatedModules(mappedModules);
         setUpcomingEvents(mappedEvents);
       } catch (err: any) {
         console.error("Dashboard load error:", err);
@@ -154,7 +146,7 @@ export default function EducatorHomePage() {
       }
     }
     loadData();
-  }, []);
+  }, [educatorId]);
 
   if (loading) {
     return (
@@ -195,12 +187,6 @@ export default function EducatorHomePage() {
           >
             + New Event
           </Button>
-          {/* <button
-            onClick={() => setIsEventModalOpen(true)}
-            className="bg-blue-900 text-white text-sm px-4 py-2 rounded-md"
-          >
-            + New Event
-          </button> */}
         </div>
         {upcomingEvents.length === 0 ? (
           <p className="text-gray-600">No upcoming events yet.</p>
@@ -223,14 +209,8 @@ export default function EducatorHomePage() {
             size="sm"
             onClick={() => setIsModuleModalOpen(true)}
           >
-           + New Module
-          </Button>
-          {/* <button
-            onClick={() => setIsModuleModalOpen(true)}
-            className="bg-blue-900 text-white text-sm px-4 py-2 rounded-md"
-          >
             + New Module
-          </button> */}
+          </Button>
         </div>
         {createdModules.length === 0 ? (
           <p className="text-gray-600">You have not created any modules yet.</p>

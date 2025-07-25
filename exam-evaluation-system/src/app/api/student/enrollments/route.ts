@@ -6,14 +6,28 @@ const prisma = new PrismaClient();
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const registration_number = searchParams.get("registration_number");
+    const user_id = searchParams.get("user_id");
 
-    if (!registration_number) {
+    if (!user_id) {
       return NextResponse.json(
-        { error: "Missing registration_number" },
+        { error: "Missing user_id" },
         { status: 400 }
       );
     }
+
+    // Find student by user_id to get registration_number if needed
+    const student = await prisma.student.findUnique({
+      where: { user_id },
+    });
+
+    if (!student) {
+      return NextResponse.json(
+        { error: "Student not found for this user_id" },
+        { status: 404 }
+      );
+    }
+
+    const registration_number = student.registration_number;
 
     // Find all enrolled modules for the student
     const enrollments = await prisma.enrollment.findMany({
@@ -23,7 +37,7 @@ export async function GET(req: NextRequest) {
       include: {
         module: {
           include: {
-            assessments: true, // include assessments under each module
+            assessments: true,
           },
         },
       },

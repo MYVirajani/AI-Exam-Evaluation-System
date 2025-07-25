@@ -4,7 +4,7 @@ import StudentEventCard from "./StudentEventCard";
 import StudentModuleCard from "./StudentModuleCard";
 import Button from "@/components/Button";
 import toast from "react-hot-toast";
-import EnrollModulePopup from "./ModuleEnrollPopup"
+import EnrollModulePopup from "./ModuleEnrollPopup";
 
 interface Assessment {
   assessment_id: string;
@@ -26,12 +26,17 @@ const StudentHomePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
 
-  const registrationNumber = "S1234567"; // TODO: Replace with actual session/user context
-
   const fetchEnrolledModules = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/student/enrollments?registration_number=${registrationNumber}`);
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const userId = user.user_id;
+
+      if (!userId) {
+        throw new Error("User ID not found. Please log in again.");
+      }
+
+      const res = await fetch(`/api/student/enrollments?user_id=${userId}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setModules(data.modules || []);
@@ -62,7 +67,9 @@ const StudentHomePage: React.FC = () => {
         {loading ? (
           <p>Loading events...</p>
         ) : allAssessments.length === 0 ? (
-          <p className="text-gray-600">You have no upcoming events at the moment. Stay tuned for updates!</p>
+          <p className="text-gray-600">
+            You have no upcoming events at the moment. Stay tuned for updates!
+          </p>
         ) : (
           <div className="flex items-center space-x-4 overflow-x-auto">
             {allAssessments.map((assess) => (
@@ -93,7 +100,10 @@ const StudentHomePage: React.FC = () => {
         {loading ? (
           <p>Loading enrolled modules...</p>
         ) : modules.length === 0 ? (
-          <p className="text-gray-600">You are not enrolled in any modules yet. Please enroll to start learning.</p>
+          <p className="text-gray-600">
+            You are not enrolled in any modules yet. Please enroll to start
+            learning.
+          </p>
         ) : (
           <div className="flex items-center space-x-4 overflow-x-auto">
             {modules.map((mod) => (
@@ -111,7 +121,7 @@ const StudentHomePage: React.FC = () => {
       <EnrollModulePopup
         isOpen={popupOpen}
         onClose={() => setPopupOpen(false)}
-        registrationNumber={registrationNumber}
+        userId={JSON.parse(localStorage.getItem("user") || "{}").user_id}
         onSuccess={fetchEnrolledModules}
       />
     </div>

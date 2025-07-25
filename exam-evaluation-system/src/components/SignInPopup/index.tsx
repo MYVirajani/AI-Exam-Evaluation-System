@@ -5,6 +5,8 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { FaUser, FaLock } from "react-icons/fa";
 import { siteConfig } from "@/config/site";
+import { useRouter } from "next/navigation";
+
 
 interface SignInPopupProps {
   isOpen: boolean;
@@ -15,6 +17,7 @@ export default function SignInPopup({ isOpen, onClose }: SignInPopupProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const router = useRouter(); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +39,22 @@ export default function SignInPopup({ isOpen, onClose }: SignInPopupProps) {
         toast.error(json.error || "Sign in failed");
       } else {
         toast.success("Signed in successfully!");
+         const user = json.user;
+
+        // ✅ store user data (optional)
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // ✅ navigate based on role
+        if (user.role === "admin") {
+          router.push("/admin/dashboard");
+        } else if (user.role === "educator") {
+          router.push("/educator/dashboard");
+        } else if (user.role === "student") {
+          router.push("/student/dashboard");
+        } else {
+          toast.error("Unknown user role");
+        }
+
         onClose();
         // TODO: store session/token, redirect, etc.
       }

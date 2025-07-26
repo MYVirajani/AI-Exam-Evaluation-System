@@ -105,7 +105,6 @@ model LectureMaterial {
   lesson      Lesson    @relation(fields: [lesson_id], references: [lesson_id])
 }
 
-
 model Assessment {
   assessment_id         String   @id
   type                  assessmentType
@@ -114,17 +113,18 @@ model Assessment {
   deadline              DateTime
   module_id             String
   created_by            String
-  question_paper_id     String   @unique
-  model_answer_paper_id String   @unique
-  marking_scheme_id     String   @unique
+  question_paper_id     String?  @unique
+  model_answer_paper_id String?  @unique
+  marking_scheme_id     String?  @unique
 
   module             Module             @relation(fields: [module_id], references: [module_id])
   educator           Educator           @relation(fields: [created_by], references: [user_id])
-  question_paper     Question_Paper     @relation(fields: [question_paper_id], references: [question_paper_id])
-  model_answer_paper Model_Answer_Paper @relation(fields: [model_answer_paper_id], references: [model_answer_paper_id])
-  marking_scheme     Marking_Scheme     @relation(fields: [marking_scheme_id], references: [marking_scheme_id])
+  question_paper     Question_Paper?    @relation(fields: [question_paper_id], references: [question_paper_id])
+  model_answer_paper Model_Answer_Paper?@relation(fields: [model_answer_paper_id], references: [model_answer_paper_id])
+  marking_scheme     Marking_Scheme?    @relation(fields: [marking_scheme_id], references: [marking_scheme_id])
   submissions        Submission[]
 }
+
 enum assessmentType {
   endExam
   midExam

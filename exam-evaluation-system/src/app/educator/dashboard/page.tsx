@@ -43,49 +43,74 @@ export default function EducatorHomePage() {
   const [error, setError] = useState<string | null>(null);
   const [educatorId, setEducatorId] = useState<string | null>(null);
 
-  const handleCreateModule = async (moduleData: ModuleFormData) => {
-    const formData = new FormData();
-    formData.append("moduleCode", moduleData.moduleCode);
-    formData.append("moduleName", moduleData.moduleName);
-    formData.append("educationInstitute", moduleData.educationInstitute);
-    if (typeof moduleData.maxStudents === "number") {
-      formData.append("maxStudents", moduleData.maxStudents.toString());
-    }
-    if (moduleData.semester) formData.append("semester", moduleData.semester);
-    if (moduleData.learningOutcomes)
-      formData.append("learningOutcomes", moduleData.learningOutcomes);
-    if (moduleData.enrollmentKey)
-      formData.append("enrollmentKey", moduleData.enrollmentKey);
-    if (moduleData.moduleImage)
-      formData.append("moduleImage", moduleData.moduleImage);
+const handleCreateModule = async (moduleData: ModuleFormData) => {
+  const formData = new FormData();
+  formData.append("moduleCode", moduleData.moduleCode);
+  formData.append("moduleName", moduleData.moduleName);
+  formData.append("educationInstitute", moduleData.educationInstitute);
 
-    const res = await fetch("/api/educator", {
-      method: "POST",
-      body: formData,
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Failed to create module");
-    return json;
-  };
+  if (typeof moduleData.maxStudents === "number") {
+    formData.append("maxStudents", moduleData.maxStudents.toString());
+  }
+  if (moduleData.semester) formData.append("semester", moduleData.semester);
+  if (moduleData.learningOutcomes)
+    formData.append("learningOutcomes", moduleData.learningOutcomes);
+  if (moduleData.enrollmentKey)
+    formData.append("enrollmentKey", moduleData.enrollmentKey);
+  if (moduleData.moduleImage)
+    formData.append("moduleImage", moduleData.moduleImage);
+
+  if (!educatorId) {
+    throw new Error("Educator ID is missing. Cannot create module.");
+  }
+
+  formData.append("createdBy", educatorId);
+  console.log("educatorId: ", educatorId);
+
+  const res = await fetch("/api/educator/modules", {
+    method: "POST",
+    body: formData,
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to create module");
+
+  return json;
+};
+
 
   const handleCreateEvent = async (data: EventFormData) => {
-    const form = new FormData();
-    form.append("type", data.type);
-    form.append("title", data.title);
-    form.append("description", data.description || "");
-    form.append("deadline", data.deadline);
-    form.append("moduleId", data.moduleId);
-    if (data.questionPaper?.length)
-      form.append("questionPaper", data.questionPaper[0]);
+  if (!educatorId) {
+    throw new Error("Educator ID is missing. Cannot create assessment.");
+  }
 
-    const res = await fetch("/api/educator/assessment", {
-      method: "POST",
-      body: form,
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Failed to create event");
-    return json;
-  };
+  const form = new FormData();
+  form.append("type", data.type);
+  form.append("title", data.title);
+  form.append("description", data.description || "");
+  form.append("deadline", data.deadline);
+  form.append("moduleId", data.moduleId);
+  form.append("createdBy", educatorId); // <-- ADD THIS LINE
+
+  if (data.questionPaper?.length)
+    form.append("questionPaper", data.questionPaper[0]);
+
+  if (data.modelAnswerPaper?.length)
+    form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
+
+  if (data.markingScheme?.length)
+    form.append("markingScheme", data.markingScheme[0]);
+
+  const res = await fetch("/api/educator/assessment", {
+    method: "POST",
+    body: form,
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to create event");
+  return json;
+};
+
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");

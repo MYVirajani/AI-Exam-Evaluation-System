@@ -30,20 +30,28 @@ const StudentModuleCard: React.FC<StudentModuleCardProps> = ({ title, image, eve
   const src = image?.trim() ? image : getRandomFallback();
 
   return (
-    <div className="min-w-[260px] bg-gray-100 rounded-2xl p-4 text-center">
-       <div className="relative w-full h-32 rounded-t-2xl overflow-hidden">
-              <Image
-                src={src}
-                alt={title}
-                fill
-                className="object-cover object-center"
-              />
-            </div>
-      <p className="text-base font-semibold text-blue-900 break-words leading-snug">
-        {title}
-      </p>
-      <p className="text-sm text-blue-800 mt-1">{event}</p>
-    </div>
+     <div className="min-w-[250px] bg-gray-100 rounded-2xl shadow p-0 text-center">
+          {/* Image */}
+          <div className="relative w-full h-32 rounded-t-2xl overflow-hidden">
+            <Image
+              src={src}
+              alt={title}
+              fill
+              className="object-cover object-center"
+            />
+          </div>
+    
+          {/* Body */}
+          <div className="p-4">
+            <p className="text-sm font-semibold text-blue-900 leading-snug 
+                          whitespace-normal break-words">
+              {title}
+            </p>
+            <p className="text-xs text-blue-800 mt-1">
+              {event}
+            </p>
+          </div>
+        </div>
   );
 };
 

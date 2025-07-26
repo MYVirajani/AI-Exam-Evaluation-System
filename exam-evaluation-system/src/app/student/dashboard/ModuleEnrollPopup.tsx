@@ -110,7 +110,7 @@ const EnrollModulePopup: React.FC<EnrollModulePopupProps> = ({
 
           <label className="block text-sm text-gray-700 mb-1">Enrollment Key</label>
           <input
-            type="text"
+            type="password"
             value={enrollmentKey}
             onChange={(e) => setEnrollmentKey(e.target.value)}
             placeholder="Enter enrollment key"

@@ -238,7 +238,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                 className={`w-full px-3 py-2 border rounded-md text-gray-800 ${
                   errors.enrollmentKey ? "border-red-500" : "border-gray-300"
                 }`}
-                placeholder="Leave blank for open enrollment"
+                placeholder="Leave blank to enable enrollment later"
               />
               {errors.enrollmentKey && (
                 <p className="mt-1 text-sm italic text-blue-600">

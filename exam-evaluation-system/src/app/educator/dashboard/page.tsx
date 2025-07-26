@@ -43,74 +43,97 @@ export default function EducatorHomePage() {
   const [error, setError] = useState<string | null>(null);
   const [educatorId, setEducatorId] = useState<string | null>(null);
 
-const handleCreateModule = async (moduleData: ModuleFormData) => {
-  const formData = new FormData();
-  formData.append("moduleCode", moduleData.moduleCode);
-  formData.append("moduleName", moduleData.moduleName);
-  formData.append("educationInstitute", moduleData.educationInstitute);
+  const handleCreateModule = async (moduleData: ModuleFormData) => {
+    const formData = new FormData();
+    formData.append("moduleCode", moduleData.moduleCode);
+    formData.append("moduleName", moduleData.moduleName);
+    formData.append("educationInstitute", moduleData.educationInstitute);
 
-  if (typeof moduleData.maxStudents === "number") {
-    formData.append("maxStudents", moduleData.maxStudents.toString());
-  }
-  if (moduleData.semester) formData.append("semester", moduleData.semester);
-  if (moduleData.learningOutcomes)
-    formData.append("learningOutcomes", moduleData.learningOutcomes);
-  if (moduleData.enrollmentKey)
-    formData.append("enrollmentKey", moduleData.enrollmentKey);
-  if (moduleData.moduleImage)
-    formData.append("moduleImage", moduleData.moduleImage);
+    if (typeof moduleData.maxStudents === "number") {
+      formData.append("maxStudents", moduleData.maxStudents.toString());
+    }
+    if (moduleData.semester) formData.append("semester", moduleData.semester);
+    if (moduleData.learningOutcomes)
+      formData.append("learningOutcomes", moduleData.learningOutcomes);
+    if (moduleData.enrollmentKey)
+      formData.append("enrollmentKey", moduleData.enrollmentKey);
+    if (moduleData.moduleImage)
+      formData.append("moduleImage", moduleData.moduleImage);
 
-  if (!educatorId) {
-    throw new Error("Educator ID is missing. Cannot create module.");
-  }
+    if (!educatorId) {
+      throw new Error("Educator ID is missing. Cannot create module.");
+    }
 
-  formData.append("createdBy", educatorId);
-  console.log("educatorId: ", educatorId);
+    formData.append("createdBy", educatorId);
+    const res = await fetch("/api/educator/modules", {
+      method: "POST",
+      body: formData,
+    });
 
-  const res = await fetch("/api/educator/modules", {
-    method: "POST",
-    body: formData,
-  });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Failed to create module");
 
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Failed to create module");
+    const newModule = json.module;
+    const newCard = {
+      id: newModule.module_id,
+      title: `${newModule.module_code}: ${newModule.module_name}`,
+      image:
+        newModule.module_image_url ||
+        FALLBACK_IMAGES[createdModules.length % FALLBACK_IMAGES.length],
+      enrolled: `0/${newModule.max_enrollments}`,
+    };
 
-  return json;
-};
-
+    setCreatedModules((prev) => [...prev, newCard]);
+    setIsModuleModalOpen(false); // close modal after creation
+    return json;
+  };
 
   const handleCreateEvent = async (data: EventFormData) => {
-  if (!educatorId) {
-    throw new Error("Educator ID is missing. Cannot create assessment.");
-  }
+    if (!educatorId) {
+      throw new Error("Educator ID is missing. Cannot create assessment.");
+    }
 
-  const form = new FormData();
-  form.append("type", data.type);
-  form.append("title", data.title);
-  form.append("description", data.description || "");
-  form.append("deadline", data.deadline);
-  form.append("moduleId", data.moduleId);
-  form.append("createdBy", educatorId); // <-- ADD THIS LINE
+    const form = new FormData();
+    form.append("type", data.type);
+    form.append("title", data.title);
+    form.append("description", data.description || "");
+    form.append("deadline", data.deadline);
+    form.append("moduleId", data.moduleId);
+    form.append("createdBy", educatorId);
 
-  if (data.questionPaper?.length)
-    form.append("questionPaper", data.questionPaper[0]);
+    if (data.questionPaper?.length)
+      form.append("questionPaper", data.questionPaper[0]);
+    if (data.modelAnswerPaper?.length)
+      form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
+    if (data.markingScheme?.length)
+      form.append("markingScheme", data.markingScheme[0]);
 
-  if (data.modelAnswerPaper?.length)
-    form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
+    const res = await fetch("/api/educator/assessment", {
+      method: "POST",
+      body: form,
+    });
 
-  if (data.markingScheme?.length)
-    form.append("markingScheme", data.markingScheme[0]);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Failed to create event");
 
-  const res = await fetch("/api/educator/assessment", {
-    method: "POST",
-    body: form,
-  });
+    const newEvent = json.assessment;
+    const relatedModule = createdModules.find(
+      (m) => m.id === newEvent.module_id
+    );
 
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Failed to create event");
-  return json;
-};
+    const newCard = {
+      id: newEvent.assessment_id,
+      title: newEvent.title,
+      module: relatedModule?.title || "",
+      uploads: `0/${relatedModule?.max_enrollments || 0}`,
+      date: newEvent.deadline,
+      label: newEvent.type === "assignment" ? "Due on:" : "Scheduled on:",
+    };
 
+    setUpcomingEvents((prev) => [...prev, newCard]);
+    setIsEventModalOpen(false); // close modal after creation
+    return json;
+  };
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");

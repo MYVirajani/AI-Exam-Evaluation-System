@@ -8,9 +8,9 @@ export async function POST(request: Request) {
   try {
     const { user_id, module_code, enrollment_key } = await request.json();
 
-    if (!user_id || !module_code || !enrollment_key) {
+    if (!user_id || !module_code) {
       return NextResponse.json(
-        { error: "user_id, module_code, and enrollment_key are required" },
+        { error: "user_id and module_code are required" },
         { status: 400 }
       );
     }
@@ -25,16 +25,29 @@ export async function POST(request: Request) {
 
     const registration_number = student.registration_number;
 
-    // ✅ Validate module by code and enrollment key
+    // ✅ Find module by module_code
     const foundModule = await prisma.module.findFirst({
-      where: {
-        module_code,
-        enrollment_key,
-      },
+      where: { module_code },
     });
     if (!foundModule) {
+      return NextResponse.json({ error: "Module not found" }, { status: 404 });
+    }
+
+    // If enrollment_key is not set on the module, disallow enrollment
+    if (!foundModule.enrollment_key) {
       return NextResponse.json(
-        { error: "Invalid module code or enrollment key" },
+        {
+          error:
+            "Enrollment is not allowed yet for this module. Please check with your educator.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Now check if provided enrollment_key matches module's enrollment_key
+    if (!enrollment_key || enrollment_key !== foundModule.enrollment_key) {
+      return NextResponse.json(
+        { error: "Invalid enrollment key" },
         { status: 401 }
       );
     }

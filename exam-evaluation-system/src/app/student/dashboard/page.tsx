@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import StudentEventCard from "./StudentEventCard";
 import StudentModuleCard, { getRandomFallback } from "./StudentModuleCard";
 import Button from "@/components/Button";
@@ -26,7 +26,9 @@ const StudentHomePage: React.FC = () => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null); // store userId here
+  const [userId, setUserId] = useState<string | null>(null);
+  const [countdowns, setCountdowns] = useState<Record<string, string>>({});
+  const [fallbackImages, setFallbackImages] = useState<Record<string, string>>({});
 
   const fetchEnrolledModules = async (currentUserId: string) => {
     setLoading(true);
@@ -53,12 +55,60 @@ const StudentHomePage: React.FC = () => {
     }
   }, []);
 
-  const allAssessments = modules.flatMap((mod) =>
-    mod.assessments.map((assess) => ({
-      ...assess,
-      module: `${mod.module_code} ${mod.module_name}`,
-    }))
-  );
+  // Memoize allAssessments so it only changes when modules change
+  const allAssessments = useMemo(() => {
+    return modules.flatMap((mod) =>
+      mod.assessments.map((assess) => ({
+        ...assess,
+        module: `${mod.module_code} ${mod.module_name}`,
+      }))
+    );
+  }, [modules]);
+
+  // Generate and memoize fallback images for modules without an image
+  useEffect(() => {
+    const newFallbacks: Record<string, string> = {};
+    modules.forEach((mod) => {
+      if (!mod.module_image_url?.trim()) {
+        newFallbacks[mod.module_id] = getRandomFallback();
+      }
+    });
+    setFallbackImages(newFallbacks);
+  }, [modules]);
+
+  // Update countdown timers every second
+  useEffect(() => {
+    const updateCountdowns = () => {
+      const now = new Date().getTime();
+      const newCountdowns: Record<string, string> = {};
+
+      allAssessments.forEach(({ assessment_id, deadline }) => {
+        const deadlineTime = new Date(deadline).getTime();
+        const diff = deadlineTime - now;
+
+        if (diff <= 0) {
+          newCountdowns[assessment_id] = "00:00:00";
+        } else {
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          newCountdowns[assessment_id] = [
+            hours.toString().padStart(2, "0"),
+            minutes.toString().padStart(2, "0"),
+            seconds.toString().padStart(2, "0"),
+          ].join(":");
+        }
+      });
+
+      setCountdowns(newCountdowns);
+    };
+
+    updateCountdowns(); // initial call
+
+    const timer = setInterval(updateCountdowns, 1000);
+
+    return () => clearInterval(timer);
+  }, [allAssessments]);
 
   return (
     <div className="w-full min-h-screen space-y-12 px-0 sm:px-2 overflow-auto">
@@ -78,7 +128,7 @@ const StudentHomePage: React.FC = () => {
                 key={assess.assessment_id}
                 title={assess.title}
                 module={assess.module}
-                countdown="--:--:--"
+                countdown={countdowns[assess.assessment_id] || "--:--:--"}
                 date={new Date(assess.deadline).toLocaleString()}
               />
             ))}
@@ -109,7 +159,7 @@ const StudentHomePage: React.FC = () => {
                 image={
                   mod.module_image_url?.trim()
                     ? mod.module_image_url
-                    : getRandomFallback()
+                    : fallbackImages[mod.module_id] || getRandomFallback()
                 }
                 event={mod.assessments[0]?.title || "No upcoming events"}
               />

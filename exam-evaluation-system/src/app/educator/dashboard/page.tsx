@@ -42,6 +42,15 @@ export default function EducatorHomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [educatorId, setEducatorId] = useState<string | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollButtons = () => {
+    const el = moduleScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth);
+  };
 
   const handleCreateModule = async (moduleData: ModuleFormData) => {
     const formData = new FormData();
@@ -84,7 +93,7 @@ export default function EducatorHomePage() {
     };
 
     setCreatedModules((prev) => [...prev, newCard]);
-    setIsModuleModalOpen(false); // close modal after creation
+    setIsModuleModalOpen(false);
     return json;
   };
 
@@ -131,7 +140,7 @@ export default function EducatorHomePage() {
     };
 
     setUpcomingEvents((prev) => [...prev, newCard]);
-    setIsEventModalOpen(false); // close modal after creation
+    setIsEventModalOpen(false);
     return json;
   };
 
@@ -196,6 +205,18 @@ export default function EducatorHomePage() {
     loadData();
   }, [educatorId]);
 
+  useEffect(() => {
+    updateScrollButtons();
+    const el = moduleScrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateScrollButtons);
+    window.addEventListener("resize", updateScrollButtons);
+    return () => {
+      el.removeEventListener("scroll", updateScrollButtons);
+      window.removeEventListener("resize", updateScrollButtons);
+    };
+  }, [createdModules]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -243,7 +264,6 @@ export default function EducatorHomePage() {
             {upcomingEvents.map((evt) => (
               <EducatorEventCard key={evt.id} {...evt} />
             ))}
-            <FiChevronRight className="text-2xl text-black cursor-pointer" />
           </div>
         )}
       </div>
@@ -264,12 +284,14 @@ export default function EducatorHomePage() {
           <p className="text-gray-600">You have not created any modules yet.</p>
         ) : (
           <div className="relative">
-            <button
-              onClick={scrollLeft}
-              className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
-            >
-              <FiChevronLeft className="text-2xl text-black" />
-            </button>
+            {canScrollLeft && (
+              <button
+                onClick={scrollLeft}
+                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
+              >
+                <FiChevronLeft className="text-2xl text-black" />
+              </button>
+            )}
             <div
               ref={moduleScrollRef}
               className="flex space-x-4 overflow-x-auto scrollbar-hide px-8"
@@ -284,12 +306,14 @@ export default function EducatorHomePage() {
                 </Link>
               ))}
             </div>
-            <button
-              onClick={scrollRight}
-              className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
-            >
-              <FiChevronRight className="text-2xl text-black" />
-            </button>
+            {canScrollRight && (
+              <button
+                onClick={scrollRight}
+                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
+              >
+                <FiChevronRight className="text-2xl text-black" />
+              </button>
+            )}
           </div>
         )}
       </div>

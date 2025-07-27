@@ -1,118 +1,183 @@
-// app/educator/module/[moduleId]/page.tsx
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import LessonCreationForm, { LessonFormData } from './LessonCreationForm';
-import LessonCard, { Lesson } from './LessonCard';
-import { Assessment, Enrollment } from '@/generated/prisma';
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import EducatorEventCard from "../../dashboard/EducatorEventCard";
+import Button from "@/components/Button";
 
-interface ModuleType {
-  module_id: string;
-  module_code: string;
-  module_name: string;
-  semester: string;
-  education_institute: string;
-  max_enrollments: number;
-  learning_outcomes?: string;
-  enrollment_key?: string;
-  module_image_url?: string;
-  created_by: string;
-  lessons: Lesson[];
-  assessments: Assessment[];
-  enrollments: Enrollment[];
+interface Material {
+  material_id: string;
+  file_url: string;
+  description: string;
 }
 
-export default function ModulePage({
-  params,
-}: {
-  params: { moduleId: string };
-}) {
-  const { moduleId } = params;
-  const [module, setModule] = useState<ModuleType | null>(null);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+interface Lesson {
+  lesson_id: string;
+  title: string;
+  materials: Material[];
+}
+
+interface Assessment {
+  assessment_id: string;
+  title: string;
+  description: string;
+  deadline: string;
+}
+
+interface ModuleData {
+  moduleId: string;
+  moduleName: string;
+  moduleCode?: string;
+  lessons: Lesson[];
+  assessments: Assessment[];
+}
+
+interface ModulePageProps {
+  params: Promise<{ moduleId: string }>; // params is now a Promise
+}
+
+async function getModuleData(moduleId: string): Promise<ModuleData | null> {
+  try {
+    const res = await fetch(`/api/educator/module/${moduleId}`);
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch module data: ${res.status}`);
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("[getModuleData_ERROR]", error);
+    return null;
+  }
+}
+
+export default function ModulePage({ params }: ModulePageProps) {
+  // Unwrap params with React.use()
+  const resolvedParams = React.use(params);
+  const moduleId = resolvedParams.moduleId;
+
+  const [moduleData, setModuleData] = useState<ModuleData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(`/api/educator/modules/${moduleId}/lessons`);
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        const json = await res.json();
-        setModule(json.module);
-        setLessons(json.module.lessons);
-      } catch (err: any) {
-        console.error('Load module error:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+    async function fetchData() {
+      const data = await getModuleData(moduleId);
+      setModuleData(data);
+      setLoading(false);
     }
-    load();
+    fetchData();
   }, [moduleId]);
 
-  const handleNewLesson = async (data: LessonFormData) => {
-    const form = new FormData();
-    form.append('title', data.title);
-    form.append('moduleId', moduleId);
-    if (data.material && data.material.length > 0) {
-      form.append('material', data.material[0]);
-    }
-
-    const res = await fetch(`/api/educator/modules/${moduleId}/lessons`, {
-      method: 'POST',
-      body: form,
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error);
-    setLessons((prev) => [...prev, json.lesson]);
-    setShowForm(false);
-  };
+  useEffect(() => {
+    console.log("ModulePage loaded with moduleId:", moduleId);
+  }, [moduleId]);
 
   if (loading) {
-    return <div className="p-8">Loading module...</div>;
+    return (
+      <p className="p-6 text-center text-gray-600">
+        Loading module information...
+      </p>
+    );
   }
-  if (error) {
-    return <div className="p-8 text-red-600">Error: {error}</div>;
+
+  if (!moduleData) {
+    return (
+      <p className="p-6 text-center text-red-600">
+        Failed to load module data. Please try again later.
+      </p>
+    );
   }
-  if (!module) {
-    return <div className="p-8">Module not found.</div>;
-  }
+
+  const { moduleName, moduleCode, lessons, assessments } = moduleData;
 
   return (
-    <div className="px-6 py-8 space-y-6">
-      <h1 className="text-2xl font-bold text-blue-900">
-        {module.module_code} – {module.module_name}
-      </h1>
-
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Lessons</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-3 py-1 bg-blue-900 text-white rounded"
-        >
-          + New Lesson
-        </button>
+    <div className="p-6">
+      <div className="mb-6 text-center">
+        <h1 className="text-3xl font-bold text-blue-900">{moduleName}</h1>
+        {moduleCode && (
+          <p className="text-gray-700 text-sm mt-1">Code: {moduleCode}</p>
+        )}
+      </div>
+      {/* Assessments */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-blue-800">
+            Upcoming Events
+          </h2>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => alert("Add New Event clicked")}
+          >
+            + New Event
+          </Button>
+        </div>
+        {assessments.length === 0 ? (
+          <p className="text-gray-600 italic">No assessments scheduled.</p>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {assessments.map((assess) => (
+              <EducatorEventCard
+                key={assess.assessment_id}
+                title={assess.title}
+                module={moduleName}
+                uploads="0"
+                date={new Date(assess.deadline).toLocaleString()}
+                label="Due on:"
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {showForm && (
-        <LessonCreationForm
-          isOpen={showForm}
-          onClose={() => setShowForm(false)}
-          onSubmit={handleNewLesson}
-        />
-      )}
+      {/* Lessons */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-blue-800">Lessons</h2>
 
-      {lessons.length === 0 ? (
-        <p className="text-gray-600">No lessons yet.</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {lessons.map((lesson) => (
-            <LessonCard key={lesson.lesson_id} lesson={lesson} />
-          ))}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => alert("Add New Event clicked")}
+          >
+            + New Lesson
+          </Button>
         </div>
-      )}
+        {lessons.length === 0 ? (
+          <p className="text-gray-600 italic">
+            No lessons have been added yet.
+          </p>
+        ) : (
+          lessons.map((lesson) => (
+            <div
+              key={lesson.lesson_id}
+              className="bg-blue-50 rounded-lg p-4 mb-4"
+            >
+              <h3 className="text-lg font-semibold text-blue-800 mb-2">
+                {lesson.title}
+              </h3>
+              {lesson.materials.length > 0 ? (
+                <ul className="list-disc list-inside">
+                  {lesson.materials.map((mat) => (
+                    <li key={mat.material_id}>
+                      <Link
+                        href={mat.file_url}
+                        className="text-blue-700 underline hover:text-blue-900"
+                      >
+                        {mat.description || mat.file_url.split("/").pop()}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600 italic">
+                  No materials available for this lesson.
+                </p>
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

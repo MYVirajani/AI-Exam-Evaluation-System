@@ -1,15 +1,13 @@
 // src/app/api/educator/[educatorId]/dashboard/route.ts
 
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: Request,
   { params }: { params: { educatorId: string } }
 ) {
-  const { educatorId } = params;
+  const { educatorId } = await params;
 
   try {
     console.log("Fetching dashboard for educatorId:", educatorId);

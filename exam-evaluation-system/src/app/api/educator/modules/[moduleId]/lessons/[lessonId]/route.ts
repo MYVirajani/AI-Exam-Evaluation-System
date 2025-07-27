@@ -1,8 +1,6 @@
 // src/app/api/modules/[moduleId]/lessons/[lessonId]/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function PATCH(
   request: Request,

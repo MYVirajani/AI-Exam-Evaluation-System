@@ -1,9 +1,8 @@
-// src/app/api/modules/[moduleId]/lessons/route.ts
+// src/app/api/module/[moduleId]/lessons/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@/generated/prisma";
+import { prisma } from '@/lib/prisma';
 import { v4 as uuidv4 } from "uuid";
 
-const prisma = new PrismaClient();
 
 export async function GET(
   request: Request,

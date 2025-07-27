@@ -12,7 +12,7 @@ export interface EventFormData {
   moduleId: string;
   title: string;
   description?: string;
-  deadline: string; // ISO string from datetime-local input
+  deadline: string;
   questionPaper?: FileList;
   modelAnswerPaper?: FileList;
   markingScheme?: FileList;
@@ -23,6 +23,8 @@ interface EventCreationFormProps {
   onClose: () => void;
   onSubmit: (data: EventFormData) => Promise<void>;
   modules: { id: string; name: string }[];
+  disableModuleSelection?: boolean;
+  defaultModuleId?: string;
 }
 
 export default function EventCreationForm({
@@ -30,13 +32,19 @@ export default function EventCreationForm({
   onClose,
   onSubmit,
   modules,
+  disableModuleSelection = false,
+  defaultModuleId = "",
 }: EventCreationFormProps) {
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-  } = useForm<EventFormData>();
+  } = useForm<EventFormData>({
+    defaultValues: {
+      moduleId: defaultModuleId,
+    },
+  });
 
   const submit = async (data: EventFormData) => {
     try {
@@ -89,26 +97,30 @@ export default function EventCreationForm({
               )}
             </div>
 
-            {/* Module */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Module <span className="text-red-500">*</span>
-              </label>
-              <select
-                {...register("moduleId", { required: true })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
-              >
-                <option value="">Select module</option>
-                {modules.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-              {errors.moduleId && (
-                <p className="text-red-600 text-sm mt-1">Module is required</p>
-              )}
-            </div>
+            {/* Module - only show if module selection is allowed */}
+            {!disableModuleSelection && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Module <span className="text-red-500">*</span>
+                </label>
+                <select
+                  {...register("moduleId", { required: true })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
+                >
+                  <option value="">Select module</option>
+                  {modules.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.moduleId && (
+                  <p className="text-red-600 text-sm mt-1">
+                    Module is required
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Title */}
             <div className="md:col-span-2">
@@ -175,8 +187,9 @@ export default function EventCreationForm({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
               />
             </div>
-
-            {/* <div className="md:col-span-2">
+            {/* Uncomment these if needed */}
+            {/* 
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Model Answer Paper (optional)
               </label>
@@ -198,7 +211,8 @@ export default function EventCreationForm({
                 {...register("markingScheme")}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800"
               />
-            </div> */}
+            </div>
+            */}
           </div>
 
           {/* action buttons */}

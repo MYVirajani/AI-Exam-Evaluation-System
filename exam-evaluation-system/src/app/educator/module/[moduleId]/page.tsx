@@ -25,6 +25,7 @@ interface Assessment {
   title: string;
   description: string;
   deadline: string;
+  type: string;
 }
 
 interface ModuleData {
@@ -98,7 +99,7 @@ export default function ModulePage({ params }: ModulePageProps) {
       form.append("title", data.title);
       form.append("description", data.description || "");
       form.append("deadline", data.deadline);
-      form.append("moduleId", data.moduleId);
+      form.append("moduleId", moduleData?.moduleId || data.moduleId);
       form.append("createdBy", educatorId);
 
       if (data.questionPaper?.length)
@@ -204,7 +205,9 @@ export default function ModulePage({ params }: ModulePageProps) {
                   second: "2-digit",
                   hour12: true,
                 })}
-                label="Due on:"
+                label={
+                  assess.type === "assignment" ? "Due on:" : "Scheduled on:"
+                }
               />
             ))}
           </div>
@@ -222,6 +225,8 @@ export default function ModulePage({ params }: ModulePageProps) {
             name: `${moduleData.moduleCode || ""} ${moduleData.moduleName}`,
           },
         ]}
+        disableModuleSelection={true}
+        defaultModuleId={moduleData.moduleId}
       />
 
       {/* Lessons */}

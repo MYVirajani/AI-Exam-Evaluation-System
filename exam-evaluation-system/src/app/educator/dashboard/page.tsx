@@ -6,7 +6,9 @@ import { Toaster } from "react-hot-toast";
 import EducatorEventCard from "./EducatorEventCard";
 import EducatorModuleCard from "./EducatorModuleCard";
 import ModuleCreationForm, { ModuleFormData } from "./ModuleCreationForm";
-import EventCreationPopup, { EventFormData } from "./EventCreationForm";
+import EventCreationForm, {
+  EventFormData,
+} from "@/components/EventCreationForm";
 import Link from "next/link";
 import Button from "@/components/Button";
 
@@ -337,7 +339,7 @@ export default function EducatorHomePage() {
       />
 
       {/* Event Creation Modal */}
-      <EventCreationPopup
+      <EventCreationForm
         isOpen={isEventModalOpen}
         onClose={() => setIsEventModalOpen(false)}
         onSubmit={handleCreateEvent}

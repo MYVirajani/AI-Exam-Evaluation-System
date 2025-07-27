@@ -40,7 +40,7 @@ export async function GET(
     return NextResponse.json({
       moduleId: moduleData.module_id,
       moduleName: moduleData.module_name,
-      moduleCode: moduleData.module_code, // ✅ Added this line
+      moduleCode: moduleData.module_code,
       lessons: moduleData.lessons,
       assessments: moduleData.assessments,
     });

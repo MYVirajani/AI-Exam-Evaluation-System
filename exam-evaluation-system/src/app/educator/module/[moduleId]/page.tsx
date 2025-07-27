@@ -44,6 +44,8 @@ export default function ModulePage({ params }: ModulePageProps) {
   const [moduleData, setModuleData] = useState<ModuleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [educatorId, setEducatorId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -51,6 +53,17 @@ export default function ModulePage({ params }: ModulePageProps) {
       setModuleId(resolvedParams.moduleId);
     })();
   }, [params]);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const userId = user?.user_id;
+    if (!userId) {
+      setError("Educator ID not found. Please login again.");
+      setLoading(false);
+      return;
+    }
+    setEducatorId(userId);
+  }, []);
 
   useEffect(() => {
     if (!moduleId) return;
@@ -61,7 +74,6 @@ export default function ModulePage({ params }: ModulePageProps) {
         if (!res.ok) throw new Error("Failed to fetch module data");
 
         const data = await res.json();
-        console.log("data: ", data);
         setModuleData(data);
       } catch (err) {
         console.error("[getModuleData_ERROR]", err);
@@ -75,44 +87,66 @@ export default function ModulePage({ params }: ModulePageProps) {
   }, [moduleId]);
 
   const handleCreateEvent = async (data: EventFormData) => {
-    const form = new FormData();
-    form.append("type", data.type);
-    form.append("title", data.title);
-    form.append("description", data.description || "");
-    form.append("deadline", data.deadline);
-    form.append("moduleId", data.moduleId);
+    if (!educatorId) {
+      setError("Cannot create event. Educator ID not found.");
+      return;
+    }
 
-    if (data.questionPaper?.length)
-      form.append("questionPaper", data.questionPaper[0]);
-    if (data.modelAnswerPaper?.length)
-      form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
-    if (data.markingScheme?.length)
-      form.append("markingScheme", data.markingScheme[0]);
+    try {
+      const form = new FormData();
+      form.append("type", data.type);
+      form.append("title", data.title);
+      form.append("description", data.description || "");
+      form.append("deadline", data.deadline);
+      form.append("moduleId", data.moduleId);
+      form.append("createdBy", educatorId);
 
-    const res = await fetch("/api/educator/assessment", {
-      method: "POST",
-      body: form,
-    });
+      if (data.questionPaper?.length)
+        form.append("questionPaper", data.questionPaper[0]);
+      if (data.modelAnswerPaper?.length)
+        form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
+      if (data.markingScheme?.length)
+        form.append("markingScheme", data.markingScheme[0]);
 
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Failed to create event");
+      const res = await fetch("/api/educator/assessment", {
+        method: "POST",
+        body: form,
+      });
 
-    setModuleData((prev) =>
-      prev
-        ? {
-            ...prev,
-            assessments: [...prev.assessments, json.assessment],
-          }
-        : prev
-    );
+      const json = await res.json();
 
-    setIsEventModalOpen(false);
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to create event");
+      }
+
+      setModuleData((prev) =>
+        prev
+          ? {
+              ...prev,
+              assessments: [...prev.assessments, json.assessment],
+            }
+          : prev
+      );
+
+      setIsEventModalOpen(false);
+    } catch (err: any) {
+      console.error("Create Event Error:", err.message);
+      setError(err.message);
+    }
   };
 
   if (loading) {
     return (
       <p className="p-6 text-center text-gray-600">
         Loading module information...
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="p-6 text-center text-red-600">
+        {error || "An unexpected error occurred."}
       </p>
     );
   }
@@ -130,13 +164,11 @@ export default function ModulePage({ params }: ModulePageProps) {
   return (
     <div className="p-6">
       <div className="mb-6 text-center">
-        {moduleData && (
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-blue-900">
-              {moduleCode} - {moduleName}
-            </h1>
-          </div>
-        )}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold text-blue-900">
+            {moduleCode} - {moduleName}
+          </h1>
+        </div>
       </div>
 
       {/* Assessments */}

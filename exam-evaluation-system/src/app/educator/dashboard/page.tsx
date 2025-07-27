@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { FiChevronLeft, FiChevronRight, FiLoader } from "react-icons/fi";
 import { Toaster } from "react-hot-toast";
-import EducatorEventCard from "./EducatorEventCard";
+import EducatorEventCard from "@/components/EducatorEventCard";
 import EducatorModuleCard from "./EducatorModuleCard";
 import ModuleCreationForm, { ModuleFormData } from "./ModuleCreationForm";
 import EventCreationForm, {

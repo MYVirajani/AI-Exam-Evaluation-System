@@ -135,7 +135,7 @@ export default function EducatorHomePage() {
       title: newEvent.title,
       module: relatedModule?.title || "",
       uploads: `0/${relatedModule?.max_enrollments || 0}`,
-      date: newEvent.deadline,
+      date: new Date(newEvent.deadline).toLocaleString(),
       label: newEvent.type === "assignment" ? "Due on:" : "Scheduled on:",
     };
 
@@ -184,12 +184,23 @@ export default function EducatorHomePage() {
             ? `${mod.module_code} ${mod.module_name}`
             : "";
           const label = a.type === "assignment" ? "Due on:" : "Scheduled on:";
+
+          const formattedDate = new Date(a.deadline).toLocaleString("en-US", {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true,
+          });
+
           return {
             id: a.assessment_id,
             title: a.title,
             module: moduleTitle,
             uploads: `0/${mod?.max_enrollments ?? 0}`,
-            date: a.deadline,
+            date: formattedDate,
             label,
           };
         });

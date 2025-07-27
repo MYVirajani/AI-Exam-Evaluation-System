@@ -18,7 +18,7 @@ export async function GET(
             materials: true,
           },
           orderBy: { created_on: 'desc' },
-        },  
+        },
         assessments: {
           select: {
             assessment_id: true,
@@ -40,6 +40,7 @@ export async function GET(
     return NextResponse.json({
       moduleId: moduleData.module_id,
       moduleName: moduleData.module_name,
+      moduleCode: moduleData.module_code, // ✅ Added this line
       lessons: moduleData.lessons,
       assessments: moduleData.assessments,
     });

@@ -4,6 +4,9 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import EducatorEventCard from "../../dashboard/EducatorEventCard";
 import Button from "@/components/Button";
+import EventCreationForm, {
+  EventFormData,
+} from "@/components/EventCreationForm";
 
 interface Material {
   material_id: string;
@@ -33,44 +36,78 @@ interface ModuleData {
 }
 
 interface ModulePageProps {
-  params: Promise<{ moduleId: string }>; // params is now a Promise
-}
-
-async function getModuleData(moduleId: string): Promise<ModuleData | null> {
-  try {
-    const res = await fetch(`/api/educator/module/${moduleId}`);
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch module data: ${res.status}`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.error("[getModuleData_ERROR]", error);
-    return null;
-  }
+  params: Promise<{ moduleId: string }>;
 }
 
 export default function ModulePage({ params }: ModulePageProps) {
-  // Unwrap params with React.use()
-  const resolvedParams = React.use(params);
-  const moduleId = resolvedParams.moduleId;
-
+  const [moduleId, setModuleId] = useState<string | null>(null);
   const [moduleData, setModuleData] = useState<ModuleData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
   useEffect(() => {
-    async function fetchData() {
-      const data = await getModuleData(moduleId);
-      setModuleData(data);
-      setLoading(false);
-    }
+    (async () => {
+      const resolvedParams = await params;
+      setModuleId(resolvedParams.moduleId);
+    })();
+  }, [params]);
+
+  useEffect(() => {
+    if (!moduleId) return;
+
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/educator/module/${moduleId}`);
+        if (!res.ok) throw new Error("Failed to fetch module data");
+
+        const data = await res.json();
+        console.log("data: ", data);
+        setModuleData(data);
+      } catch (err) {
+        console.error("[getModuleData_ERROR]", err);
+        setModuleData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, [moduleId]);
 
-  useEffect(() => {
-    console.log("ModulePage loaded with moduleId:", moduleId);
-  }, [moduleId]);
+  const handleCreateEvent = async (data: EventFormData) => {
+    const form = new FormData();
+    form.append("type", data.type);
+    form.append("title", data.title);
+    form.append("description", data.description || "");
+    form.append("deadline", data.deadline);
+    form.append("moduleId", data.moduleId);
+
+    if (data.questionPaper?.length)
+      form.append("questionPaper", data.questionPaper[0]);
+    if (data.modelAnswerPaper?.length)
+      form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
+    if (data.markingScheme?.length)
+      form.append("markingScheme", data.markingScheme[0]);
+
+    const res = await fetch("/api/educator/assessment", {
+      method: "POST",
+      body: form,
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Failed to create event");
+
+    setModuleData((prev) =>
+      prev
+        ? {
+            ...prev,
+            assessments: [...prev.assessments, json.assessment],
+          }
+        : prev
+    );
+
+    setIsEventModalOpen(false);
+  };
 
   if (loading) {
     return (
@@ -93,11 +130,15 @@ export default function ModulePage({ params }: ModulePageProps) {
   return (
     <div className="p-6">
       <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold text-blue-900">{moduleName}</h1>
-        {moduleCode && (
-          <p className="text-gray-700 text-sm mt-1">Code: {moduleCode}</p>
+        {moduleData && (
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-blue-900">
+              {moduleCode} - {moduleName}
+            </h1>
+          </div>
         )}
       </div>
+
       {/* Assessments */}
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
@@ -107,7 +148,7 @@ export default function ModulePage({ params }: ModulePageProps) {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => alert("Add New Event clicked")}
+            onClick={() => setIsEventModalOpen(true)}
           >
             + New Event
           </Button>
@@ -122,7 +163,15 @@ export default function ModulePage({ params }: ModulePageProps) {
                 title={assess.title}
                 module={moduleName}
                 uploads="0"
-                date={new Date(assess.deadline).toLocaleString()}
+                date={new Date(assess.deadline).toLocaleString("en-US", {
+                  year: "numeric",
+                  month: "numeric",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: true,
+                })}
                 label="Due on:"
               />
             ))}
@@ -130,15 +179,27 @@ export default function ModulePage({ params }: ModulePageProps) {
         )}
       </div>
 
+      {/* Event Creation Modal */}
+      <EventCreationForm
+        isOpen={isEventModalOpen}
+        onClose={() => setIsEventModalOpen(false)}
+        onSubmit={handleCreateEvent}
+        modules={[
+          {
+            id: moduleData.moduleId,
+            name: `${moduleData.moduleCode || ""} ${moduleData.moduleName}`,
+          },
+        ]}
+      />
+
       {/* Lessons */}
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-blue-800">Lessons</h2>
-
           <Button
             variant="primary"
             size="sm"
-            onClick={() => alert("Add New Event clicked")}
+            onClick={() => alert("Add New Lesson clicked")}
           >
             + New Lesson
           </Button>

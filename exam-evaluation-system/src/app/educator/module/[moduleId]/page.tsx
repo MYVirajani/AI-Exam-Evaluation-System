@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import EducatorEventCard from "../../dashboard/EducatorEventCard";
+import EducatorEventCard from "@/components/EducatorEventCard";
 import Button from "@/components/Button";
 import EventCreationForm, {
   EventFormData,

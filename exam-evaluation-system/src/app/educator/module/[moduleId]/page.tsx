@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import EducatorEventCard from "@/components/EducatorEventCard";
 import Button from "@/components/Button";
 import EventCreationForm, {
   EventFormData,
 } from "@/components/EventCreationForm";
+import LessonCreationForm from "./LessonCreationForm";
+import LessonCard from "./LessonCard";
 
 interface Material {
   material_id: string;
@@ -47,6 +48,7 @@ export default function ModulePage({ params }: ModulePageProps) {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [educatorId, setEducatorId] = useState<string | null>(null);
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -75,6 +77,7 @@ export default function ModulePage({ params }: ModulePageProps) {
         if (!res.ok) throw new Error("Failed to fetch module data");
 
         const data = await res.json();
+        console.log('data: ', data);
         setModuleData(data);
       } catch (err) {
         console.error("[getModuleData_ERROR]", err);
@@ -236,46 +239,47 @@ export default function ModulePage({ params }: ModulePageProps) {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => alert("Add New Lesson clicked")}
+            onClick={() => setIsLessonModalOpen(true)}
           >
             + New Lesson
           </Button>
         </div>
         {lessons.length === 0 ? (
-          <p className="text-gray-600 italic">
-            No lessons have been added yet.
-          </p>
-        ) : (
-          lessons.map((lesson) => (
-            <div
-              key={lesson.lesson_id}
-              className="bg-blue-50 rounded-lg p-4 mb-4"
-            >
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                {lesson.title}
-              </h3>
-              {lesson.materials.length > 0 ? (
-                <ul className="list-disc list-inside">
-                  {lesson.materials.map((mat) => (
-                    <li key={mat.material_id}>
-                      <Link
-                        href={mat.file_url}
-                        className="text-blue-700 underline hover:text-blue-900"
-                      >
-                        {mat.description || mat.file_url.split("/").pop()}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-600 italic">
-                  No materials available for this lesson.
-                </p>
-              )}
-            </div>
-          ))
-        )}
+  <p className="text-gray-600 italic">
+    No lessons have been added yet.
+  </p>
+) : (
+  lessons.map((lesson) => (
+    <LessonCard
+      key={lesson.lesson_id}
+      lesson_id={lesson.lesson_id}
+      title={lesson.title}
+      materials={lesson.materials}
+      onEdit={() => {
+        alert(`Edit lesson ${lesson.lesson_id}`);
+        // TODO: open edit modal or form
+      }}
+      onDelete={() => {
+        const confirmDelete = confirm("Are you sure you want to delete this lesson?");
+        if (!confirmDelete) return;
+
+        // TODO: make DELETE request here and update state accordingly
+        alert(`Deleted lesson ${lesson.lesson_id}`);
+      }}
+    />
+  ))
+)}
       </div>
+      <LessonCreationForm
+        isOpen={isLessonModalOpen}
+        onClose={() => setIsLessonModalOpen(false)}
+        moduleId={moduleData.moduleId}
+        onLessonCreated={(newLesson) => {
+          setModuleData((prev) =>
+            prev ? { ...prev, lessons: [...prev.lessons, newLesson] } : prev
+          );
+        }}
+      />
     </div>
   );
 }

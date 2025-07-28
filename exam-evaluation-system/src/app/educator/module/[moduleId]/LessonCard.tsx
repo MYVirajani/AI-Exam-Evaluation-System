@@ -1,32 +1,71 @@
-import React from 'react';
-import { FaDownload } from 'react-icons/fa';
+// LessonCard.tsx
+"use client";
 
-export interface Lesson {
-  lesson_id: string;
-  title: string;
-  materials_url?: string | null;
+import React from "react";
+import Link from "next/link";
+import { FiEdit, FiTrash2 } from "react-icons/fi";
+
+interface Material {
+  material_id: string;
+  file_url: string;
+  description: string;
 }
 
 interface LessonCardProps {
-  lesson: Lesson;
+  lesson_id: string;
+  title: string;
+  materials: Material[];
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
-export default function LessonCard({ lesson }: LessonCardProps) {
+const LessonCard: React.FC<LessonCardProps> = ({
+  lesson_id,
+  title,
+  materials,
+  onEdit,
+  onDelete,
+}) => {
   return (
-    <div className="bg-white rounded-lg shadow p-4 space-y-2">
-      <p className="font-semibold text-blue-900 break-words">{lesson.title}</p>
-      {lesson.materials_url ? (
-        <a
-          href={lesson.materials_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center text-sm text-blue-900 hover:underline"
-        >
-          <FaDownload className="mr-1" /> Download Material
-        </a>
+    <div className="bg-gray-200 rounded-lg p-4 mb-4 relative">
+      <h3 className="text-lg font-semibold text-blue-800 mb-2">{title}</h3>
+      {materials.length > 0 ? (
+        <ul className="list-disc list-inside">
+          {materials.map((mat) => (
+            <li key={mat.material_id}>
+              <Link
+                href={mat.file_url}
+                className="text-blue-700 underline hover:text-blue-900"
+              >
+                {mat.description || mat.file_url.split("/").pop()}
+              </Link>
+            </li>
+          ))}
+        </ul>
       ) : (
-        <p className="text-sm text-gray-500">No material uploaded yet.</p>
+        <p className="text-gray-600 italic">
+          No materials available for this lesson.
+        </p>
       )}
+
+      <div className="absolute bottom-2 right-2 flex space-x-2">
+        <button
+          className="text-blue-700 hover:text-blue-900"
+          onClick={onEdit}
+          title="Edit Lesson"
+        >
+          <FiEdit />
+        </button>
+        <button
+          className="text-red-600 hover:text-red-800"
+          onClick={onDelete}
+          title="Delete Lesson"
+        >
+          <FiTrash2 />
+        </button>
+      </div>
     </div>
   );
-}
+};
+
+export default LessonCard;

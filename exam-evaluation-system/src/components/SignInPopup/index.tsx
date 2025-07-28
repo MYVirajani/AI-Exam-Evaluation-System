@@ -41,7 +41,7 @@ export default function SignInPopup({ isOpen, onClose }: SignInPopupProps) {
         toast.success("Signed in successfully!");
          const user = json.user;
 
-        // ✅ store user data (optional)
+        // ✅ store user data 
         localStorage.setItem("user", JSON.stringify(user));
 
         // ✅ navigate based on role
@@ -55,7 +55,7 @@ export default function SignInPopup({ isOpen, onClose }: SignInPopupProps) {
           toast.error("Unknown user role");
         }
 
-        onClose();
+        // onClose();
         // TODO: store session/token, redirect, etc.
       }
     } catch (err: any) {

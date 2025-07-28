@@ -16,7 +16,7 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
   label
 }) => {
   return (
-    <div className="min-w-[250px] bg-gray-100 rounded-2xl p-4 text-center">
+    <div className="min-w-[250px] bg-gray-200 rounded-2xl p-4 text-center">
       <h3 className="text-lg font-bold text-blue-900">{title}</h3>
       <p className="text-sm text-blue-800">{module}</p>
       <p className="text-base font-medium mt-2 text-black">{uploads} Uploads</p>

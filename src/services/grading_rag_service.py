@@ -791,10 +791,150 @@
 #             return 0, "Invalid LLM response"
 
 
+# import json
+# import logging
+# import os
+# from typing import List
+
+# from langchain_community.chat_models import ChatOpenAI
+# from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
+# from langchain_community.embeddings import OpenAIEmbeddings
+# from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
+# from langchain.prompts import PromptTemplate
+# from langchain_community.vectorstores import PGVector
+# from src.utils.prompt_utils import PromptTemplates
+
+# from .database_services.student_answer_db import StudentAnswerService
+# from .database_services.model_answer_embedding_db import ModelAnswerEmbeddingDB
+# from .database_services.grading_result_db import GradingResultDB
+
+# from .embedding.abstract_embedder import AbstractEmbedder
+# from ..prompts.rag_prompts import RAGPrompts
+# from ..models.grading_result import GradingResult, GradingMethod
+
+# log = logging.getLogger(__name__)
+
+# class RAGGrader:
+#     def __init__(self, provider: str, chat_model: str, embedder: AbstractEmbedder, top_k: int = 6):
+#         self.provider = provider
+#         self.top_k = top_k
+#         self.embedder = embedder
+
+#         if provider == "OpenAI":
+#             self.chat = ChatOpenAI(model_name=chat_model, temperature=0.0)
+#             self.lc_embed = OpenAIEmbeddings(model=embedder.get_model_name())
+#         else:
+#             self.chat = ChatGoogleGenerativeAI(model_name=chat_model, temperature=0.0)
+#             self.lc_embed = GoogleGenerativeAIEmbeddings(model=embedder.get_model_name())
+
+#         self.vstore = PGVector(
+#             connection_string=os.getenv("PGVECTOR_CONNECTION_STRING"),
+#             collection_name="lecture_material_chunks",
+#             embedding_function=self.lc_embed,
+#         )
+
+#         self.stu_db = StudentAnswerService()
+#         self.mod_db = ModelAnswerEmbeddingDB(self.embedder)
+#         self.result_db = GradingResultDB()
+
+#     def grade_session(self, module: str, year: int, month: str, student: str | None = None):
+#         print(f"📘 Starting grading for: {module} {month} {year}")
+#         groups = self.stu_db.get_all_answers_grouped()
+
+#         count = 0
+#         for (stu, mod, yr, mon), ans_list in groups.items():
+#             if (mod, yr, mon) != (module, year, month):
+#                 continue
+#             if student and stu != student:
+#                 continue
+
+#             print(f"📝 Grading student: {stu}")
+#             self._grade_paper(stu, mod, yr, mon, ans_list)
+#             count += 1
+
+#         if count == 0:
+#             print("⚠️ No matching student answers found for this session.")
+#         else:
+#             print(f"✅ Finished grading {count} student(s).")
+
+#     def _grade_paper(self, stu_idx: str, module: str, year: int, month: str, answers: list):
+#         total = 0.0
+#         possible = 0.0
+#         graded_ok = 0
+#         skipped = 0
+
+#         for sa in answers:
+#             if not sa.answer_text or sa.answer_text.strip() == "":
+#                 skipped += 1
+#                 log.warning("⚠️  Empty student answer for %s – skipping.", sa.full_question_id)
+#                 continue
+
+#             ma = self.mod_db.get_model_answer(sa.full_question_id, module)
+#             if not ma:
+#                 skipped += 1
+#                 log.warning("⚠️  Model answer missing for %s – skipping.", sa.full_question_id)
+#                 continue
+
+#             retrieved_blocks = self._retrieve(ma["question_text"], module)
+#             score, reason = self._call_llm(sa.answer_text, ma, retrieved_blocks)
+
+#             self.result_db.save_question_mark(
+#                 GradingResult(
+#                     student_index=stu_idx,
+#                     module_code=module,
+#                     exam_year=year,
+#                     exam_month=month,
+#                     full_question_id=sa.full_question_id,
+#                     mark=score,
+#                     max_marks=ma["max_marks"] or 0,
+#                     reason=reason,
+#                     grading_method=GradingMethod.RAG
+#                 )
+#             )
+#             graded_ok += 1
+#             total += score
+#             possible += ma["max_marks"] or 0
+
+#         self.result_db.save_paper_total(stu_idx, module, year, month, total, possible)
+#         self.result_db.commit()
+
+#         log.info("✅ %s graded — %.2f / %.2f   (%d graded, %d skipped)",
+#                  stu_idx, total, possible, graded_ok, skipped)
+
+#     def _retrieve(self, question_text: str, module: str) -> str:
+#         docs = self.vstore.similarity_search(
+#             question_text, k=self.top_k, filter={"module_code": module}
+#         )
+#         return "\n---\n".join(d.page_content for d in docs)
+
+#     def _call_llm(self, student_answer_text: str, ma_dict, retrieved) -> tuple[float, str]:
+#         prompt = PromptTemplate.from_template(RAGPrompts.GRADING_PROMPT).format(
+#             question_text=ma_dict["question_text"] or "",
+#             model_answer=ma_dict["answer_text"],
+#             guideline=ma_dict["guideline_text"] or "",
+#             max_marks=ma_dict["max_marks"] or 0,
+#             retrieved_chunks=retrieved,
+#             student_answer=student_answer_text,
+#         )
+
+#         response = self.chat.invoke(prompt).content
+#         if response.startswith("```"):
+#             response = response.strip("`").replace("json", "").strip()
+
+#         try:
+#             data = json.loads(response)
+#             return float(data["score"]), data["reason"]  # Allow decimal score
+#         except Exception as e:
+#             log.error("❌ JSON parse error: %s\nRaw LLM response: %s", e, response)
+#             return 0.0, "Invalid LLM response"  # Return float zero
+
+# src/services/grading_rag_service.py
+# ENHANCED version of your RAGGrader with three-way comparison and few-shot prompting
+
 import json
 import logging
 import os
-from typing import List
+from typing import List, Tuple, Dict, Any
 
 from langchain_community.chat_models import ChatOpenAI
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
@@ -802,24 +942,47 @@ from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
 from langchain.prompts import PromptTemplate
 from langchain_community.vectorstores import PGVector
+
 from src.utils.prompt_utils import PromptTemplates
+from src.services.database_services.student_answer_db import StudentAnswerService
+from src.services.database_services.model_answer_embedding_db import ModelAnswerEmbeddingDB
+from src.services.database_services.grading_result_db import GradingResultDB
+from src.services.embedding.abstract_embedder import AbstractEmbedder
+from src.services.llm_answer_service import LLMAnswerService
 
-from .database_services.student_answer_db import StudentAnswerService
-from .database_services.model_answer_embedding_db import ModelAnswerEmbeddingDB
-from .database_services.grading_result_db import GradingResultDB
-
-from .embedding.abstract_embedder import AbstractEmbedder
-from ..prompts.rag_prompts import RAGPrompts
-from ..models.grading_result import GradingResult, GradingMethod
+# UPDATED IMPORTS
+from src.prompts.rag_prompts import RAGPrompts, RAGUtilities
+from src.prompts.grading_prompts import GradingPrompts, PromptTemplates as GradingTemplates
+from src.models.grading_result import GradingResult, GradingMethod
 
 log = logging.getLogger(__name__)
 
-class RAGGrader:
-    def __init__(self, provider: str, chat_model: str, embedder: AbstractEmbedder, top_k: int = 6):
+class EnhancedRAGGrader:
+    """
+    Enhanced version of RAGGrader with:
+    1. Few-shot prompting capabilities
+    2. Three-way comparison grading (Model + LLM + Context)
+    3. Backward compatibility with original RAG grading
+    """
+    
+    def __init__(self, provider: str, chat_model: str, embedder: AbstractEmbedder, 
+                 top_k: int = 6, enable_three_way: bool = True):
+        """
+        Initialize Enhanced RAG Grader
+        
+        Args:
+            provider: "OpenAI" or "Google"
+            chat_model: Model name for chat completion
+            embedder: Embedder for vector operations
+            top_k: Number of chunks to retrieve
+            enable_three_way: Enable three-way comparison (default: True)
+        """
         self.provider = provider
         self.top_k = top_k
         self.embedder = embedder
+        self.enable_three_way = enable_three_way
 
+        # Initialize chat model and embeddings
         if provider == "OpenAI":
             self.chat = ChatOpenAI(model_name=chat_model, temperature=0.0)
             self.lc_embed = OpenAIEmbeddings(model=embedder.get_model_name())
@@ -827,18 +990,42 @@ class RAGGrader:
             self.chat = ChatGoogleGenerativeAI(model_name=chat_model, temperature=0.0)
             self.lc_embed = GoogleGenerativeAIEmbeddings(model=embedder.get_model_name())
 
+        # Initialize vector store
         self.vstore = PGVector(
             connection_string=os.getenv("PGVECTOR_CONNECTION_STRING"),
             collection_name="lecture_material_chunks",
             embedding_function=self.lc_embed,
         )
 
+        # Initialize database services
         self.stu_db = StudentAnswerService()
         self.mod_db = ModelAnswerEmbeddingDB(self.embedder)
         self.result_db = GradingResultDB()
+        
+        # Initialize LLM Answer Service for three-way grading
+        if self.enable_three_way:
+            self.llm_answer_service = LLMAnswerService(self.chat, self.vstore, top_k)
+            log.info("✅ Enhanced RAG Grader initialized with THREE-WAY comparison")
+        else:
+            log.info("✅ Enhanced RAG Grader initialized with TRADITIONAL RAG grading")
 
-    def grade_session(self, module: str, year: int, month: str, student: str | None = None):
-        print(f"📘 Starting grading for: {module} {month} {year}")
+    def grade_session(self, module: str, year: int, month: str, student: str | None = None,
+                     use_three_way: bool = None):
+        """
+        Grade entire session with option to use three-way comparison
+        
+        Args:
+            module: Module code
+            year: Exam year  
+            month: Exam month
+            student: Specific student (optional)
+            use_three_way: Override three-way setting for this session
+        """
+        # Determine grading method
+        use_three_way = use_three_way if use_three_way is not None else self.enable_three_way
+        method_name = "THREE-WAY" if use_three_way else "TRADITIONAL RAG"
+        
+        print(f"📘 Starting {method_name} grading for: {module} {month} {year}")
         groups = self.stu_db.get_all_answers_grouped()
 
         count = 0
@@ -848,16 +1035,88 @@ class RAGGrader:
             if student and stu != student:
                 continue
 
-            print(f"📝 Grading student: {stu}")
-            self._grade_paper(stu, mod, yr, mon, ans_list)
+            print(f"📝 Grading student: {stu} using {method_name}")
+            
+            if use_three_way:
+                self._grade_paper_three_way(stu, mod, yr, mon, ans_list)
+            else:
+                self._grade_paper_traditional(stu, mod, yr, mon, ans_list)
+                
             count += 1
 
         if count == 0:
             print("⚠️ No matching student answers found for this session.")
         else:
-            print(f"✅ Finished grading {count} student(s).")
+            print(f"✅ Finished {method_name} grading for {count} student(s).")
 
-    def _grade_paper(self, stu_idx: str, module: str, year: int, month: str, answers: list):
+    def _grade_paper_three_way(self, stu_idx: str, module: str, year: int, month: str, answers: list):
+        """
+        Grade paper using three-way comparison method
+        """
+        total = 0.0
+        possible = 0.0
+        graded_ok = 0 
+        skipped = 0
+
+        for sa in answers:
+            if not sa.answer_text or sa.answer_text.strip() == "":
+                skipped += 1
+                log.warning("⚠️ Empty student answer for %s – skipping.", sa.full_question_id)
+                continue
+
+            ma = self.mod_db.get_model_answer(sa.full_question_id, module)
+            if not ma:
+                skipped += 1
+                log.warning("⚠️ Model answer missing for %s – skipping.", sa.full_question_id)
+                continue
+
+            try:
+                # Use three-way comparison grading
+                grading_result = self.llm_answer_service.grade_with_three_way_comparison(
+                    question_text=ma.get("question_text", ""),
+                    model_answer=ma.get("answer_text", ""),
+                    student_answer=sa.answer_text,
+                    max_marks=ma.get("max_marks", 0) or 0,
+                    guideline=ma.get("guideline_text", ""),
+                    module_code=module
+                )
+
+                # Create enhanced grading result
+                result = GradingResult(
+                    student_index=stu_idx,
+                    module_code=module,
+                    exam_year=year,
+                    exam_month=month,
+                    full_question_id=sa.full_question_id,
+                    mark=grading_result['score'],
+                    max_marks=ma.get("max_marks", 0) or 0,
+                    reason=grading_result['reason'],
+                    grading_method=GradingMethod.THREE_WAY_RAG  # New method
+                )
+                
+                self.result_db.save_question_mark(result)
+                graded_ok += 1
+                total += grading_result['score']
+                possible += ma.get("max_marks", 0) or 0
+
+                log.info("✅ THREE-WAY: %s scored %.2f/%.2f - %s", 
+                        sa.full_question_id, grading_result['score'], 
+                        ma.get("max_marks", 0), grading_result['reason'][:50])
+
+            except Exception as e:
+                log.error("❌ Three-way grading error for %s: %s", sa.full_question_id, e)
+                skipped += 1
+
+        self.result_db.save_paper_total(stu_idx, module, year, month, total, possible)
+        self.result_db.commit()
+
+        log.info("✅ THREE-WAY COMPLETE: %s scored %.2f / %.2f (%d graded, %d skipped)",
+                 stu_idx, total, possible, graded_ok, skipped)
+
+    def _grade_paper_traditional(self, stu_idx: str, module: str, year: int, month: str, answers: list):
+        """
+        Grade paper using traditional RAG method (with few-shot enhancement)
+        """
         total = 0.0
         possible = 0.0
         graded_ok = 0
@@ -866,17 +1125,20 @@ class RAGGrader:
         for sa in answers:
             if not sa.answer_text or sa.answer_text.strip() == "":
                 skipped += 1
-                log.warning("⚠️  Empty student answer for %s – skipping.", sa.full_question_id)
+                log.warning("⚠️ Empty student answer for %s – skipping.", sa.full_question_id)
                 continue
 
             ma = self.mod_db.get_model_answer(sa.full_question_id, module)
             if not ma:
                 skipped += 1
-                log.warning("⚠️  Model answer missing for %s – skipping.", sa.full_question_id)
+                log.warning("⚠️ Model answer missing for %s – skipping.", sa.full_question_id)
                 continue
 
-            retrieved_blocks = self._retrieve(ma["question_text"], module)
-            score, reason = self._call_llm(sa.answer_text, ma, retrieved_blocks)
+            # Get RAG context
+            retrieved_blocks = self._retrieve(ma.get("question_text", ""), module)
+            
+            # Use enhanced traditional grading with few-shot examples
+            score, reason = self._call_llm_enhanced(sa.answer_text, ma, retrieved_blocks, module)
 
             self.result_db.save_question_mark(
                 GradingResult(
@@ -886,33 +1148,69 @@ class RAGGrader:
                     exam_month=month,
                     full_question_id=sa.full_question_id,
                     mark=score,
-                    max_marks=ma["max_marks"] or 0,
+                    max_marks=ma.get("max_marks", 0) or 0,
                     reason=reason,
-                    grading_method=GradingMethod.RAG
+                    grading_method=GradingMethod.RAG_WITH_FEW_SHOT  # Enhanced traditional
                 )
             )
             graded_ok += 1
             total += score
-            possible += ma["max_marks"] or 0
+            possible += ma.get("max_marks", 0) or 0
 
         self.result_db.save_paper_total(stu_idx, module, year, month, total, possible)
         self.result_db.commit()
 
-        log.info("✅ %s graded — %.2f / %.2f   (%d graded, %d skipped)",
+        log.info("✅ ENHANCED RAG: %s scored %.2f / %.2f (%d graded, %d skipped)",
                  stu_idx, total, possible, graded_ok, skipped)
 
     def _retrieve(self, question_text: str, module: str) -> str:
+        """
+        Retrieve relevant context (unchanged from original)
+        """
         docs = self.vstore.similarity_search(
             question_text, k=self.top_k, filter={"module_code": module}
         )
         return "\n---\n".join(d.page_content for d in docs)
 
-    def _call_llm(self, student_answer_text: str, ma_dict, retrieved) -> tuple[float, str]:
-        prompt = PromptTemplate.from_template(RAGPrompts.GRADING_PROMPT).format(
-            question_text=ma_dict["question_text"] or "",
-            model_answer=ma_dict["answer_text"],
-            guideline=ma_dict["guideline_text"] or "",
-            max_marks=ma_dict["max_marks"] or 0,
+    def _call_llm_enhanced(self, student_answer_text: str, ma_dict: dict, 
+                          retrieved: str, module_code: str) -> Tuple[float, str]:
+        """
+        Enhanced LLM call with few-shot prompting (improved traditional method)
+        """
+        # Detect domain for appropriate few-shot examples
+        domain = RAGUtilities.detect_domain_from_module(module_code)
+        
+        # Use enhanced prompt with few-shot examples
+        prompt = RAGUtilities.format_grading_prompt_with_examples(
+            question_text=ma_dict.get("question_text", ""),
+            model_answer=ma_dict.get("answer_text", ""),
+            guideline=ma_dict.get("guideline_text", ""),
+            retrieved_chunks=retrieved,
+            student_answer=student_answer_text,
+            max_marks=ma_dict.get("max_marks", 0) or 0,
+            domain=domain
+        )
+
+        response = self.chat.invoke(prompt).content
+        
+        # Parse response using enhanced utilities
+        try:
+            data = RAGUtilities.parse_json_response(response)
+            validated_data = RAGUtilities.validate_grading_response(data, ma_dict.get("max_marks", 0) or 0)
+            return float(validated_data["score"]), validated_data["reason"]
+        except Exception as e:
+            log.error("❌ Enhanced parsing error: %s\nRaw response: %s", e, response)
+            return 0.0, "Enhanced parsing failed"
+
+    def _call_llm(self, student_answer_text: str, ma_dict: dict, retrieved: str) -> Tuple[float, str]:
+        """
+        Original LLM call method (kept for backward compatibility)
+        """
+        prompt = PromptTemplate.from_template(RAGPrompts.GRADING_PROMPT_ORIGINAL).format(
+            question_text=ma_dict.get("question_text", ""),
+            model_answer=ma_dict.get("answer_text", ""),
+            guideline=ma_dict.get("guideline_text", ""),
+            max_marks=ma_dict.get("max_marks", 0) or 0,
             retrieved_chunks=retrieved,
             student_answer=student_answer_text,
         )
@@ -923,7 +1221,103 @@ class RAGGrader:
 
         try:
             data = json.loads(response)
-            return float(data["score"]), data["reason"]  # Allow decimal score
+            return float(data["score"]), data["reason"]
         except Exception as e:
-            log.error("❌ JSON parse error: %s\nRaw LLM response: %s", e, response)
-            return 0.0, "Invalid LLM response"  # Return float zero
+            log.error("❌ Original JSON parse error: %s\nRaw response: %s", e, response)
+            return 0.0, "Invalid LLM response"
+
+    def compare_grading_methods(self, module: str, year: int, month: str, 
+                              student: str, limit: int = 3) -> Dict[str, Any]:
+        """
+        Compare traditional vs three-way grading for analysis
+        """
+        if not self.enable_three_way:
+            return {"error": "Three-way comparison not enabled"}
+
+        print(f"🔍 Comparing grading methods for {student}")
+        
+        # Get student answers
+        groups = self.stu_db.get_all_answers_grouped()
+        student_answers = None
+        
+        for (stu, mod, yr, mon), ans_list in groups.items():
+            if (stu, mod, yr, mon) == (student, module, year, month):
+                student_answers = ans_list[:limit]  # Limit for comparison
+                break
+        
+        if not student_answers:
+            return {'error': 'Student answers not found'}
+
+        comparisons = []
+        for sa in student_answers:
+            if not sa.answer_text or sa.answer_text.strip() == "":
+                continue
+                
+            ma = self.mod_db.get_model_answer(sa.full_question_id, module)
+            if not ma:
+                continue
+
+            # Traditional enhanced grading
+            retrieved = self._retrieve(ma.get("question_text", ""), module)
+            traditional_score, traditional_reason = self._call_llm_enhanced(
+                sa.answer_text, ma, retrieved, module
+            )
+
+            # Three-way grading
+            three_way_result = self.llm_answer_service.grade_with_three_way_comparison(
+                question_text=ma.get("question_text", ""),
+                model_answer=ma.get("answer_text", ""),
+                student_answer=sa.answer_text,
+                max_marks=ma.get("max_marks", 0) or 0,
+                guideline=ma.get("guideline_text", ""),
+                module_code=module
+            )
+
+            comparisons.append({
+                'question_id': sa.full_question_id,
+                'max_marks': ma.get("max_marks", 0),
+                'student_answer_preview': sa.answer_text[:100] + "...",
+                'traditional_enhanced': {
+                    'score': traditional_score,
+                    'reason': traditional_reason
+                },
+                'three_way': {
+                    'score': three_way_result['score'],
+                    'reason': three_way_result['reason'],
+                    'model_coverage': three_way_result.get('model_coverage', ''),
+                    'llm_coverage': three_way_result.get('llm_coverage', '')
+                },
+                'score_difference': three_way_result['score'] - traditional_score
+            })
+
+        return {
+            'student': student,
+            'module': module,
+            'comparisons': comparisons,
+            'summary': {
+                'questions_compared': len(comparisons),
+                'avg_traditional_score': sum(c['traditional_enhanced']['score'] for c in comparisons) / len(comparisons) if comparisons else 0,
+                'avg_three_way_score': sum(c['three_way']['score'] for c in comparisons) / len(comparisons) if comparisons else 0,
+                'avg_difference': sum(c['score_difference'] for c in comparisons) / len(comparisons) if comparisons else 0
+            }
+        }
+
+    def get_grading_statistics(self) -> Dict[str, Any]:
+        """
+        Get comprehensive statistics about the grading system
+        """
+        stats = {
+            'provider': self.provider,
+            'top_k_retrieval': self.top_k,
+            'three_way_enabled': self.enable_three_way,
+            'grading_methods_available': [
+                'traditional_rag',
+                'enhanced_rag_with_few_shot',
+            ]
+        }
+        
+        if self.enable_three_way:
+            stats['grading_methods_available'].append('three_way_comparison')
+            stats['llm_service_stats'] = self.llm_answer_service.get_generation_statistics()
+        
+        return stats

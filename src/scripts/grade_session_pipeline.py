@@ -2,7 +2,7 @@ import argparse
 import logging
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
-from src.services.grading_rag_service import RAGGrader
+from src.services.grading_rag_service import EnhancedRAGGrader
 from src.services.database_services.student_answer_db import StudentAnswerService
 
 
@@ -27,11 +27,11 @@ def main():
         embedder = GeminiEmbedder(model_name=args.embedder)
 
     # Initialize grader with LLM and embedder
-    grader = RAGGrader(args.provider, args.llm, embedder)
+    grader = EnhancedRAGGrader(args.provider, args.llm, embedder)
 
     # Grade the entire session
     log.info(f"\n\n⏳ Grading all papers for {args.module} {args.month} {args.year} …")
-    grader.grade_session(args.module, args.year, args.month)
+    grader.grade_session(args.module, args.year, args.month,use_three_way=True)
     log.info("\n✅ All student papers in session graded successfully.")
 
 

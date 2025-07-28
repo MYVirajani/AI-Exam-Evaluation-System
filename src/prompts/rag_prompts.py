@@ -389,14 +389,89 @@
 #         """
 #         return "\n\n".join(f"- {chunk}" for chunk in chunks)
 
+# ***********************************************************
+# class RAGPrompts:
+#     """
+#     Holds template strings used by the Retrieval-Augmented Grading pipeline.
+#     """
+
+#     # Main prompt sent to the LLM when grading a single question
+#     GRADING_PROMPT = """
+# You are a strict but fair examiner. Grade the student answer using the
+# model answer, marking guideline, and any helpful context from lecture material.
+
+# QUESTION:
+# ---------
+# {question_text}
+
+# MODEL ANSWER:
+# -------------
+# {model_answer}
+
+# MARKING GUIDELINE:
+# ------------------
+# {guideline}
+
+# CONTEXT (lecture excerpts – for reference only):
+# ------------------------------------------------
+# {retrieved_chunks}
+
+# STUDENT ANSWER:
+# ---------------
+# {student_answer}
+
+# MAXIMUM MARKS:
+# --------------
+# {max_marks}
+
+# INSTRUCTIONS:
+# -------------
+# 1. Compare the student’s answer with the model answer and guideline.
+# 2. Use the context *only* to clarify the subject, not as a primary grading source.
+# 3. Assign a FLOAT score from 0 to {max_marks}.
+# 4. Provide a concise justification for the score.
+
+# OUTPUT (JSON only, no markdown):
+# --------------------------------
+# {{
+#   "score": <float>,
+#   "reason": "<one-sentence explanation>"
+# }}
+# """
+
+#     # Prompt for similarity-search retrieval
+#     RETRIEVAL_PROMPT = """
+# Use the following question text to retrieve the most relevant lecture excerpts.
+
+# QUESTION:
+# {question_text}
+# """
+
+
+# class RAGUtilities:
+#     """
+#     Helper utilities for the RAG pipeline.
+#     """
+
+#     @staticmethod
+#     def format_retrieved_chunks(chunks) -> str:
+#         """
+#         Turn a list/iterable of chunk strings into a readable block for the prompt.
+#         """
+#         return "\n\n".join(f"- {chunk}" for chunk in chunks)
+
+# src/prompts/rag_prompts.py
+
+from src.prompts.few_shot_examples import FewShotExamples
 
 class RAGPrompts:
     """
     Holds template strings used by the Retrieval-Augmented Grading pipeline.
+    ENHANCED with few-shot prompting and three-way comparison support.
     """
 
-    # Main prompt sent to the LLM when grading a single question
-    GRADING_PROMPT = """
+    # ORIGINAL prompt (kept for backward compatibility)
+    GRADING_PROMPT_ORIGINAL = """
 You are a strict but fair examiner. Grade the student answer using the
 model answer, marking guideline, and any helpful context from lecture material.
 
@@ -426,7 +501,7 @@ MAXIMUM MARKS:
 
 INSTRUCTIONS:
 -------------
-1. Compare the student’s answer with the model answer and guideline.
+1. Compare the student's answer with the model answer and guideline.
 2. Use the context *only* to clarify the subject, not as a primary grading source.
 3. Assign a FLOAT score from 0 to {max_marks}.
 4. Provide a concise justification for the score.
@@ -439,6 +514,146 @@ OUTPUT (JSON only, no markdown):
 }}
 """
 
+    # NEW: Enhanced grading prompt with few-shot examples
+    GRADING_PROMPT = """
+You are a strict but fair examiner. Grade the student answer using few-shot learning and the provided references.
+
+**FEW-SHOT LEARNING EXAMPLES:**
+
+{few_shot_examples}
+
+---
+
+**NOW APPLY THIS APPROACH:**
+
+QUESTION:
+---------
+{question_text}
+
+MODEL ANSWER (Lecturer's Official Answer):
+------------------------------------------
+{model_answer}
+
+MARKING GUIDELINE:
+------------------
+{guideline}
+
+CONTEXT (lecture excerpts – for reference only):
+------------------------------------------------
+{retrieved_chunks}
+
+STUDENT ANSWER:
+---------------
+{student_answer}
+
+MAXIMUM MARKS:
+--------------
+{max_marks}
+
+INSTRUCTIONS:
+-------------
+1. **Learn from examples above**: Apply the same grading logic and standards
+2. **Primary Reference**: Compare against model answer and guideline
+3. **Context Usage**: Use lecture context only for clarification, not as primary source
+4. **Scoring**: Assign a FLOAT score from 0 to {max_marks}
+5. **Consistency**: Maintain the same rigor as shown in examples
+
+OUTPUT (JSON only, no markdown):
+--------------------------------
+{{
+  "score": <float>,
+  "reason": "<concise explanation following example style>"
+}}
+"""
+
+    # NEW: Three-way comparison prompt with few-shot learning
+    THREE_WAY_GRADING_PROMPT = """
+You are a strict but fair examiner. Grade using THREE-WAY COMPARISON with few-shot learning.
+
+**FEW-SHOT GRADING EXAMPLES:**
+
+{few_shot_examples}
+
+---
+
+**NOW APPLY THREE-WAY COMPARISON:**
+
+QUESTION:
+---------
+{question_text}
+
+**1. MODEL ANSWER (Official Reference - 40% weight):**
+{model_answer}
+
+**2. LLM-GENERATED ANSWER (Comprehensive Reference - 40% weight):**
+{llm_generated_answer}
+
+**3. MARKING GUIDELINE:**
+{guideline}
+
+**4. CONTEXT (Supporting Material - 20% weight):**
+{retrieved_chunks}
+
+STUDENT ANSWER:
+---------------
+{student_answer}
+
+MAXIMUM MARKS:
+--------------
+{max_marks}
+
+INSTRUCTIONS:
+-------------
+1. **Follow Examples**: Apply the three-way comparison logic shown above
+2. **Weight Distribution**: 40% model answer, 40% LLM answer, 20% context+guideline
+3. **Scoring Logic**: 
+   - Full marks if student matches quality of both primary references
+   - Partial credit for covering concepts from either reference
+   - Use context and guideline for clarification and additional points
+4. **Comprehensive Assessment**: Consider completeness shown in LLM-generated answer
+
+OUTPUT (JSON only, no markdown):
+--------------------------------
+{{
+  "score": <float>,
+  "reason": "<explanation of three-way comparison>",
+  "model_coverage": "<how well student covered model answer>",
+  "llm_coverage": "<how well student covered LLM answer>"
+}}
+"""
+
+    # NEW: LLM answer generation prompt with few-shot examples
+    LLM_ANSWER_GENERATION_PROMPT = """
+You are an expert academic assistant. Generate comprehensive answers using few-shot learning.
+
+**FEW-SHOT GENERATION EXAMPLES:**
+
+{generation_examples}
+
+---
+
+**YOUR TASK:**
+Generate a comprehensive answer following the same quality and approach as the examples above.
+
+QUESTION:
+---------
+{question_text}
+
+COURSE MATERIAL CONTEXT:
+------------------------
+{rag_context}
+
+INSTRUCTIONS:
+-------------
+1. **Learn from Examples**: Match the depth, structure, and quality shown above
+2. **Combine Sources**: Use both course context AND your knowledge
+3. **Comprehensive Coverage**: Include definitions, explanations, examples where appropriate
+4. **Academic Quality**: Maintain formal, accurate academic writing
+5. **Logical Structure**: Organize information clearly and logically
+
+**GENERATED ANSWER:**
+"""
+
     # Prompt for similarity-search retrieval
     RETRIEVAL_PROMPT = """
 Use the following question text to retrieve the most relevant lecture excerpts.
@@ -447,10 +662,9 @@ QUESTION:
 {question_text}
 """
 
-
 class RAGUtilities:
     """
-    Helper utilities for the RAG pipeline.
+    Helper utilities for the RAG pipeline with few-shot support.
     """
 
     @staticmethod
@@ -458,4 +672,164 @@ class RAGUtilities:
         """
         Turn a list/iterable of chunk strings into a readable block for the prompt.
         """
+        if not chunks:
+            return "No relevant context retrieved."
         return "\n\n".join(f"- {chunk}" for chunk in chunks)
+
+    @staticmethod
+    def format_grading_prompt_with_examples(question_text: str, model_answer: str,
+                                          guideline: str, retrieved_chunks: str,
+                                          student_answer: str, max_marks: float,
+                                          domain: str = 'ML') -> str:
+        """
+        Format the grading prompt with few-shot examples
+        
+        Args:
+            question_text: The exam question
+            model_answer: Lecturer's model answer
+            guideline: Marking guideline
+            retrieved_chunks: RAG context chunks
+            student_answer: Student's answer
+            max_marks: Maximum marks for the question
+            domain: Domain for examples ('ML', 'CS', 'EE')
+        """
+        few_shot_examples = FewShotExamples.format_grading_examples(domain, count=2)
+        
+        return RAGPrompts.GRADING_PROMPT.format(
+            few_shot_examples=few_shot_examples,
+            question_text=question_text,
+            model_answer=model_answer,
+            guideline=guideline,
+            retrieved_chunks=retrieved_chunks,
+            student_answer=student_answer,
+            max_marks=max_marks
+        )
+    
+    @staticmethod
+    def format_three_way_grading_prompt(question_text: str, model_answer: str,
+                                      llm_generated_answer: str, guideline: str,
+                                      retrieved_chunks: str, student_answer: str,
+                                      max_marks: float, domain: str = 'ML') -> str:
+        """
+        Format the three-way grading prompt with few-shot examples
+        """
+        few_shot_examples = FewShotExamples.format_grading_examples(domain, count=2)
+        
+        return RAGPrompts.THREE_WAY_GRADING_PROMPT.format(
+            few_shot_examples=few_shot_examples,
+            question_text=question_text,
+            model_answer=model_answer,
+            llm_generated_answer=llm_generated_answer,
+            guideline=guideline,
+            retrieved_chunks=retrieved_chunks,
+            student_answer=student_answer,
+            max_marks=max_marks
+        )
+    
+    @staticmethod
+    def format_llm_generation_prompt(question_text: str, rag_context: str,
+                                   domain: str = 'ML') -> str:
+        """
+        Format the LLM answer generation prompt with few-shot examples
+        """
+        generation_examples = FewShotExamples.format_generation_examples(domain, count=2)
+        
+        return RAGPrompts.LLM_ANSWER_GENERATION_PROMPT.format(
+            generation_examples=generation_examples,
+            question_text=question_text,
+            rag_context=rag_context
+        )
+    
+    @staticmethod
+    def detect_domain_from_module(module_code: str) -> str:
+        """
+        Detect domain from module code for appropriate few-shot examples
+        
+        Args:
+            module_code: Module code like "EE6250", "CS101", "ML5050"
+            
+        Returns:
+            Domain string ('EE', 'CS', 'ML', 'GENERIC')
+        """
+        if not module_code:
+            return 'GENERIC'
+        
+        module_upper = module_code.upper()
+        
+        if module_upper.startswith('EE'):
+            return 'EE'
+        elif module_upper.startswith('CS'):
+            return 'CS'
+        elif module_upper.startswith('ML') or 'MACHINE' in module_upper or 'AI' in module_upper:
+            return 'ML'
+        else:
+            return 'GENERIC'
+    
+    @staticmethod
+    def parse_json_response(response: str) -> dict:
+        """
+        Parse JSON response from LLM, with fallback handling
+        
+        Args:
+            response: Raw LLM response
+            
+        Returns:
+            Parsed dictionary with error handling
+        """
+        import json
+        import re
+        
+        # Clean up response
+        if response.startswith("```"):
+            response = response.strip("`").replace("json", "").strip()
+        
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError as e:
+            # Fallback: try to extract key information manually
+            score_match = re.search(r'"score":\s*(\d+\.?\d*)', response)
+            reason_match = re.search(r'"reason":\s*"([^"]*)"', response)
+            
+            fallback_result = {
+                'score': float(score_match.group(1)) if score_match else 0.0,
+                'reason': reason_match.group(1) if reason_match else "Failed to parse response"
+            }
+            
+            # Try to extract additional fields for three-way grading
+            model_coverage_match = re.search(r'"model_coverage":\s*"([^"]*)"', response)
+            llm_coverage_match = re.search(r'"llm_coverage":\s*"([^"]*)"', response)
+            
+            if model_coverage_match:
+                fallback_result['model_coverage'] = model_coverage_match.group(1)
+            if llm_coverage_match:
+                fallback_result['llm_coverage'] = llm_coverage_match.group(1)
+            
+            return fallback_result
+    
+    @staticmethod
+    def validate_grading_response(response_data: dict, max_marks: float) -> dict:
+        """
+        Validate and clean grading response data
+        
+        Args:
+            response_data: Parsed response dictionary
+            max_marks: Maximum possible marks
+            
+        Returns:
+            Validated and cleaned response
+        """
+        # Ensure score is within bounds
+        score = float(response_data.get('score', 0))
+        score = max(0.0, min(score, max_marks))
+        response_data['score'] = score
+        
+        # Ensure required fields exist
+        if 'reason' not in response_data:
+            response_data['reason'] = "No explanation provided"
+        
+        # Clean up text fields
+        for field in ['reason', 'model_coverage', 'llm_coverage']:
+            if field in response_data and isinstance(response_data[field], str):
+                response_data[field] = response_data[field].strip()
+        
+        return response_data

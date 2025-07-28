@@ -14,7 +14,7 @@ Run RAG grading.
 import argparse
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
-from src.services.grading_rag_service      import RAGGrader
+from src.services.grading_rag_service      import EnhancedRAGGrader
 
 def main():
     ap = argparse.ArgumentParser()
@@ -33,8 +33,8 @@ def main():
                 if args.provider == "OpenAI"
                 else GeminiEmbedder(model_name=args.embedder))
 
-    grader = RAGGrader(args.provider, args.llm, embedder)
-    grader.grade_session(args.module, args.year, args.month,
+    grader = EnhancedRAGGrader(args.provider, args.llm, embedder)
+    grader.grade_session(args.module, args.year, args.month,use_three_way=True,
                          student=args.student if not args.all else None)
 
 if __name__ == "__main__":

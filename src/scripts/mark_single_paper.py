@@ -15,7 +15,7 @@ python -m src.scripts.mark_single_paper ^
 import argparse
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
-from src.services.grading_rag_service       import RAGGrader
+from src.services.grading_rag_service       import EnhancedRAGGrader
 from src.services.database_services.student_answer_db import StudentAnswerService
 
 def main():
@@ -34,7 +34,7 @@ def main():
                 if args.provider == "OpenAI"
                 else GeminiEmbedder(model_name=args.embedder))
 
-    grader = RAGGrader(args.provider, args.llm, embedder)
+    grader = EnhancedRAGGrader(args.provider, args.llm, embedder)
 
     # fetch student answers for that paper
     sa_db = StudentAnswerService()

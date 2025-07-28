@@ -179,6 +179,10 @@ class GradingMethod(Enum):
     SIMILARITY_BASED = "similarity"      # Similarity-based fallback
     ERROR_FALLBACK  = "error_fallback"   # Error fallback method
 
+    RAG_WITH_FEW_SHOT = "rag_with_few_shot"           # Traditional RAG + few-shot examples
+    THREE_WAY_RAG = "three_way_rag"                   # Model + LLM + Context comparison
+    LLM_GENERATED_COMPARISON = "llm_generated_comparison"  # LLM answer generation focus
+
 
 @dataclass
 class GradingResult:

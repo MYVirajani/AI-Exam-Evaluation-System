@@ -7,3 +7,7 @@ venv/
 # Byte-compiled / cache files
 __pycache__/
 *.py[cod]
+
+# Ignore data folders
+data/
+src/data/

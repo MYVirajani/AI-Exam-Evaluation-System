@@ -495,7 +495,7 @@ class StudentAnswerService(BaseRelationalDB):
         # Force mapping of providers to proper suffixes
         provider_table_map = {
             "openai": "student_answers_openai",
-            "googlegemini": "student_answers_googlegemini"
+            "googlegemini": "student_answers_gemini"
         }
 
         normalized = provider_suffix.strip().lower()
@@ -567,10 +567,64 @@ class StudentAnswerService(BaseRelationalDB):
             )
         return structured_answers
 
-    def get_all_answers_grouped(self) -> Dict[Tuple[str, str, int, str], List[StudentAnswer]]:
-        self.cursor.execute(f"SELECT student_index, module_code, exam_year, exam_month, answers FROM {self.table_name}")
-        rows = self.cursor.fetchall()
+    # def get_all_answers_grouped(self) -> Dict[Tuple[str, str, int, str], List[StudentAnswer]]:
+    #     self.cursor.execute(f"SELECT student_index, module_code, exam_year, exam_month, answers FROM {self.table_name}")
+    #     rows = self.cursor.fetchall()
         
+    #     grouped = {}
+
+    #     for student_index, module_code, year, month, answers_json in rows:
+    #         structured_answers = []
+    #         for full_qid, answer_text in answers_json.items():
+    #             parts = full_qid.split("_")
+    #             structured_answers.append(StudentAnswer(
+    #                 question_id=parts[0],
+    #                 sub_question_id=parts[1] if len(parts) > 1 else None,
+    #                 sub_sub_question_id=parts[2] if len(parts) > 2 else None,
+    #                 answer_text=answer_text,
+    #                 student_index=student_index,
+    #                 module_code=module_code,
+    #                 exam_year=year,
+    #                 exam_month=month
+    #             ))
+    #         grouped[(student_index, module_code, year, month)] = structured_answers
+
+    #     return grouped
+    # def get_all_answers_grouped(self, module_code: str, year: int, month: str) -> Dict[Tuple[str, str, int, str], List[StudentAnswer]]:
+    #     self.cursor.execute("""
+    #         SELECT student_index, module_code, exam_year, exam_month, answers
+    #         FROM {table}
+    #         WHERE module_code = %s AND exam_year = %s AND exam_month = %s
+    #     """.format(table=self.table_name), (module_code, year, month))
+
+    #     rows = self.cursor.fetchall()
+    #     grouped = {}
+
+    #     for student_index, module_code, year, month, answers_json in rows:
+    #         structured_answers = []
+    #         for full_qid, answer_text in answers_json.items():
+    #             parts = full_qid.split("_")
+    #             structured_answers.append(StudentAnswer(
+    #                 question_id=parts[0],
+    #                 sub_question_id=parts[1] if len(parts) > 1 else None,
+    #                 sub_sub_question_id=parts[2] if len(parts) > 2 else None,
+    #                 answer_text=answer_text,
+    #                 student_index=student_index,
+    #                 module_code=module_code,
+    #                 exam_year=year,
+    #                 exam_month=month
+    #             ))
+    #         grouped[(student_index, module_code, year, month)] = structured_answers
+
+    #     return grouped
+    def get_all_answers_grouped(self, module_code: str, year: int, month: str) -> Dict[Tuple[str, str, int, str], List[StudentAnswer]]:
+        self.cursor.execute(f"""
+            SELECT student_index, module_code, exam_year, exam_month, answers
+            FROM {self.table_name}
+            WHERE LOWER(module_code) = LOWER(%s) AND exam_year = %s AND LOWER(exam_month) = LOWER(%s)
+        """, (module_code, year, month))
+
+        rows = self.cursor.fetchall()
         grouped = {}
 
         for student_index, module_code, year, month, answers_json in rows:
@@ -590,3 +644,37 @@ class StudentAnswerService(BaseRelationalDB):
             grouped[(student_index, module_code, year, month)] = structured_answers
 
         return grouped
+
+    # def get_all_answers_grouped(self, module_code=None, year=None, month=None) -> Dict[str, List[StudentAnswer]]:
+    #     filters = []
+    #     values = []
+
+    #     if module_code:
+    #         filters.append("module_code = %s")
+    #         values.append(module_code)
+    #     if year:
+    #         filters.append("exam_year = %s")
+    #         values.append(year)
+    #     if month:
+    #         filters.append("LOWER(exam_month) = LOWER(%s)")
+    #         values.append(month)
+
+    #     where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+    #     query = f"""
+    #         SELECT student_index, module_code, exam_year, exam_month, answers
+    #         FROM {self.table_name}
+    #         {where_clause}
+    #     """
+    #     self.cursor.execute(query, values)
+    #     rows = self.cursor.fetchall()
+
+    #     grouped: Dict[str, List[StudentAnswer]] = {}
+    #     for row in rows:
+    #         student_index, module_code, year, month, answers_json = row
+    #         parsed = StudentAnswer.from_jsonb(
+    #             student_index, module_code, year, month, answers_json
+    #         )
+    #         grouped[student_index] = parsed
+
+    #     return grouped

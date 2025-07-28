@@ -53,6 +53,7 @@ export async function GET(
         model_answer_paper_id: true,
         marking_scheme_id: true,
       },
+      orderBy: { deadline: 'asc' },
     });
 
     console.log(

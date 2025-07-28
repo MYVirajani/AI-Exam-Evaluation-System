@@ -17,7 +17,7 @@ export async function GET(
           include: {
             materials: true,
           },
-          orderBy: { created_on: 'desc' },
+          orderBy: { created_on: 'asc' },
         },
         assessments: {
           select: {

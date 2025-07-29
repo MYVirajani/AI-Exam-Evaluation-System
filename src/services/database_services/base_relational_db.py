@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class BaseRelationalDB:
-    def _init_(self):
+    def __init__(self):
         try:
             self.conn = psycopg2.connect(
                 dbname=os.getenv("POSTGRES_DB"),

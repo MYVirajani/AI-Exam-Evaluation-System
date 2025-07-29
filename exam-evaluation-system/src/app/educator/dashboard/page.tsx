@@ -275,7 +275,18 @@ export default function EducatorHomePage() {
         ) : (
           <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
             {upcomingEvents.map((evt) => (
-              <EducatorEventCard key={evt.id} {...evt} />
+              <EducatorEventCard
+                key={evt.id}
+                title={evt.title}
+                module={evt.module}
+                uploads={evt.uploads}
+                date={evt.date}
+                label={evt.label}
+                assessmentId={evt.id}
+                moduleId={
+                  createdModules.find((m) => m.title === evt.module)?.id
+                }
+              />
             ))}
           </div>
         )}

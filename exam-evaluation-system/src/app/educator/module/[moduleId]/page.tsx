@@ -50,8 +50,7 @@ export default function ModulePage({ params }: ModulePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [educatorId, setEducatorId] = useState<string | null>(null);
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
-   const router = useRouter();
-  
+  const router = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -226,6 +225,8 @@ export default function ModulePage({ params }: ModulePageProps) {
                 label={
                   assess.type === "assignment" ? "Due on:" : "Scheduled on:"
                 }
+                assessmentId={assess.assessment_id}
+                moduleId={moduleData.moduleId}
               />
             ))}
           </div>
@@ -268,7 +269,7 @@ export default function ModulePage({ params }: ModulePageProps) {
             <LessonCard
               key={lesson.lesson_id}
               lesson_id={lesson.lesson_id}
-              module_id= {moduleData.moduleId}
+              module_id={moduleData.moduleId}
               title={lesson.title}
               materials={lesson.materials}
               onEdit={() => {

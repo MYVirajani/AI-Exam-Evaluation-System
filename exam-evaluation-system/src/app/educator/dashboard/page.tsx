@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { FiChevronLeft, FiChevronRight, FiLoader } from "react-icons/fi";
+import { ChevronLeft, ChevronRight, Loader2, Calendar, BookOpen, Plus, Sparkles } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 import EducatorEventCard from "@/components/EducatorEventCard";
 import EducatorModuleCard from "./EducatorModuleCard";
@@ -10,7 +10,6 @@ import EventCreationForm, {
   EventFormData,
 } from "@/components/EventCreationForm";
 import Link from "next/link";
-import Button from "@/components/Button";
 
 interface ModuleAPI {
   module_id: string;
@@ -232,19 +231,33 @@ export default function EducatorHomePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <FiLoader className="animate-spin text-4xl text-blue-900" />
-        <span className="ml-2 text-lg text-blue-900">
-          Loading modules & events…
-        </span>
+      <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50">
+        <div className="relative">
+          <div className="w-16 h-16 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 rounded-full flex items-center justify-center animate-pulse">
+            <Loader2 className="w-8 h-8 text-white animate-spin" />
+          </div>
+          <div className="absolute -top-2 -right-2">
+            <Sparkles className="w-6 h-6 text-purple-500 animate-bounce" />
+          </div>
+        </div>
+        <p className="mt-6 text-lg font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-cyan-500">
+          Loading your dashboard...
+        </p>
+        <p className="text-sm text-gray-600 mt-1">Setting up modules & events</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-red-600">Error: {error}</p>
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-red-50 to-orange-50">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-xl border border-red-100">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Oops! Something went wrong</h3>
+          <p className="text-red-600">{error}</p>
+        </div>
       </div>
     );
   }
@@ -255,107 +268,162 @@ export default function EducatorHomePage() {
     moduleScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" });
 
   return (
-    <div className="w-full min-h-screen space-y-12 px-4 py-6">
-      <Toaster position="top-right" />
+    <div className="w-full min-h-screen bg-gradient-to-br from-purple-50/30 via-blue-50/20 to-cyan-50/30">
+      <div className="max-w-7xl mx-auto space-y-12 px-6 py-8">
+        <Toaster position="top-right" />
 
-      {/* Upcoming Events */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-blue-900">Upcoming Events</h2>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsEventModalOpen(true)}
-          >
-            + New Event
-          </Button>
+        {/* Welcome Header */}
+        <div className="text-center py-8">
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 mb-4">
+            Welcome to Your Dashboard
+          </h1>
+          <p className="text-gray-600 text-lg">Manage your modules and track upcoming events</p>
         </div>
-        {upcomingEvents.length === 0 ? (
-          <p className="text-gray-600">No upcoming events yet.</p>
-        ) : (
-          <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
-            {upcomingEvents.map((evt) => (
-              <EducatorEventCard
-                key={evt.id}
-                title={evt.title}
-                module={evt.module}
-                uploads={evt.uploads}
-                date={evt.date}
-                label={evt.label}
-                assessmentId={evt.id}
-                moduleId={
-                  createdModules.find((m) => m.title === evt.module)?.id
-                }
-              />
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Created Modules */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-blue-900">Created Modules</h2>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsModuleModalOpen(true)}
-          >
-            + New Module
-          </Button>
-        </div>
-        {createdModules.length === 0 ? (
-          <p className="text-gray-600">You have not created any modules yet.</p>
-        ) : (
-          <div className="relative">
-            {canScrollLeft && (
-              <button
-                onClick={scrollLeft}
-                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
-              >
-                <FiChevronLeft className="text-2xl text-black" />
-              </button>
-            )}
-            <div
-              ref={moduleScrollRef}
-              className="flex space-x-4 overflow-x-auto scrollbar-hide px-8"
+        {/* Upcoming Events Section */}
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-r from-purple-600 to-cyan-500 p-2 rounded-xl">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Upcoming Events</h2>
+                <p className="text-sm text-gray-600">Track deadlines and schedules</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsEventModalOpen(true)}
+              className="group bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-600 text-white px-6 py-3 rounded-2xl font-medium transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
-              {createdModules.map((mod) => (
-                <Link
-                  key={mod.id}
-                  href={`/educator/module/${mod.id}`}
-                  className="cursor-pointer"
-                >
-                  <EducatorModuleCard {...mod} />
-                </Link>
+              <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-300" />
+              <span>New Event</span>
+            </button>
+          </div>
+
+          {upcomingEvents.length === 0 ? (
+            <div className="text-center py-16 bg-white/60 backdrop-blur-sm rounded-3xl border border-gray-100">
+              <div className="w-20 h-20 bg-gradient-to-r from-purple-100 to-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No upcoming events</h3>
+              <p className="text-gray-500 mb-6">Create your first event to get started</p>
+              <button
+                onClick={() => setIsEventModalOpen(true)}
+                className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white px-6 py-2 rounded-xl hover:shadow-lg transition-all duration-300"
+              >
+                Create Event
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-6 overflow-x-auto scrollbar-hide pb-4">
+              {upcomingEvents.map((evt) => (
+                <EducatorEventCard
+                  key={evt.id}
+                  title={evt.title}
+                  module={evt.module}
+                  uploads={evt.uploads}
+                  date={evt.date}
+                  label={evt.label}
+                  assessmentId={evt.id}
+                  moduleId={
+                    createdModules.find((m) => m.title === evt.module)?.id
+                  }
+                />
               ))}
             </div>
-            {canScrollRight && (
-              <button
-                onClick={scrollRight}
-                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
-              >
-                <FiChevronRight className="text-2xl text-black" />
-              </button>
-            )}
+          )}
+        </div>
+
+        {/* Created Modules Section */}
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-r from-cyan-500 to-purple-600 p-2 rounded-xl">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Created Modules</h2>
+                <p className="text-sm text-gray-600">Manage your teaching modules</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsModuleModalOpen(true)}
+              className="group bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 hover:from-cyan-600 hover:via-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-2xl font-medium transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            >
+              <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-300" />
+              <span>New Module</span>
+            </button>
           </div>
-        )}
+
+          {createdModules.length === 0 ? (
+            <div className="text-center py-16 bg-white/60 backdrop-blur-sm rounded-3xl border border-gray-100">
+              <div className="w-20 h-20 bg-gradient-to-r from-cyan-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No modules created yet</h3>
+              <p className="text-gray-500 mb-6">Start by creating your first teaching module</p>
+              <button
+                onClick={() => setIsModuleModalOpen(true)}
+                className="bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-6 py-2 rounded-xl hover:shadow-lg transition-all duration-300"
+              >
+                Create Module
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              {canScrollLeft && (
+                <button
+                  onClick={scrollLeft}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm shadow-xl hover:shadow-2xl rounded-full p-3 z-10 border border-gray-100 transition-all duration-300 hover:bg-white"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-700" />
+                </button>
+              )}
+              
+              <div
+                ref={moduleScrollRef}
+                className="flex space-x-6 overflow-x-auto scrollbar-hide px-4 py-2"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {createdModules.map((mod) => (
+                  <Link
+                    key={mod.id}
+                    href={`/educator/module/${mod.id}`}
+                    className="cursor-pointer flex-shrink-0"
+                  >
+                    <EducatorModuleCard {...mod} />
+                  </Link>
+                ))}
+              </div>
+              
+              {canScrollRight && (
+                <button
+                  onClick={scrollRight}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm shadow-xl hover:shadow-2xl rounded-full p-3 z-10 border border-gray-100 transition-all duration-300 hover:bg-white"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-700" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Module Creation Modal */}
+        <ModuleCreationForm
+          isOpen={isModuleModalOpen}
+          onClose={() => setIsModuleModalOpen(false)}
+          onSubmit={handleCreateModule}
+        />
+
+        {/* Event Creation Modal */}
+        <EventCreationForm
+          isOpen={isEventModalOpen}
+          onClose={() => setIsEventModalOpen(false)}
+          onSubmit={handleCreateEvent}
+          modules={createdModules.map((m) => ({ id: m.id, name: m.title }))}
+        />
       </div>
-
-      {/* Module Creation Modal */}
-      <ModuleCreationForm
-        isOpen={isModuleModalOpen}
-        onClose={() => setIsModuleModalOpen(false)}
-        onSubmit={handleCreateModule}
-      />
-
-      {/* Event Creation Modal */}
-      <EventCreationForm
-        isOpen={isEventModalOpen}
-        onClose={() => setIsEventModalOpen(false)}
-        onSubmit={handleCreateEvent}
-        modules={createdModules.map((m) => ({ id: m.id, name: m.title }))}
-      />
     </div>
   );
 }

@@ -7,16 +7,34 @@ import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import { FileUploadSection } from "@/components/Upload/FileUploadSection";
 
+interface User {
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
 interface Assessment {
   assessment_id: string;
   module_id: string;
   created_by: string;
   title: string;
   description?: string;
+  moduleCode?: string;
+  enrollmentCount?: number;
   module: {
     module_id: string;
     module_name: string;
+    module_code: string;
   };
+  model_answer_paper?: {
+    file_url: string;
+  } | null;
+  submissions: {
+    file_url: string;
+    student: {
+      user: User;
+    };
+  }[];
 }
 
 export default function AssessmentPage() {
@@ -26,7 +44,6 @@ export default function AssessmentPage() {
   const moduleId = params.moduleId as string;
   const assessmentId = params.assessmentId as string;
   const educatorId = searchParams.get("educatorId");
-
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +56,6 @@ export default function AssessmentPage() {
     markingScheme: null as File | null,
   });
 
- 
   const modelAnswerInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadProgress, setUploadProgress] = useState<{
@@ -66,6 +82,7 @@ export default function AssessmentPage() {
         );
         if (!res.ok) throw new Error("Failed to fetch assessment");
         const data = await res.json();
+        console.log("Assessment API Response:", data);
         setAssessment(data);
       } catch (err) {
         setError(
@@ -147,8 +164,6 @@ export default function AssessmentPage() {
     ref.current?.click();
   };
 
-  
-
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
   if (!assessment) return <div className="p-8">Assessment not found</div>;
@@ -159,24 +174,60 @@ export default function AssessmentPage() {
         <h1 className="text-2xl font-bold text-gray-800 mb-2">
           {assessment.title}
         </h1>
-        <p className="text-gray-600 mb-6">
-          Module: {assessment.module.module_name}
+        <p className="text-gray-600 mb-1">
+          Module: {assessment.module.module_code} - {assessment.module.module_name}
         </p>
+        <p className="text-gray-600 mb-6">
+          Uploads: {assessment.submissions?.length ?? 0} /{" "}
+          {assessment.enrollmentCount ?? 0} Enrollments
+        </p>
+
         {assessment.description && (
           <p className="text-gray-700 mb-6">{assessment.description}</p>
         )}
 
-       
+        {assessment.model_answer_paper?.file_url && (
+          <p className="text-sm mb-4">
+            📘{" "}
+            <a
+              href={assessment.model_answer_paper.file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              View Uploaded Model Answer
+            </a>
+          </p>
+        )}
+
+        {assessment.submissions.length > 0 && (
+          <div className="mb-6">
+            <h3 className="font-semibold mb-2 text-gray-800">Student Submissions:</h3>
+            <ul className="list-disc ml-6 space-y-1 text-sm text-gray-700">
+              {assessment.submissions.map((submission, index) => (
+                <li key={index}>
+                  <a
+                    href={submission.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    {submission.student.user.first_name} {submission.student.user.last_name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <input
           type="file"
           ref={modelAnswerInputRef}
           onChange={(e) => handleFileChange(e, "modelAnswer")}
           className="hidden"
         />
-       
 
         <div className="space-y-8">
-         
           <FileUploadSection
             title="Model Answer"
             icon={<FileIcon />}

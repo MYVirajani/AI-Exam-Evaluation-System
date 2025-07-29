@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
@@ -7,10 +7,7 @@ export async function GET(req: NextRequest) {
     const user_id = searchParams.get("user_id");
 
     if (!user_id) {
-      return NextResponse.json(
-        { error: "Missing user_id" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing user_id" }, { status: 400 });
     }
 
     // Find student by user_id to get registration_number if needed
@@ -35,7 +32,11 @@ export async function GET(req: NextRequest) {
       include: {
         module: {
           include: {
-            assessments: true,
+            assessments: {
+              orderBy: {
+                deadline: "asc",
+              },
+            },
           },
         },
       },

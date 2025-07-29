@@ -402,3 +402,18 @@ class StudentAnswerEmbeddingDB(BaseVectorDBService):
 
         self.commit()
         logger.info(f"✅ Saved embeddings for {len(answers)} answers to table: {self.table_name}")
+    # ✅ Add this method inside StudentAnswerEmbeddingDB class
+    def get_embedding(self, student_index: str, full_question_id: str, module_code: str, exam_year: int, exam_month: str) -> list[float] | None:
+        self.cursor.execute(f"""
+            SELECT embedding FROM {self.table_name}
+            WHERE student_index = %s
+            AND full_question_id = %s
+            AND module_code = %s
+            AND exam_year = %s
+            AND exam_month = %s
+        """, (student_index, full_question_id, module_code, exam_year, exam_month))
+
+        row = self.cursor.fetchone()
+        if row:
+            return row[0]  # Returns the vector
+        return None

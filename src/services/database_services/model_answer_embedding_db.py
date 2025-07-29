@@ -572,3 +572,20 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
 
         self.commit()
         logger.info("Saved %d model-answer embeddings into table '%s'.", len(answers), self.table)
+    
+    def get_model_answer(self, full_question_id: str, module_code: str) -> dict | None:
+        self.cursor.execute(f"""
+            SELECT question_text, answer_text, guideline_text, max_marks
+            FROM {self.table}
+            WHERE full_question_id = %s AND module_code = %s
+        """, (full_question_id, module_code))
+
+        row = self.cursor.fetchone()
+        if row:
+            return {
+                "question_text": row[0],
+                "answer_text": row[1],
+                "guideline_text": row[2],
+                "max_marks": row[3]
+            }
+        return None

@@ -147,6 +147,7 @@ class GradingResult:
 
     reason:           str   # brief justification from the LLM
     grading_method:   GradingMethod
+    model_name:       str 
     confidence: float = None
 
 # src/models/grading_result.py

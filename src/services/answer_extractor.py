@@ -6,7 +6,7 @@ import json
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
 from openai import OpenAI as OpenAIClient
-# import google.generativeai as genai
+import google.generativeai as genai
 
 from ..models.student_answer import StudentAnswer
 from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT

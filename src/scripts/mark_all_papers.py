@@ -1,3 +1,6 @@
+
+
+
 """
 Grade ALL papers for a module / exam session.
 
@@ -11,6 +14,7 @@ python -m src.scripts.mark_all_papers ^
   --year 2024 ^
   --month June
 """
+
 import argparse
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
@@ -26,11 +30,15 @@ def main():
     ap.add_argument("--month",    required=True)
     args = ap.parse_args()
 
-    embedder = (OpenAIEmbedder(args.embedder)
-                if args.provider == "OpenAI"
-                else GeminiEmbedder(model_name=args.embedder))
+    embedder = (
+        OpenAIEmbedder(args.embedder)
+        if args.provider == "OpenAI"
+        else GeminiEmbedder(model_name=args.embedder)
+    )
 
-    grader = RAGGrader(args.provider, args.llm, embedder)
+    # ✅ Pass provider to RAGGrader
+    grader = RAGGrader(provider=args.provider, chat_model=args.llm, embedder=embedder)
+
     print(f"⏳ Grading all papers for {args.module} {args.month} {args.year} …")
     grader.grade_session(args.module, args.year, args.month)
     print("✅ All papers graded.")

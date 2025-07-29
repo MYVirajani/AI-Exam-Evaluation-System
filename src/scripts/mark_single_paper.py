@@ -43,14 +43,14 @@ def main():
     )
 
     if not answers:
-        print("❌ No student answers found for that paper.")
+        print("No student answers found for that paper.")
         return
 
     print(f"⏳ Grading {args.index} …")
     grader._grade_paper(          # internal helper does one paper
         args.index, args.module, args.year, args.month, answers
     )
-    print("✅ Done.")
+    print("Done.")
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-# prompts/grading_prompts.py
+
 """
 Professional grading prompts for the automated paper marking system.
 These prompts are designed to ensure consistent, fair, and accurate grading.

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import ConfirmDialog from "@/components/ConfimDialog";
+import toast from "react-hot-toast";
 
 interface Material {
   material_id: string;
@@ -32,15 +33,18 @@ const LessonCard: React.FC<LessonCardProps> = ({
 
   const handleDelete = async () => {
     try {
-      const user_id = localStorage.getItem("user_id");
-      if (!user_id) throw new Error("User not authenticated");
+      const userId = localStorage.getItem("userId");
+      console.log('userId: ', userId);
+      console.log('module_id: ', module_id);
+      console.log('lesson_id: ', lesson_id);
+      if (!userId) throw new Error("User not authenticated");
 
       const res = await fetch(
         `/api/educator/module/${module_id}/lesson/${lesson_id}`,
         {
           method: "DELETE",
           headers: {
-            "x-user-id": user_id,
+            "x-user-id": userId,
           },
         }
       );
@@ -52,7 +56,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
       onDelete(lesson_id);
     } catch (err: any) {
       console.error("Lesson deletion failed:", err);
-      alert("Error deleting lesson: " + err.message);
+       toast.error("Error deleting lesson: " + err.message);
     } finally {
       setConfirmOpen(false);
     }

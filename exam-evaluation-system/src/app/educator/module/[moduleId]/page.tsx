@@ -268,6 +268,7 @@ export default function ModulePage({ params }: ModulePageProps) {
             <LessonCard
               key={lesson.lesson_id}
               lesson_id={lesson.lesson_id}
+              module_id= {moduleData.moduleId}
               title={lesson.title}
               materials={lesson.materials}
               onEdit={() => {

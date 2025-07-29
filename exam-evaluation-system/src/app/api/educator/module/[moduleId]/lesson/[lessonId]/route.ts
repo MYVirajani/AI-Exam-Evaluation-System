@@ -31,13 +31,19 @@ export async function DELETE(
         { status: 404 }
       );
     }
+    console.log('currentUserId :' , currentUserId);
 
     if (lesson.module.created_by !== currentUserId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized to delete this lesson' },
-        { status: 403 }
-      );
-    }
+  return NextResponse.json(
+    {
+      success: false,
+      error: 'Unauthorized to delete this lesson',
+      currentUserId: currentUserId,
+      createdBy: lesson.module.created_by,
+    },
+    { status: 403 }
+  );
+}
 
     // Delete associated materials
     await prisma.lectureMaterial.deleteMany({

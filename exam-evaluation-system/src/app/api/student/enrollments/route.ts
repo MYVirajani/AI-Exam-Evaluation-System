@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
 
     const registration_number = student.registration_number;
 
-    // Find all enrolled modules for the student
     const enrollments = await prisma.enrollment.findMany({
       where: {
         student_id: registration_number,

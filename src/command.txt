@@ -49,37 +49,3 @@ Get-ChildItem -Path "data/Answer_Scripts" -Include *.docx, *.pdf -Recurse | ForE
 >>         --model gpt-4o `
 >>         --file $_.FullName
 >> }
-
-*******************************************************
-pip install langchain langchain-community langchain-core langchain-openai pgvector psycopg2-binary python-dotenv
-
-pip install rich
-
-python -m src.scripts.embed_lecture_materials --provider OpenAI --model text-embedding-3-small --embedder text-embedding-3-small --root data/Lecture_Materials --module EE3350
-
-
-Get-ChildItem -Path "data/Answer_Scripts" -Filter "*.docx" | ForEach-Object { 
-    Write-Host "Processing: $($_.Name)"
-    python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --file $_.FullName
-}
-
-python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answers
-
-
-python -m src.scripts.embed_from_db `
-  --provider OpenAI `
-  --model gpt-4o `
-  --embedder text-embedding-3-small
-
-python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-small
-
-python -m src.scripts.mark_all_papers `
-  --provider OpenAI `
-  --llm gpt-4o `
-  --embedder text-embedding-3-small `
-  --module EE3350 `
-  --year 2025 `
-  --month June
-
-
-python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June; if ($?) { python src/scripts/sync_null_grades.py }

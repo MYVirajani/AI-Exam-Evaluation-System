@@ -8,6 +8,7 @@ import EventCreationForm, {
 } from "@/components/EventCreationForm";
 import LessonCreationForm from "./LessonCreationForm";
 import LessonCard from "./LessonCard";
+import { useRouter } from "next/navigation";
 
 interface Material {
   material_id: string;
@@ -49,6 +50,8 @@ export default function ModulePage({ params }: ModulePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [educatorId, setEducatorId] = useState<string | null>(null);
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
+   const router = useRouter();
+  
 
   useEffect(() => {
     (async () => {
@@ -77,7 +80,7 @@ export default function ModulePage({ params }: ModulePageProps) {
         if (!res.ok) throw new Error("Failed to fetch module data");
 
         const data = await res.json();
-        console.log('data: ', data);
+        console.log("data: ", data);
         setModuleData(data);
       } catch (err) {
         console.error("[getModuleData_ERROR]", err);
@@ -181,14 +184,26 @@ export default function ModulePage({ params }: ModulePageProps) {
           <h2 className="text-xl font-semibold text-blue-800">
             Upcoming Events
           </h2>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsEventModalOpen(true)}
-          >
-            + New Event
-          </Button>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() =>
+                router.push(`/educator/module/${moduleId}/assessment`)
+              }
+            >
+              Create Assessment
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsEventModalOpen(true)}
+            >
+              + New Event
+            </Button>
+          </div>
         </div>
+
         {assessments.length === 0 ? (
           <p className="text-gray-600 italic">No assessments scheduled.</p>
         ) : (
@@ -245,30 +260,32 @@ export default function ModulePage({ params }: ModulePageProps) {
           </Button>
         </div>
         {lessons.length === 0 ? (
-  <p className="text-gray-600 italic">
-    No lessons have been added yet.
-  </p>
-) : (
-  lessons.map((lesson) => (
-    <LessonCard
-      key={lesson.lesson_id}
-      lesson_id={lesson.lesson_id}
-      title={lesson.title}
-      materials={lesson.materials}
-      onEdit={() => {
-        alert(`Edit lesson ${lesson.lesson_id}`);
-        // TODO: open edit modal or form
-      }}
-      onDelete={() => {
-        const confirmDelete = confirm("Are you sure you want to delete this lesson?");
-        if (!confirmDelete) return;
+          <p className="text-gray-600 italic">
+            No lessons have been added yet.
+          </p>
+        ) : (
+          lessons.map((lesson) => (
+            <LessonCard
+              key={lesson.lesson_id}
+              lesson_id={lesson.lesson_id}
+              title={lesson.title}
+              materials={lesson.materials}
+              onEdit={() => {
+                alert(`Edit lesson ${lesson.lesson_id}`);
+                // TODO: open edit modal or form
+              }}
+              onDelete={() => {
+                const confirmDelete = confirm(
+                  "Are you sure you want to delete this lesson?"
+                );
+                if (!confirmDelete) return;
 
-        // TODO: make DELETE request here and update state accordingly
-        alert(`Deleted lesson ${lesson.lesson_id}`);
-      }}
-    />
-  ))
-)}
+                // TODO: make DELETE request here and update state accordingly
+                alert(`Deleted lesson ${lesson.lesson_id}`);
+              }}
+            />
+          ))
+        )}
       </div>
       <LessonCreationForm
         isOpen={isLessonModalOpen}

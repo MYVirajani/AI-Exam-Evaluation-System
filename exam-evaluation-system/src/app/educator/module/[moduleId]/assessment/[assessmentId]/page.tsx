@@ -6,7 +6,6 @@ import { FileIcon, BotIcon } from "@/components/Icons";
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import { FileUploadSection } from "@/components/Upload/FileUploadSection";
-import { MultiFileUploadSection } from "@/components/Upload/MultiFileUploadSection";
 
 interface Assessment {
   assessment_id: string;
@@ -28,9 +27,6 @@ export default function AssessmentPage() {
   const assessmentId = params.assessmentId as string;
   const educatorId = searchParams.get("educatorId");
 
-  console.log("moduleId:", moduleId);
-  console.log("assessmentId:", assessmentId);
-  console.log("educatorId:", educatorId);
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,10 +39,8 @@ export default function AssessmentPage() {
     markingScheme: null as File | null,
   });
 
-  const examPaperInputRef = useRef<HTMLInputElement>(null);
-  const answerScriptsInputRef = useRef<HTMLInputElement>(null);
+ 
   const modelAnswerInputRef = useRef<HTMLInputElement>(null);
-  const markingSchemeInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadProgress, setUploadProgress] = useState<{
     [key: string]: number;
@@ -153,13 +147,7 @@ export default function AssessmentPage() {
     ref.current?.click();
   };
 
-  const removeAnswerScript = (index: number) => {
-    setUploadedFiles((prev) => {
-      const updated = [...prev.answerScripts];
-      updated.splice(index, 1);
-      return { ...prev, answerScripts: updated };
-    });
-  };
+  
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
@@ -178,52 +166,17 @@ export default function AssessmentPage() {
           <p className="text-gray-700 mb-6">{assessment.description}</p>
         )}
 
-        <input
-          type="file"
-          ref={examPaperInputRef}
-          onChange={(e) => handleFileChange(e, "examPaper")}
-          className="hidden"
-        />
-        <input
-          type="file"
-          ref={answerScriptsInputRef}
-          onChange={(e) => handleFileChange(e, "answerScripts")}
-          className="hidden"
-          multiple
-        />
+       
         <input
           type="file"
           ref={modelAnswerInputRef}
           onChange={(e) => handleFileChange(e, "modelAnswer")}
           className="hidden"
         />
-        <input
-          type="file"
-          ref={markingSchemeInputRef}
-          onChange={(e) => handleFileChange(e, "markingScheme")}
-          className="hidden"
-        />
+       
 
         <div className="space-y-8">
-          {/* <FileUploadSection
-            title="Exam Paper"
-            icon={<FileIcon />}
-            acceptedTypes="PDF, DOCX"
-            maxSize="10MB"
-            uploadedFile={uploadedFiles.examPaper}
-            onTriggerUpload={() => triggerFileInput(examPaperInputRef)}
-          />
-          <MultiFileUploadSection
-            title="Student Answer Scripts"
-            icon={<FileIcon />}
-            acceptedTypes="PDF"
-            maxSize="50MB"
-            uploadedFiles={uploadedFiles.answerScripts}
-            onTriggerUpload={() => triggerFileInput(answerScriptsInputRef)}
-            onRemoveFile={removeAnswerScript}
-            uploadProgress={uploadProgress}
-            uploadErrors={uploadErrors}
-          /> */}
+         
           <FileUploadSection
             title="Model Answer"
             icon={<FileIcon />}

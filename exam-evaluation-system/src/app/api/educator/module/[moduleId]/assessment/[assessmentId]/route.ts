@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const educatorId = request.nextUrl.searchParams.get("educatorId");
-    const { moduleId, assessmentId } = params;
+    const { moduleId, assessmentId } =  params;
 
     if (!educatorId) {
       return NextResponse.json(
@@ -59,13 +59,19 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(
-      {
-        ...assessment,
-        enrollmentCount,
-      },
-      { status: 200 }
-    );
+    // Extract module_code
+    const moduleCode = assessment.module?.module_code ?? null;
+
+    const responsePayload = {
+      ...assessment,
+      enrollmentCount,
+      moduleCode,
+    };
+
+    // Log the response to console
+    console.log("[GET /assessment RESPONSE]:", responsePayload);
+
+    return NextResponse.json(responsePayload, { status: 200 });
   } catch (error) {
     console.error("[GET_ASSESSMENT_ERROR]", error);
     return NextResponse.json(

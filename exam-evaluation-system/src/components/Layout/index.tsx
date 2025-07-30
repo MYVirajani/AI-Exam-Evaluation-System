@@ -24,7 +24,7 @@ const Layout = ({
       
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <main className="max-w-4xl mx-auto p-8">
+        <main className="max-w-6xl mx-auto p-8">
           {children}
         </main>
       </div>

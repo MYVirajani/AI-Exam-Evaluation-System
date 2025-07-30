@@ -9,6 +9,9 @@ export async function GET(
     const studentId = request.nextUrl.searchParams.get("studentId");
     const { assessmentId } = params;
 
+    console.log("Fetching assessment for ID:", assessmentId);
+    console.log("Student ID from query:", studentId);
+
     const assessment = await prisma.assessment.findUnique({
       where: { assessment_id: assessmentId },
       include: {
@@ -19,7 +22,6 @@ export async function GET(
           },
         },
         question_paper: true,
-        model_answer_paper: true,
         submissions: {
           where: studentId ? { student_id: studentId } : undefined,
           include: {
@@ -29,7 +31,10 @@ export async function GET(
       },
     });
 
+    console.log("Fetched assessment from DB:", assessment);
+
     if (!assessment) {
+      console.warn("Assessment not found for ID:", assessmentId);
       return NextResponse.json(
         { message: "Assessment not found" },
         { status: 404 }
@@ -39,7 +44,10 @@ export async function GET(
     const submission = assessment.submissions.length > 0 ? assessment.submissions[0] : null;
     const grade = submission?.assessment_grade || null;
 
-    return NextResponse.json({
+    console.log("Submission data:", submission);
+    console.log("Grade data:", grade);
+
+    const response = {
       module_code: assessment.module.module_code,
       module_name: assessment.module.module_name,
       assessment_data: {
@@ -53,12 +61,6 @@ export async function GET(
         ? {
             file_url: assessment.question_paper.file_url,
             created_on: assessment.question_paper.created_on,
-          }
-        : null,
-      model_answer_paper: assessment.model_answer_paper
-        ? {
-            file_url: assessment.model_answer_paper.file_url,
-            created_on: assessment.model_answer_paper.created_on,
           }
         : null,
       submission: submission
@@ -78,7 +80,11 @@ export async function GET(
             auto_graded: grade.auto_graded,
           }
         : null,
-    });
+    };
+
+    console.log("Final API Response:", response);
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Failed to fetch assessment details:", error);
     return NextResponse.json(

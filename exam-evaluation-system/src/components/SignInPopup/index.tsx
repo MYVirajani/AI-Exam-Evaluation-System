@@ -43,6 +43,7 @@ export default function SignInPopup({ isOpen, onClose }: SignInPopupProps) {
 
         // ✅ store user data 
         localStorage.setItem("user", JSON.stringify(user));
+        console.log('user: ',user);
 
         // ✅ navigate based on role
         if (user.role === "admin") {

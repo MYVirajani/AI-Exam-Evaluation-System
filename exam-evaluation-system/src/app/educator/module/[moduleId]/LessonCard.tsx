@@ -8,8 +8,9 @@ import toast from "react-hot-toast";
 
 interface Material {
   material_id: string;
-  file_url: string;
-  description: string;
+  file_name?: string;
+  file_url: string | null;
+  description?: string | null;
 }
 
 interface LessonCardProps {
@@ -34,9 +35,9 @@ const LessonCard: React.FC<LessonCardProps> = ({
   const handleDelete = async () => {
     try {
       const userId = localStorage.getItem("userId");
-      console.log('userId: ', userId);
-      console.log('module_id: ', module_id);
-      console.log('lesson_id: ', lesson_id);
+      console.log("userId: ", userId);
+      console.log("module_id: ", module_id);
+      console.log("lesson_id: ", lesson_id);
       if (!userId) throw new Error("User not authenticated");
 
       const res = await fetch(
@@ -56,7 +57,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
       onDelete(lesson_id);
     } catch (err: any) {
       console.error("Lesson deletion failed:", err);
-       toast.error("Error deleting lesson: " + err.message);
+      toast.error("Error deleting lesson: " + err.message);
     } finally {
       setConfirmOpen(false);
     }
@@ -66,17 +67,31 @@ const LessonCard: React.FC<LessonCardProps> = ({
     <div className="bg-gray-200 rounded-lg p-4 mb-4 relative">
       <h3 className="text-lg font-semibold text-blue-800 mb-2">{title}</h3>
       {materials.length > 0 ? (
-        <ul className="list-disc list-inside">
-          {materials.map((mat) => (
-            <li key={mat.material_id}>
-              <Link
-                href={mat.file_url}
-                className="text-blue-700 underline hover:text-blue-900"
-              >
-                {mat.description || mat.file_url.split("/").pop()}
-              </Link>
-            </li>
-          ))}
+        <ul className="list-disc list-inside space-y-1">
+          {materials.map((mat) => {
+            const fileUrl = mat.file_url || "#";
+            const fileName = mat.file_name || "Lecture note";
+
+            return (
+              <li key={mat.material_id}>
+                <Link
+                  href={fileUrl}
+                  className={`text-blue-700 underline hover:text-blue-900 ${
+                    fileUrl === "#" ? "pointer-events-none text-gray-500" : ""
+                  }`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {fileName}
+                </Link>
+                {mat.description && (
+                  <p className="text-sm text-gray-700 ml-4 italic">
+                    {mat.description}
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className="text-gray-600 italic">

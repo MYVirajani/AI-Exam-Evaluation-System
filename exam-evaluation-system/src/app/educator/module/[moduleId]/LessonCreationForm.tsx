@@ -8,6 +8,7 @@ import { IoClose } from "react-icons/io5";
 interface LectureMaterialInput {
   file_url: string;
   description?: string;
+  file_name?:string;
 }
 
 interface LessonCreationFormProps {
@@ -78,7 +79,8 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
         formData.append("moduleId", moduleId);
         formData.append("type", "lectureMaterial");
 
-        const res = await fetch(`/api/educator/upload`, {
+        const res = await fetch(`/api/educator/module/[moduleId]/lesson/lecture-material`, {
+          
           method: "POST",
           body: formData,
         });
@@ -87,7 +89,7 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
         console.log("Upload response:", data);
         if (!res.ok) throw new Error(data.error || "Upload failed");
 
-        lecture_materials.push({ file_url: data.filePath, description });
+        lecture_materials.push({ file_url: data.filePath, description, file_name: data.file_name });
       }
     }
 

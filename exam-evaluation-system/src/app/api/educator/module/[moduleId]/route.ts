@@ -15,7 +15,15 @@ export async function GET(
       include: {
         lessons: {
           include: {
-            materials: true,
+            materials: {
+              select: {
+                material_id: true,
+                file_name: true,
+                file_url: true,
+                uploaded_on: true,
+                description: true,
+              },
+            },
           },
           orderBy: { created_on: 'asc' },
         },

@@ -149,7 +149,7 @@ googleapis-common-protos==1.70.0
 # Other core packages
 greenlet==3.2.2
 grpcio==1.71.0
-grpcio-status==1.71.0
+grpcio-status==1.54.0
 h11==0.16.0
 httpcore==1.0.9
 httplib2==0.22.0
@@ -164,13 +164,24 @@ jsonpatch==1.33
 jsonpointer==3.0.0
 
 # LangChain - Updated to compatible versions
-langchain==0.3.25
-langchain-community==0.3.24
-langchain-core==0.3.61
-langchain-google-genai==2.1.8
-langchain-openai==0.3.18
-langchain-text-splitters==0.3.8
-langsmith==0.3.42
+# langchain==0.3.25
+# langchain-community==0.3.24
+# langchain-core==0.3.70
+# langchain-google-genai==2.1.8
+# langchain-core==0.3.70
+# langsmith==0.3.50
+# langchain==0.3.25
+# langchain-community==0.3.24
+# langchain-google-genai==2.1.8
+# langchain-openai==0.3.18
+langchain==0.1.16
+langchain-core==0.1.50
+langchain-community==0.0.35
+langchain-openai==0.1.5
+langchain-google-genai==0.0.11
+google-generativeai==0.4.1
+langchain-text-splitters==0.0.2
+# langsmith==0.3.42
 
 # Document processing
 lxml==5.4.0
@@ -189,15 +200,16 @@ mpmath==1.3.0
 multidict==6.4.4
 mypy_extensions==1.1.0
 networkx==3.4.2
-numpy==2.2.3
+numpy==1.26.4
 openai==1.82.0
 orjson==3.10.18
-packaging==24.2
+packaging==23.2
 pandas==2.2.3
 pillow==11.2.1
 propcache==0.3.1
 proto-plus==1.26.1
-protobuf==5.29.5
+# protobuf==5.29.5
+# protobuf>=3.20.2,<5.0.0
 pydantic==2.11.5
 pydantic-settings==2.9.1
 pydantic_core==2.33.2
@@ -206,6 +218,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 pytz==2025.2
 PyYAML==6.0.2
+rich
 regex==2024.11.6
 requests==2.32.3
 requests-toolbelt==1.0.0
@@ -217,7 +230,7 @@ sentence-transformers==4.1.0
 setuptools==80.9.0
 six==1.17.0
 sniffio==1.3.1
-tenacity==9.1.2
+tenacity==8.2.2
 threadpoolctl==3.6.0
 tiktoken==0.9.0
 tokenizers==0.21.1

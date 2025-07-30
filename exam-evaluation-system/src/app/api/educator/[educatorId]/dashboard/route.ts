@@ -12,19 +12,17 @@ export async function GET(
   try {
     console.log("Fetching dashboard for educatorId:", educatorId);
 
-    // Check if educator exists
+    // Validate educator
     const educator = await prisma.educator.findUnique({
       where: { user_id: educatorId },
     });
 
     if (!educator) {
       console.log("Educator not found for user_id:", educatorId);
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Get modules and include number of enrollments
     const modules = await prisma.module.findMany({
       where: { created_by: educatorId },
       select: {
@@ -37,9 +35,15 @@ export async function GET(
         learning_outcomes: true,
         enrollment_key: true,
         module_image_url: true,
+        _count: {
+          select: {
+            enrollments: true,
+          },
+        },
       },
     });
 
+    // Get assessments and include number of submissions
     const assessments = await prisma.assessment.findMany({
       where: { created_by: educatorId },
       select: {
@@ -49,25 +53,35 @@ export async function GET(
         description: true,
         deadline: true,
         module_id: true,
-        // question_paper: {
-        //   select: { question_paper_id: true }
-        // },
-        // model_answer_paper: {
-        //   select: { model_answer_paper_id: true }
-        // },
-        // marking_scheme: {
-        //   select: { marking_scheme_id: true }
-        // }
+        _count: {
+          select: {
+            submissions: true,
+          },
+        },
       },
       orderBy: { deadline: 'asc' },
     });
 
+    // Format results with counts
+    const formattedModules = modules.map(mod => ({
+      ...mod,
+      number_of_enrollments: mod._count.enrollments,
+    }));
+
+    const formattedAssessments = assessments.map(asm => ({
+      ...asm,
+      number_of_submissions: asm._count.submissions,
+    }));
+
     console.log(
-      `Fetched ${modules.length} modules and ${assessments.length} assessments for educatorId:`,
+      `Fetched ${formattedModules.length} modules and ${formattedAssessments.length} assessments for educatorId:`,
       educatorId
     );
 
-    return NextResponse.json({ modules, assessments });
+    return NextResponse.json({
+      modules: formattedModules,
+      assessments: formattedAssessments,
+    });
   } catch (err) {
     console.error("Error fetching educator dashboard:", err);
     return NextResponse.json(

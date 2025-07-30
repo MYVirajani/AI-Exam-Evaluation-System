@@ -147,6 +147,7 @@ export default function AssessmentPage() {
     try {
       const formData = new FormData();
       formData.append("file", uploadedFiles.modelAnswer);
+      console.log('uploadedFiles.modelAnswer: ',uploadedFiles.modelAnswer)
 
       const res = await fetch(
         `/api/educator/module/${moduleId}/assessment/${assessmentId}/model-paper`,

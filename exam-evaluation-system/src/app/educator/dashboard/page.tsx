@@ -342,7 +342,7 @@ export default function EducatorHomePage() {
         )}
       </div>
       <div className="flex justify-end">
-        <Link href="/educator/dashboard/StudentResultsDashboard">
+        <Link href="/educator/dashboard/results-dashboard">
           <Button variant="secondary" size="sm">
             View Student Results
           </Button>

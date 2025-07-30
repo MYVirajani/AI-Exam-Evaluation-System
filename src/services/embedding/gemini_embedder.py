@@ -40,6 +40,7 @@ class GeminiEmbedder(AbstractEmbedder):
                 # Use genai.embed_content for individual text
                 result = genai.embed_content(
                     model=self.model_name,
+                    # model=f"models/{self.model_name}",
                     content=text,
                     task_type="retrieval_document"
                 )

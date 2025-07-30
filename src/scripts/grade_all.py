@@ -1,4 +1,3 @@
-# src/scripts/grade_all.py
 
 from services.grading_rag_service import GradingRAGService
 from db.postgres import fetch_all_student_answers, fetch_model_answers, fetch_questions

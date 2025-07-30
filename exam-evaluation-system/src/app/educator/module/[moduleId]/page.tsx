@@ -258,36 +258,40 @@ export default function ModulePage({ params }: ModulePageProps) {
 
       {/* Lessons */}
       <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-blue-800">Lessons</h2>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsLessonModalOpen(true)}
-          >
-            + New Lesson
-          </Button>
+        <div className="flex flex-col items-center">
+          <div className="flex items-center justify-between mb-4 w-full max-w-screen-lg">
+            <h2 className="text-xl font-semibold text-blue-800">Lessons</h2>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsLessonModalOpen(true)}
+            >
+              + New Lesson
+            </Button>
+          </div>
+          {lessons.length === 0 ? (
+            <p className="text-gray-600 italic">
+              No lessons have been added yet.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-4 justify-center">
+              {lessons.map((lesson) => (
+                <LessonCard
+                  key={lesson.lesson_id}
+                  user_id={educatorId}
+                  lesson_id={lesson.lesson_id}
+                  module_id={moduleData.moduleId}
+                  title={lesson.title}
+                  materials={lesson.materials}
+                  onEdit={() => {
+                    alert(`Edit lesson ${lesson.lesson_id}`);
+                  }}
+                  onDelete={handleDeleteLesson}
+                />
+              ))}
+            </div>
+          )}
         </div>
-        {lessons.length === 0 ? (
-          <p className="text-gray-600 italic">
-            No lessons have been added yet.
-          </p>
-        ) : (
-          lessons.map((lesson) => (
-            <LessonCard
-              key={lesson.lesson_id}
-              user_id={educatorId}
-              lesson_id={lesson.lesson_id}
-              module_id={moduleData.moduleId}
-              title={lesson.title}
-              materials={lesson.materials}
-              onEdit={() => {
-                alert(`Edit lesson ${lesson.lesson_id}`);
-              }}
-              onDelete={handleDeleteLesson}
-            />
-          ))
-        )}
       </div>
 
       <LessonCreationForm

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { FiEdit, FiTrash2 } from "react-icons/fi";
+import { FiEdit, FiTrash2, FiFile, FiFileText } from "react-icons/fi";
 import ConfirmDialog from "@/components/ConfimDialog";
 import toast from "react-hot-toast";
 
@@ -64,58 +64,108 @@ const LessonCard: React.FC<LessonCardProps> = ({
   };
 
   return (
-    <div className="bg-gray-200 rounded-lg p-4 mb-4 relative">
-      <h3 className="text-lg font-semibold text-blue-800 mb-2">{title}</h3>
+    <div className="bg-white border border-gray-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 mb-6 w-full max-w-2xl mx-auto">
+      {/* Header Section */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-gray-800 mb-1 leading-tight">
+            {title}
+          </h3>
+          <div className="flex items-center text-sm text-gray-500">
+            <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
+              {materials.length} material{materials.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex space-x-2 ml-4">
+          <button
+            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+            onClick={onEdit}
+            title="Edit Lesson"
+          >
+            <FiEdit size={18} />
+          </button>
+          <button
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+            onClick={() => setConfirmOpen(true)}
+            title="Delete Lesson"
+          >
+            <FiTrash2 size={18} />
+          </button>
+        </div>
+      </div>
 
-      {materials.length > 0 ? (
-        <ul className="list-disc list-inside space-y-1">
-          {materials.map((mat, index) => {
-            const fileUrl = mat.file_url || "#";
-            const fileName = mat.file_name?.trim() || "Lecture note";
-            const key = mat.material_id || `${fileUrl}-${index}`;
+      {/* Materials Section */}
+      <div className="border-t border-gray-100 pt-4">
+        {materials.length > 0 ? (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">
+              Course Materials
+            </h4>
+            {materials.map((mat, index) => {
+              const fileUrl = mat.file_url || "#";
+              const fileName = mat.file_name?.trim() || "Lecture note";
+              const key = mat.material_id || `${fileUrl}-${index}`;
 
-            return (
-              <li key={key}>
-                <Link
-                  href={fileUrl}
-                  className={`text-blue-700 underline hover:text-blue-900 ${
-                    fileUrl === "#" ? "pointer-events-none text-gray-500" : ""
-                  }`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {fileName}
-                </Link>
-                {mat.description && (
-                  <p className="text-sm text-gray-700 ml-4 italic">
-                    {mat.description}
-                  </p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="text-gray-600 italic">
-          No materials available for this lesson.
-        </p>
-      )}
-
-      <div className="absolute bottom-2 right-2 flex space-x-2">
-        <button
-          className="text-blue-700 hover:text-blue-900"
-          onClick={onEdit}
-          title="Edit Lesson"
-        >
-          <FiEdit />
-        </button>
-        <button
-          className="text-red-600 hover:text-red-800"
-          onClick={() => setConfirmOpen(true)}
-          title="Delete Lesson"
-        >
-          <FiTrash2 />
-        </button>
+              return (
+                <div key={key} className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <FiFileText className="text-blue-600" size={16} />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={fileUrl}
+                        className={`block font-medium text-sm transition-colors duration-200 ${
+                          fileUrl === "#" 
+                            ? "text-gray-400 cursor-not-allowed" 
+                            : "text-gray-700 hover:text-blue-600"
+                        }`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {fileName}
+                      </Link>
+                      {mat.description && (
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          {mat.description}
+                        </p>
+                      )}
+                    </div>
+                    {fileUrl !== "#" && (
+                      <div className="flex-shrink-0">
+                        <Link
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100 transition-colors duration-200"
+                        >
+                          Open
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <FiFile className="text-gray-400" size={24} />
+            </div>
+            <p className="text-gray-500 text-sm">
+              No materials available for this lesson
+            </p>
+            <p className="text-gray-400 text-xs mt-1">
+              Add materials to help students learn
+            </p>
+          </div>
+        )}
       </div>
 
       <ConfirmDialog

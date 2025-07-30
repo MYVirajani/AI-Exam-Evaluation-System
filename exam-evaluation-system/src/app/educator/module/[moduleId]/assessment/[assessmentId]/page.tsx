@@ -59,14 +59,18 @@ export default function AssessmentPage() {
 
   const [uploadedFiles, setUploadedFiles] = useState({
     examPaper: null as File | null,
+    questionPaper: null as File | null,
     answerScripts: [] as File[],
     modelAnswer: null as File | null,
     markingScheme: null as File | null,
   });
 
   const modelAnswerInputRef = useRef<HTMLInputElement>(null);
+  const questionPaperInputRef = useRef<HTMLInputElement>(null);
+
   const [selectedModel, setSelectedModel] = useState("ChatGPT");
   const [isUploadingModelAnswer, setIsUploadingModelAnswer] = useState(false);
+  const [isUploadingQuestionPaper, setIsUploadingQuestionPaper] = useState(false);
 
   const models = ["ChatGPT", "Deepseek", "Gemini", "Llama"];
 
@@ -142,7 +146,7 @@ export default function AssessmentPage() {
       formData.append("file", uploadedFiles.modelAnswer);
 
       const res = await fetch(
-        `/api/educator/module/${moduleId}/assessment/${assessmentId}`,
+        `/api/educator/module/${moduleId}/assessment/${assessmentId}/model-paper`,
         {
           method: "POST",
           body: formData,
@@ -156,7 +160,6 @@ export default function AssessmentPage() {
 
       const data = await res.json();
 
-      // Refresh assessment data
       const updatedAssessment = await fetch(
         `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
       ).then((res) => res.json());
@@ -177,6 +180,45 @@ export default function AssessmentPage() {
       );
     } finally {
       setIsUploadingModelAnswer(false);
+    }
+  };
+
+  const uploadQuestionPaper = async () => {
+    if (!uploadedFiles.questionPaper) return;
+
+    setIsUploadingQuestionPaper(true);
+    const toastId = toast.loading("Uploading question paper...");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadedFiles.questionPaper);
+
+      const res = await fetch(
+        `/api/educator/module/${moduleId}/assessment/${assessmentId}/question-paper`,
+        
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      toast.success("Question paper uploaded successfully!", { id: toastId });
+      setUploadedFiles((prev) => ({ ...prev, questionPaper: null }));
+    } catch (error) {
+      console.error("Error uploading question paper:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload question paper",
+        { id: toastId }
+      );
+    } finally {
+      setIsUploadingQuestionPaper(false);
     }
   };
 
@@ -220,32 +262,6 @@ export default function AssessmentPage() {
           </p>
         )}
 
-        {assessment.submissions.length > 0 && (
-          <div className="mb-6">
-            <h3 className="font-semibold mb-2 text-gray-800">Student Submissions:</h3>
-            <ul className="list-disc ml-6 space-y-1 text-sm text-gray-700">
-              {assessment.submissions.map((submission, index) => (
-                <li key={index}>
-                  <a
-                    href={submission.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline"
-                  >
-                    {submission.student.registration_number}
-                  </a>
-                  {submission.assessment_grade && (
-                    <span className="ml-2 text-gray-600">
-                      ({submission.assessment_grade.marks_awarded}/
-                      {submission.assessment_grade.total_marks})
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         <input
           type="file"
           ref={modelAnswerInputRef}
@@ -254,25 +270,58 @@ export default function AssessmentPage() {
           accept=".pdf,.docx"
         />
 
+        <input
+          type="file"
+          ref={questionPaperInputRef}
+          onChange={(e) => handleFileChange(e, "questionPaper")}
+          className="hidden"
+          accept=".pdf,.docx"
+        />
+
         <div className="space-y-8">
+         
           <FileUploadSection
+            title="Question Paper"
+            icon={<FileIcon />}
+            acceptedTypes="PDF, DOCX"
+            maxSize="5MB"
+            uploadedFile={uploadedFiles.questionPaper}
+            onTriggerUpload={() => triggerFileInput(questionPaperInputRef)}
+          />
+          <div className="mt-6 flex gap-4 justify-end">
+        
+
+          <Button
+            onClick={uploadQuestionPaper}
+            disabled={!uploadedFiles.questionPaper || isUploadingQuestionPaper}
+          >
+            {isUploadingQuestionPaper ? "Uploading..." : "Upload Question Paper"}
+          </Button>
+        </div>
+           <FileUploadSection
             title="Model Answer"
             icon={<FileIcon />}
             acceptedTypes="PDF, DOCX"
             maxSize="5MB"
             uploadedFile={uploadedFiles.modelAnswer}
             onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
+            
           />
-        </div>
-
-        <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex gap-4 justify-end">
           <Button
             onClick={uploadModelAnswer}
             disabled={!uploadedFiles.modelAnswer || isUploadingModelAnswer}
           >
             {isUploadingModelAnswer ? "Uploading..." : "Upload Model Answer"}
           </Button>
+
+        
         </div>
+
+        </div>
+        
+
+        
 
         <div className="mt-10 flex justify-end items-center gap-4">
           <Dropdown

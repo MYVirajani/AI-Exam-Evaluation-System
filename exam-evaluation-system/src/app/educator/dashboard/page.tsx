@@ -76,7 +76,7 @@ export default function EducatorHomePage() {
     }
 
     formData.append("createdBy", educatorId);
-    const res = await fetch("/api/educator/modules", {
+    const res = await fetch("/api/educator/module", {
       method: "POST",
       body: formData,
     });

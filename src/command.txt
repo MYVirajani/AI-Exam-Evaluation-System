@@ -1,51 +1,45 @@
-python -m src.scripts.embed_lecture_materials --provider OpenAI --model text-embedding-3-small --embedder text-embedding-3-small --root data/Lecture_Materials --module EE3350
- python -m src.scripts.extract_student_answers `
->>   --provider OpenAI `
->>   --model gpt-4o `
->>   --path data/Answer_Scripts/student_answer1.pdf `
->>   --embedder text-embedding-3-small
+python -m venv venv_openai
+venv_openai\Scripts\activate
+pip install -r requirements_openai.txt
 
-python -m src.scripts.print_extracted_answers --provider OpenAI --model gpt-4o
-
-python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --file data/Answer_Scripts/EE6250_EG-2020-4247.docx
-
- python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embeGet-ChildItem -Path "data/Answer_Scripts" -Include *.docx, *.pdf -Recurse | ForEach-Object { 
->>     python -m src.scripts.run_extract_and_save `
->>         --provider OpenAI `     
->>         --model gpt-4o `
->>         --file $_.FullName
->> }
-
-python -m src.scripts.embed_from_db --provider OpenAI --model gpt-4o  --embedder text-embedding-3-small  
-
-python -m src.scripts.embed_from_db `                                                             
->>   --provider OpenAI `
->>   --model text-embedding-3-small
-
-python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answers
+python -m venv venv_gemini
+venv_gemini\Scripts\activate
+pip install -r requirements_gemini.txt
 
 
-python -m src.scripts.mark_single_paper `
->>   --index EG/2020/4025 `
->>   --module EE3350 `
->>   --year 2024 `
->>   --month June `
->>   --provider OpenAI `
->>   --llm gpt-4o `
->>   --embedder text-embedding-3-small
-
-python -m src.scripts.mark_all_papers `
->>   --provider OpenAI `
->>   --llm gpt-4o `
->>   --embedder text-embedding-3-small `
->>   --module EE3350 `
->>   --year 2025 `
->>   --month June
 
 
-Get-ChildItem -Path "data/Answer_Scripts" -Include *.docx, *.pdf -Recurse | ForEach-Object {            
->>     python -m src.scripts.run_extract_and_save `
->>         --provider OpenAI `     
->>         --model gpt-4o `
->>         --file $_.FullName
->> }
+
+*******************openai commands******************
+python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answers --ext pdf docx
+
+python -m src.scripts.embed_lecture_materials --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --module EE3350 --root data/Lecture_Materials
+
+python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --folder data/Answer_Scripts
+
+python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-small --module_code EE3350 --year 2025 --month June
+
+python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June
+
+
+**for single paper**
+
+python -m src.scripts.mark_single_paper --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June --student EG/2020/4011
+
+
+
+*******************gemini commands******************
+
+python -m src.scripts.embed_model_answers --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001 --root data/Model_Answers --ext pdf docx
+
+python -m src.scripts.embed_lecture_materials --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001 --module EE3350 --root data/Lecture_Materials
+
+python -m src.scripts.run_extract_and_save --provider GoogleGemini --model gemini-2.0-flash --folder data/Answer_Scripts
+
+python -m src.scripts.embed_from_db --provider GoogleGemini --model models/embedding-001 --module_code EE3350 --year 2025 --month June
+
+python -m src.scripts.mark_all_papers --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE3350 --year 2025 --month JUNE
+
+**for single paper**
+
+python -m src.scripts.mark_single_paper --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE3350 --year 2025 --month JUNE --student EG/2020/4044

@@ -79,7 +79,7 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
         formData.append("moduleId", moduleId);
         formData.append("type", "lectureMaterial");
 
-        const res = await fetch(`/api/educator/module/[moduleId]/lesson/lecture-material`, {
+        const res = await fetch(`/api/educator/module/${moduleId}/lesson/lecture-material`, {
           
           method: "POST",
           body: formData,
@@ -89,7 +89,7 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
         console.log("Upload response:", data);
         if (!res.ok) throw new Error(data.error || "Upload failed");
 
-        lecture_materials.push({ file_url: data.filePath, description, file_name: data.file_name });
+        lecture_materials.push({ file_url: data.filePath, description, file_name: data.fileName });
       }
     }
 

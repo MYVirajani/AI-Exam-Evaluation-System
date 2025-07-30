@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     // 2. Optionally add lecture materials
     if (lecture_materials && Array.isArray(lecture_materials)) {
       for (const material of lecture_materials) {
-        const { file_url, description } = material;
+        const { file_url, description, file_name } = material;
 
         if (file_url) {
           console.log('Adding lecture material:', file_url);
@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
               data: {
                 lesson_id: newLesson.lesson_id,
                 file_url,
+                file_name,
                 description,
               },
             });

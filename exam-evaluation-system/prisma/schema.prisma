@@ -98,6 +98,7 @@ model Lesson {
 model LectureMaterial {
   material_id String    @id @default(uuid())
   lesson_id   String
+  file_name    String?
   file_url    String
   uploaded_on DateTime  @default(now())
   description String?   

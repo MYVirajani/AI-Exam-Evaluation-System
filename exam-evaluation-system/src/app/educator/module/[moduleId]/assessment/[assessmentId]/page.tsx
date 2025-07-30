@@ -6,6 +6,7 @@ import { FileIcon, BotIcon } from "@/components/Icons";
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import { FileUploadSection } from "@/components/Upload/FileUploadSection";
+import toast from "react-hot-toast";
 
 interface User {
   first_name: string;
@@ -64,14 +65,8 @@ export default function AssessmentPage() {
   });
 
   const modelAnswerInputRef = useRef<HTMLInputElement>(null);
-
-  const [uploadProgress, setUploadProgress] = useState<{
-    [key: string]: number;
-  }>({});
-  const [uploadErrors, setUploadErrors] = useState<{ [key: string]: string }>(
-    {}
-  );
   const [selectedModel, setSelectedModel] = useState("ChatGPT");
+  const [isUploadingModelAnswer, setIsUploadingModelAnswer] = useState(false);
 
   const models = ["ChatGPT", "Deepseek", "Gemini", "Llama"];
 
@@ -96,7 +91,7 @@ export default function AssessmentPage() {
 
         const enrichedAssessment = {
           ...data.assessments[0],
-          module: data.module,
+          module: data.moduleData,
           enrollmentCount: data.enrollmentCount,
         };
 
@@ -113,7 +108,7 @@ export default function AssessmentPage() {
     fetchAssessment();
   }, [moduleId, assessmentId, educatorId]);
 
-  const handleFileChange = async (
+  const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     type: keyof typeof uploadedFiles
   ) => {
@@ -124,56 +119,64 @@ export default function AssessmentPage() {
       const newFiles = Array.from(files).filter(
         (file) => file.type === "application/pdf" || file.name.endsWith(".pdf")
       );
-
       setUploadedFiles((prev) => ({
         ...prev,
         [type]: [...prev.answerScripts, ...newFiles],
       }));
-
-      for (const file of newFiles) await uploadFile(file, type);
     } else {
       const file = files[0];
       setUploadedFiles((prev) => ({ ...prev, [type]: file }));
-      await uploadFile(file, type);
     }
 
     e.target.value = "";
   };
 
-  const uploadFile = async (file: File, type: string) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", type);
-    if (moduleId) formData.append("moduleId", moduleId);
-    if (assessmentId) formData.append("assessmentId", assessmentId);
+  const uploadModelAnswer = async () => {
+    if (!uploadedFiles.modelAnswer) return;
+
+    setIsUploadingModelAnswer(true);
+    const toastId = toast.loading("Uploading model answer...");
 
     try {
-      setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
-      setUploadErrors((prev) => ({ ...prev, [file.name]: "" }));
+      const formData = new FormData();
+      formData.append("file", uploadedFiles.modelAnswer);
 
-      const res = await fetch("/api/educator/upload", {
-        method: "POST",
-        body: formData,
+      const res = await fetch(
+        `/api/educator/module/${moduleId}/assessment/${assessmentId}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      const data = await res.json();
+
+      // Refresh assessment data
+      const updatedAssessment = await fetch(
+        `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
+      ).then((res) => res.json());
+
+      setAssessment({
+        ...updatedAssessment.assessments[0],
+        module: updatedAssessment.module,
+        enrollmentCount: updatedAssessment.enrollmentCount,
       });
 
-      if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
-
-      setUploadProgress((prev) => ({ ...prev, [file.name]: 100 }));
+      toast.success("Model answer uploaded successfully!", { id: toastId });
+      setUploadedFiles((prev) => ({ ...prev, modelAnswer: null }));
     } catch (error) {
-      console.error(`Upload error for ${file.name}:`, error);
-      setUploadErrors((prev) => ({
-        ...prev,
-        [file.name]: error instanceof Error ? error.message : "Upload failed",
-      }));
-
-      if (type === "answerScripts") {
-        setUploadedFiles((prev) => ({
-          ...prev,
-          answerScripts: prev.answerScripts.filter((f) => f.name !== file.name),
-        }));
-      } else {
-        setUploadedFiles((prev) => ({ ...prev, [type]: null }));
-      }
+      console.error("Error uploading model answer:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to upload model answer",
+        { id: toastId }
+      );
+    } finally {
+      setIsUploadingModelAnswer(false);
     }
   };
 
@@ -248,6 +251,7 @@ export default function AssessmentPage() {
           ref={modelAnswerInputRef}
           onChange={(e) => handleFileChange(e, "modelAnswer")}
           className="hidden"
+          accept=".pdf,.docx"
         />
 
         <div className="space-y-8">
@@ -259,6 +263,15 @@ export default function AssessmentPage() {
             uploadedFile={uploadedFiles.modelAnswer}
             onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
           />
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <Button
+            onClick={uploadModelAnswer}
+            disabled={!uploadedFiles.modelAnswer || isUploadingModelAnswer}
+          >
+            {isUploadingModelAnswer ? "Uploading..." : "Upload Model Answer"}
+          </Button>
         </div>
 
         <div className="mt-10 flex justify-end items-center gap-4">

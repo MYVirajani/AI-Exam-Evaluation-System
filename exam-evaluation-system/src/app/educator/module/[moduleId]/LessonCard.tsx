@@ -14,6 +14,7 @@ interface Material {
 }
 
 interface LessonCardProps {
+  user_id: string;
   lesson_id: string;
   module_id: string;
   title: string;
@@ -23,6 +24,7 @@ interface LessonCardProps {
 }
 
 const LessonCard: React.FC<LessonCardProps> = ({
+  user_id,
   lesson_id,
   module_id,
   title,
@@ -34,7 +36,8 @@ const LessonCard: React.FC<LessonCardProps> = ({
 
   const handleDelete = async () => {
     try {
-      const userId = localStorage.getItem("userId");
+      const userId = user_id;
+      console.log('userId: ', userId);
       if (!userId) throw new Error("User not authenticated");
 
       const res = await fetch(
@@ -42,7 +45,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
         {
           method: "DELETE",
           headers: {
-            "x-user-id": userId,
+            "userId": userId,
           },
         }
       );

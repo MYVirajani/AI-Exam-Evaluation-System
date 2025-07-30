@@ -79,7 +79,6 @@ export default function ModulePage({ params }: ModulePageProps) {
         if (!res.ok) throw new Error("Failed to fetch module data");
 
         const data = await res.json();
-        console.log("data: ", data);
         setModuleData(data);
       } catch (err) {
         console.error("[getModuleData_ERROR]", err);
@@ -139,6 +138,16 @@ export default function ModulePage({ params }: ModulePageProps) {
       console.error("Create Event Error:", err.message);
       setError(err.message);
     }
+  };
+
+  const handleDeleteLesson = (lessonId: string) => {
+    setModuleData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        lessons: prev.lessons.filter((lesson) => lesson.lesson_id !== lessonId),
+      };
+    });
   };
 
   if (loading) {
@@ -233,7 +242,6 @@ export default function ModulePage({ params }: ModulePageProps) {
         )}
       </div>
 
-      {/* Event Creation Modal */}
       <EventCreationForm
         isOpen={isEventModalOpen}
         onClose={() => setIsEventModalOpen(false)}
@@ -268,27 +276,20 @@ export default function ModulePage({ params }: ModulePageProps) {
           lessons.map((lesson) => (
             <LessonCard
               key={lesson.lesson_id}
+              user_id={educatorId}
               lesson_id={lesson.lesson_id}
               module_id={moduleData.moduleId}
               title={lesson.title}
               materials={lesson.materials}
               onEdit={() => {
                 alert(`Edit lesson ${lesson.lesson_id}`);
-                // TODO: open edit modal or form
               }}
-              onDelete={() => {
-                const confirmDelete = confirm(
-                  "Are you sure you want to delete this lesson?"
-                );
-                if (!confirmDelete) return;
-
-                // TODO: make DELETE request here and update state accordingly
-                alert(`Deleted lesson ${lesson.lesson_id}`);
-              }}
+              onDelete={handleDeleteLesson}
             />
           ))
         )}
       </div>
+
       <LessonCreationForm
         isOpen={isLessonModalOpen}
         onClose={() => setIsLessonModalOpen(false)}

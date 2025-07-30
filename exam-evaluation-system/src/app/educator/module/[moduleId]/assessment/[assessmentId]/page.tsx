@@ -61,11 +61,8 @@ export default function AssessmentPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [uploadedFiles, setUploadedFiles] = useState({
-    examPaper: null as File | null,
     questionPaper: null as File | null,
-    answerScripts: [] as File[],
     modelAnswer: null as File | null,
-    markingScheme: null as File | null,
   });
 
   const modelAnswerInputRef = useRef<HTMLInputElement>(null);
@@ -122,18 +119,8 @@ export default function AssessmentPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    if (type === "answerScripts") {
-      const newFiles = Array.from(files).filter(
-        (file) => file.type === "application/pdf" || file.name.endsWith(".pdf")
-      );
-      setUploadedFiles((prev) => ({
-        ...prev,
-        [type]: [...prev.answerScripts, ...newFiles],
-      }));
-    } else {
-      const file = files[0];
-      setUploadedFiles((prev) => ({ ...prev, [type]: file }));
-    }
+    const file = files[0];
+    setUploadedFiles((prev) => ({ ...prev, [type]: file }));
 
     e.target.value = "";
   };
@@ -147,7 +134,6 @@ export default function AssessmentPage() {
     try {
       const formData = new FormData();
       formData.append("file", uploadedFiles.modelAnswer);
-      console.log('uploadedFiles.modelAnswer: ',uploadedFiles.modelAnswer)
 
       const res = await fetch(
         `/api/educator/module/${moduleId}/assessment/${assessmentId}/model-paper`,
@@ -162,17 +148,19 @@ export default function AssessmentPage() {
         throw new Error(errorData.error || "Upload failed");
       }
 
-      const data = await res.json();
-
-      const updatedAssessment = await fetch(
+      // Refetch assessment data to get updated information
+      const updatedAssessmentRes = await fetch(
         `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
-      ).then((res) => res.json());
-
-      setAssessment({
-        ...updatedAssessment.assessments[0],
-        module: updatedAssessment.module,
-        enrollmentCount: updatedAssessment.enrollmentCount,
-      });
+      );
+      
+      if (updatedAssessmentRes.ok) {
+        const updatedData = await updatedAssessmentRes.json();
+        setAssessment({
+          ...updatedData.assessments[0],
+          module: updatedData.moduleData,
+          enrollmentCount: updatedData.enrollmentCount,
+        });
+      }
 
       toast.success("Model answer uploaded successfully!", { id: toastId });
       setUploadedFiles((prev) => ({ ...prev, modelAnswer: null }));
@@ -199,7 +187,6 @@ export default function AssessmentPage() {
 
       const res = await fetch(
         `/api/educator/module/${moduleId}/assessment/${assessmentId}/question-paper`,
-        
         {
           method: "POST",
           body: formData,
@@ -209,6 +196,20 @@ export default function AssessmentPage() {
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Upload failed");
+      }
+
+      // Refetch assessment data to get updated information
+      const updatedAssessmentRes = await fetch(
+        `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
+      );
+      
+      if (updatedAssessmentRes.ok) {
+        const updatedData = await updatedAssessmentRes.json();
+        setAssessment({
+          ...updatedData.assessments[0],
+          module: updatedData.moduleData,
+          enrollmentCount: updatedData.enrollmentCount,
+        });
       }
 
       toast.success("Question paper uploaded successfully!", { id: toastId });
@@ -230,136 +231,252 @@ export default function AssessmentPage() {
     ref.current?.click();
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
-  if (!assessment) return <div className="p-8">Assessment not found</div>;
+  const handleStartEvaluation = () => {
+    // Check if required files are available
+    if (!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) {
+      toast.error("Please upload a question paper first");
+      return;
+    }
 
-  return (
-    <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          {assessment.title}
-        </h1>
-        <p className="text-gray-600 mb-1">
-          Module: {assessment.module.module_code} - {assessment.module.module_name}
-        </p>
-        <p className="text-gray-600 mb-6">
-          Uploads: {assessment.submissions?.length ?? 0} /{" "}
-          {assessment.enrollmentCount ?? 0} Enrollments
-        </p>
+    if (!assessment?.model_answer_paper?.file_url && !uploadedFiles.modelAnswer) {
+      toast.error("Please upload a model answer first");
+      return;
+    }
 
-        {assessment.description && (
-          <p className="text-gray-700 mb-6">{assessment.description}</p>
-        )}
+    if (!assessment?.submissions || assessment.submissions.length === 0) {
+      toast.error("No student submissions found for evaluation");
+      return;
+    }
 
-        
-        {assessment.question_paper?.file_url && (
-          <p className="text-sm mb-4">
-            📘{" "}
-            <a
-              href={assessment.question_paper.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline"
-            >
-              View Uploaded Question Paper
-            </a>
-          </p>
-        )}
+    console.log("Starting evaluation with model:", selectedModel);
+    toast.success(`Starting evaluation with ${selectedModel}...`);
+  };
 
-        <input
-          type="file"
-          ref={modelAnswerInputRef}
-          onChange={(e) => handleFileChange(e, "modelAnswer")}
-          className="hidden"
-          accept=".pdf,.docx"
-        />
+  // Check if evaluation is ready
+  const isEvaluationReady = () => {
+    return (
+      (assessment?.question_paper?.file_url || uploadedFiles.questionPaper) &&
+      (assessment?.model_answer_paper?.file_url || uploadedFiles.modelAnswer) &&
+      assessment?.submissions &&
+      assessment.submissions.length > 0
+    );
+  };
 
-        <input
-          type="file"
-          ref={questionPaperInputRef}
-          onChange={(e) => handleFileChange(e, "questionPaper")}
-          className="hidden"
-          accept=".pdf,.docx"
-        />
-
-        <div className="space-y-8">
-         
-          <FileUploadSection
-            title="Question Paper"
-            icon={<FileIcon />}
-            acceptedTypes="PDF, DOCX"
-            maxSize="5MB"
-            uploadedFile={uploadedFiles.questionPaper}
-            onTriggerUpload={() => triggerFileInput(questionPaperInputRef)}
-          />
-          <div className="mt-6 flex gap-4 justify-end">
-        
-
-          <Button
-            onClick={uploadQuestionPaper}
-            disabled={!uploadedFiles.questionPaper || isUploadingQuestionPaper}
-          >
-            {isUploadingQuestionPaper ? "Uploading..." : "Upload Question Paper"}
-          </Button>
-          
-        </div>
-        {assessment.model_answer_paper?.file_url && (
-          <p className="text-sm mb-4">
-            📘{" "}
-            <a
-              href={assessment.model_answer_paper.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline"
-            >
-              View Uploaded Model Answer
-            </a>
-          </p>
-        )}
-           <FileUploadSection
-            title="Model Answer"
-            icon={<FileIcon />}
-            acceptedTypes="PDF, DOCX"
-            maxSize="5MB"
-            uploadedFile={uploadedFiles.modelAnswer}
-            onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
-            
-          />
-          <div className="mt-6 flex gap-4 justify-end">
-          <Button
-            onClick={uploadModelAnswer}
-            disabled={!uploadedFiles.modelAnswer || isUploadingModelAnswer}
-          >
-            {isUploadingModelAnswer ? "Uploading..." : "Upload Model Answer"}
-          </Button>
-
-        
-        </div>
-
-        </div>
-        
-
-        
-
-        <div className="mt-10 flex justify-end items-center gap-4">
-          <Dropdown
-            options={models}
-            selectedOption={selectedModel}
-            onSelect={setSelectedModel}
-          />
-          <Button
-            disabled={
-              !uploadedFiles.examPaper ||
-              uploadedFiles.answerScripts.length === 0
-            }
-            onClick={() => console.log("Evaluating with model:", selectedModel)}
-          >
-            <BotIcon className="w-5 h-5" />
-            Start Evaluation
-          </Button>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-sm">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading assessment...</p>
         </div>
       </div>
-    </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-sm border border-red-200">
+          <div className="text-red-600 text-center">
+            <h2 className="text-lg font-semibold mb-2">Error</h2>
+            <p>{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!assessment) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-sm">
+          <p className="text-gray-600">Assessment not found</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        {/* Header Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="border-b border-gray-100 pb-4 mb-4">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {assessment.title}
+            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">{assessment.module.module_code}</span>
+                <span className="mx-2">•</span>
+                <span>{assessment.module.module_name}</span>
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Submissions: </span>
+                <span className="text-blue-600">
+                  {assessment.submissions?.length ?? 0}
+                </span>
+                <span className="mx-1">/</span>
+                <span>{assessment.enrollmentCount ?? 0} enrolled</span>
+              </div>
+            </div>
+          </div>
+          
+          {assessment.description && (
+            <p className="text-gray-700 leading-relaxed">{assessment.description}</p>
+          )}
+        </div>
+
+        {/* File Upload Sections */}
+        <div className="space-y-6">
+          {/* Question Paper Section */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Question Paper</h2>
+              {assessment.question_paper?.file_url && (
+                <a
+                  href={assessment.question_paper.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <FileIcon className="w-4 h-4 mr-2" />
+                  View Current Question Paper
+                </a>
+              )}
+            </div>
+            
+            <input
+              type="file"
+              ref={questionPaperInputRef}
+              onChange={(e) => handleFileChange(e, "questionPaper")}
+              className="hidden"
+              accept=".pdf,.docx"
+            />
+            
+            <FileUploadSection
+              title="Upload Question Paper"
+              icon={<FileIcon />}
+              acceptedTypes="PDF, DOCX"
+              maxSize="5MB"
+              uploadedFile={uploadedFiles.questionPaper}
+              onTriggerUpload={() => triggerFileInput(questionPaperInputRef)}
+            />
+            
+            {uploadedFiles.questionPaper && (
+              <div className="mt-4 flex justify-end">
+                <Button
+                  onClick={uploadQuestionPaper}
+                  disabled={isUploadingQuestionPaper}
+                  className="px-6"
+                >
+                  {isUploadingQuestionPaper ? "Uploading..." : "Upload Question Paper"}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Model Answer Section */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Model Answer</h2>
+              {assessment.model_answer_paper?.file_url && (
+                <a
+                  href={assessment.model_answer_paper.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <FileIcon className="w-4 h-4 mr-2" />
+                  View Current Model Answer
+                </a>
+              )}
+            </div>
+            
+            <input
+              type="file"
+              ref={modelAnswerInputRef}
+              onChange={(e) => handleFileChange(e, "modelAnswer")}
+              className="hidden"
+              accept=".pdf,.docx"
+            />
+            
+            <FileUploadSection
+              title="Upload Model Answer"
+              icon={<FileIcon />}
+              acceptedTypes="PDF, DOCX"
+              maxSize="5MB"
+              uploadedFile={uploadedFiles.modelAnswer}
+              onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
+            />
+            
+            {uploadedFiles.modelAnswer && (
+              <div className="mt-4 flex justify-end">
+                <Button
+                  onClick={uploadModelAnswer}
+                  disabled={isUploadingModelAnswer}
+                  className="px-6"
+                >
+                  {isUploadingModelAnswer ? "Uploading..." : "Upload Model Answer"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Evaluation Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">AI Evaluation</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700">
+                Select AI Model:
+              </label>
+              <Dropdown
+                options={models}
+                selectedOption={selectedModel}
+                onSelect={setSelectedModel}
+              />
+            </div>
+            <Button
+              disabled={!isEvaluationReady()}
+              onClick={handleStartEvaluation}
+              className="px-6 py-2.5"
+            >
+              <BotIcon className="w-5 h-5 mr-2" />
+              Start Evaluation
+            </Button>
+          </div>
+          
+          {/* Status Messages */}
+          {!isEvaluationReady() && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-800">
+                <span className="font-medium">Requirements for evaluation:</span>
+              </p>
+              <ul className="text-sm text-amber-700 mt-2 space-y-1">
+                {(!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) && (
+                  <li>• Question paper needs to be uploaded</li>
+                )}
+                {(!assessment?.model_answer_paper?.file_url && !uploadedFiles.modelAnswer) && (
+                  <li>• Model answer needs to be uploaded</li>
+                )}
+                {(!assessment?.submissions || assessment.submissions.length === 0) && (
+                  <li>• No student submissions available</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {isEvaluationReady() && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-800">
+                <span className="font-medium">Ready for evaluation!</span> All required files are uploaded and {assessment.submissions.length} student submissions are available.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

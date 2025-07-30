@@ -7,7 +7,7 @@ export async function GET(
   request: Request,
   { params }: { params: { educatorId: string } }
 ) {
-  const { educatorId } = await params;
+  const { educatorId } = params;
 
   try {
     console.log("Fetching dashboard for educatorId:", educatorId);
@@ -49,9 +49,15 @@ export async function GET(
         description: true,
         deadline: true,
         module_id: true,
-        question_paper_id: true,
-        model_answer_paper_id: true,
-        marking_scheme_id: true,
+        // question_paper: {
+        //   select: { question_paper_id: true }
+        // },
+        // model_answer_paper: {
+        //   select: { model_answer_paper_id: true }
+        // },
+        // marking_scheme: {
+        //   select: { marking_scheme_id: true }
+        // }
       },
       orderBy: { deadline: 'asc' },
     });

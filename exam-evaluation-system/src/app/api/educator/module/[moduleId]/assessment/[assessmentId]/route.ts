@@ -2,20 +2,53 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { moduleId: string; assessmentId: string } }
+  req: NextRequest,
+  {
+    params,
+  }: {
+    params: {
+      moduleId: string;
+      assessmentId: string;
+    };
+  }
 ) {
-  try {
-    const educatorId = request.nextUrl.searchParams.get("educatorId");
-    const { moduleId, assessmentId } =  params;
+  const { moduleId, assessmentId } = params;
+  const educatorId = req.nextUrl.searchParams.get("educatorId");
 
-    if (!educatorId) {
+  if (!educatorId) {
+    return NextResponse.json(
+      { success: false, message: "Missing educatorId" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // Fetch module details
+    const module = await prisma.module.findUnique({
+      where: {
+        module_id: moduleId,
+      },
+      select: {
+        module_code: true,
+        module_name: true,
+      },
+    });
+
+    if (!module) {
       return NextResponse.json(
-        { error: "Missing educatorId in query parameters" },
-        { status: 400 }
+        { success: false, message: "Module not found" },
+        { status: 404 }
       );
     }
 
+    // Count enrollments
+    const enrollmentCount = await prisma.enrollment.count({
+      where: {
+        module_id: moduleId,
+      },
+    });
+
+    // Fetch assessment by ID, module, and educator
     const assessment = await prisma.assessment.findFirst({
       where: {
         assessment_id: assessmentId,
@@ -23,23 +56,26 @@ export async function GET(
         created_by: educatorId,
       },
       include: {
-        module: true,
-        question_paper: {
-          include: {
-            questions: true,
+        model_answer_paper: {
+          select: {
+            file_url: true,
           },
         },
-        model_answer_paper: true,
-        marking_scheme: true,
         submissions: {
           include: {
             student: {
-              include: {
-                user: true,
+              select: {
+                registration_number: true,
+                user_id: true,
+              },
+            },
+            assessment_grade: {
+              select: {
+                marks_awarded: true,
+                total_marks: true,
               },
             },
             question_grades: true,
-            assessment_grade: true,
           },
         },
       },
@@ -47,35 +83,44 @@ export async function GET(
 
     if (!assessment) {
       return NextResponse.json(
-        { error: "Assessment not found or unauthorized" },
+        { success: false, message: "Assessment not found or access denied" },
         { status: 404 }
       );
     }
 
-    // Count the enrollments for the module
-    const enrollmentCount = await prisma.enrollment.count({
-      where: {
-        module_id: moduleId,
-      },
-    });
-
-    // Extract module_code
-    const moduleCode = assessment.module?.module_code ?? null;
-
-    const responsePayload = {
-      ...assessment,
+    // Build response
+    const responseData = {
+      module,
       enrollmentCount,
-      moduleCode,
+      assessments: [
+        {
+          assessment_id: assessment.assessment_id,
+          type: assessment.type,
+          title: assessment.title,
+          description: assessment.description,
+          deadline: assessment.deadline,
+          model_answer_paper: assessment.model_answer_paper || null,
+          submissions: assessment.submissions.map((sub) => ({
+            submission_id: sub.submission_id,
+            student: {
+              student_id: sub.student.user_id,
+              registration_number: sub.student.registration_number,
+            },
+            file_url: sub.file_url,
+            submission_time: sub.submission_time,
+            assessment_grade: sub.assessment_grade || null,
+            question_grades: sub.question_grades,
+          })),
+        },
+      ],
     };
+    console.log("Assessment response data:", JSON.stringify(responseData, null, 2));
 
-    // Log the response to console
-    console.log("[GET /assessment RESPONSE]:", responsePayload);
-
-    return NextResponse.json(responsePayload, { status: 200 });
-  } catch (error) {
-    console.error("[GET_ASSESSMENT_ERROR]", error);
+    return NextResponse.json(responseData);
+  } catch (err) {
+    console.error("[GET educator/module/[moduleId]/assessment/[assessmentId]]", err);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }

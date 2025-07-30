@@ -15,26 +15,33 @@ interface User {
 
 interface Assessment {
   assessment_id: string;
-  module_id: string;
-  created_by: string;
+  type: string;
   title: string;
   description?: string;
-  moduleCode?: string;
-  enrollmentCount?: number;
-  module: {
-    module_id: string;
-    module_name: string;
-    module_code: string;
-  };
+  deadline: string;
   model_answer_paper?: {
     file_url: string;
   } | null;
   submissions: {
+    submission_id: string;
     file_url: string;
+    submission_time: string;
     student: {
+      student_id: string;
+      registration_number: string;
       user: User;
     };
+    assessment_grade?: {
+      marks_awarded: number;
+      total_marks: number;
+    } | null;
+    question_grades: any[];
   }[];
+  module: {
+    module_code: string;
+    module_name: string;
+  };
+  enrollmentCount: number;
 }
 
 export default function AssessmentPage() {
@@ -82,8 +89,18 @@ export default function AssessmentPage() {
         );
         if (!res.ok) throw new Error("Failed to fetch assessment");
         const data = await res.json();
-        console.log("Assessment API Response:", data);
-        setAssessment(data);
+
+        if (!data || !data.assessments || data.assessments.length === 0) {
+          throw new Error("Assessment not found");
+        }
+
+        const enrichedAssessment = {
+          ...data.assessments[0],
+          module: data.module,
+          enrollmentCount: data.enrollmentCount,
+        };
+
+        setAssessment(enrichedAssessment);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch assessment"
@@ -212,8 +229,14 @@ export default function AssessmentPage() {
                     rel="noopener noreferrer"
                     className="text-blue-600 underline"
                   >
-                    {submission.student.user.first_name} {submission.student.user.last_name}
+                    {submission.student.registration_number}
                   </a>
+                  {submission.assessment_grade && (
+                    <span className="ml-2 text-gray-600">
+                      ({submission.assessment_grade.marks_awarded}/
+                      {submission.assessment_grade.total_marks})
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

@@ -113,16 +113,41 @@ model Assessment {
   deadline              DateTime
   module_id             String
   created_by            String
-  question_paper_id     String?  @unique
-  model_answer_paper_id String?  @unique
-  marking_scheme_id     String?  @unique
 
   module             Module             @relation(fields: [module_id], references: [module_id])
   educator           Educator           @relation(fields: [created_by], references: [user_id])
-  question_paper     Question_Paper?    @relation(fields: [question_paper_id], references: [question_paper_id])
-  model_answer_paper Model_Answer_Paper?@relation(fields: [model_answer_paper_id], references: [model_answer_paper_id])
-  marking_scheme     Marking_Scheme?    @relation(fields: [marking_scheme_id], references: [marking_scheme_id])
+  question_paper     Question_Paper?
+  model_answer_paper Model_Answer_Paper?
+  marking_scheme     Marking_Scheme?
   submissions        Submission[]
+}
+
+model Question_Paper {
+  question_paper_id String   @id
+  assessment_id     String   @unique
+  assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
+
+  file_url   String
+  created_on DateTime
+  questions  Question[]
+}
+
+model Model_Answer_Paper {
+  model_answer_paper_id String   @id
+  assessment_id         String   @unique
+  assessment            Assessment @relation(fields: [assessment_id], references: [assessment_id])
+
+  file_url   String
+  created_on DateTime
+}
+
+model Marking_Scheme {
+  marking_scheme_id String   @id
+  assessment_id     String   @unique
+  assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
+
+  file_url   String
+  created_on DateTime
 }
 
 enum assessmentType {
@@ -132,14 +157,6 @@ enum assessmentType {
   quiz
 }
 
-model Question_Paper {
-  question_paper_id String      @id
-  assessment        Assessment?
-
-  file_url   String
-  created_on DateTime
-  questions  Question[]
-}
 
 model Question {
   question_id       String @id
@@ -153,21 +170,6 @@ model Question {
   grades         Question_Grade[]
 }
 
-model Model_Answer_Paper {
-  model_answer_paper_id String      @id
-  assessment            Assessment?
-
-  file_url   String
-  created_on DateTime
-}
-
-model Marking_Scheme {
-  marking_scheme_id String      @id
-  assessment        Assessment?
-
-  file_url   String
-  created_on DateTime
-}
 
 model Submission {
   submission_id   String   @id

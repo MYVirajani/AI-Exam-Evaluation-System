@@ -82,7 +82,7 @@ export async function GET(
         : null,
     };
 
-    console.log("Final API Response:", response);
+    console.log("Assessmet Response:", response);
 
     return NextResponse.json(response);
   } catch (error) {

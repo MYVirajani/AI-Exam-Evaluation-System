@@ -75,7 +75,7 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
       >
         <h3 className="text-lg font-bold text-blue-900">{title}</h3>
         <p className="text-sm text-blue-800">{module}</p>
-        <p className="text-base font-medium mt-2 text-black">{uploads} Uploads</p>
+        <p className="text-base font-medium mt-2 text-black">{uploads} Submissions</p>
         <p className="text-xs text-gray-600 mt-2">
           {label}<br />{date}
         </p>

@@ -529,6 +529,8 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
                 answer_text    TEXT,
                 guideline_text TEXT,
                 max_marks      FLOAT,
+
+                -- metadata
                 module_code TEXT,
                 exam_year   INT,
                 exam_month  TEXT,

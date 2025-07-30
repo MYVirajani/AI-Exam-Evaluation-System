@@ -23,6 +23,9 @@ interface Assessment {
   model_answer_paper?: {
     file_url: string;
   } | null;
+  question_paper?: {
+    file_url: string;
+  } | null;
   submissions: {
     submission_id: string;
     file_url: string;
@@ -248,16 +251,17 @@ export default function AssessmentPage() {
           <p className="text-gray-700 mb-6">{assessment.description}</p>
         )}
 
-        {assessment.model_answer_paper?.file_url && (
+        
+        {assessment.question_paper?.file_url && (
           <p className="text-sm mb-4">
             📘{" "}
             <a
-              href={assessment.model_answer_paper.file_url}
+              href={assessment.question_paper.file_url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 underline"
             >
-              View Uploaded Model Answer
+              View Uploaded Question Paper
             </a>
           </p>
         )}
@@ -297,7 +301,21 @@ export default function AssessmentPage() {
           >
             {isUploadingQuestionPaper ? "Uploading..." : "Upload Question Paper"}
           </Button>
+          
         </div>
+        {assessment.model_answer_paper?.file_url && (
+          <p className="text-sm mb-4">
+            📘{" "}
+            <a
+              href={assessment.model_answer_paper.file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              View Uploaded Model Answer
+            </a>
+          </p>
+        )}
            <FileUploadSection
             title="Model Answer"
             icon={<FileIcon />}

@@ -61,6 +61,11 @@ export async function GET(
             file_url: true,
           },
         },
+        question_paper: {
+          select: {
+            file_url: true,
+          },
+        },
         submissions: {
           include: {
             student: {
@@ -100,6 +105,7 @@ export async function GET(
           description: assessment.description,
           deadline: assessment.deadline,
           model_answer_paper: assessment.model_answer_paper || null,
+          question_paper: assessment.question_paper || null,
           submissions: assessment.submissions.map((sub) => ({
             submission_id: sub.submission_id,
             student: {

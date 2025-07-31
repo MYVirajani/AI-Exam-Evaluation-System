@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     // 🔄 Check for existing enrollment
     const existing = await prisma.enrollment.findFirst({
       where: {
-        student_id: registration_number,
+        registration_number: registration_number,
         module_id: foundModule.module_id,
       },
     });
@@ -68,8 +68,8 @@ export async function POST(request: Request) {
     // 🎉 Enroll student
     const enrollment = await prisma.enrollment.create({
       data: {
-        enrollement_id: uuidv4(),
-        student_id: registration_number,
+        enrollment_id: uuidv4(),
+        registration_number: registration_number,
         module_id: foundModule.module_id,
       },
     });

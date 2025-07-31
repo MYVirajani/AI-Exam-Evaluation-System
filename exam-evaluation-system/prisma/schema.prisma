@@ -73,14 +73,14 @@ model Module {
 }
 
 model Enrollment {
-  enrollement_id String @id @default(uuid())
-  student_id     String
+  enrollment_id String @id @default(uuid())
+  registration_number     String
   module_id      String
 
-  student Student @relation(fields: [student_id], references: [registration_number])
+  student Student @relation(fields: [registration_number], references: [registration_number])
   module  Module  @relation(fields: [module_id], references: [module_id])
 
-  @@unique([student_id, module_id]) 
+  @@unique([registration_number, module_id]) 
 }
 
 

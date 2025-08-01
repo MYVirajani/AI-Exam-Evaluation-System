@@ -1,29 +1,29 @@
-'use client'
-import { FileIcon, UploadIcon, CheckIcon, XIcon } from '../Icons'
-import Button from '../Button'
-import { FileWithPreview } from './types'
-import { useState } from 'react'
+'use client';
+
+import { FileIcon, UploadIcon, CheckIcon, XIcon } from '../Icons';
+import Button from '../Button';
+import { FileWithPreview } from './types';
+import { useState } from 'react';
+import { FILE_CONFIG, getAcceptedExtensions, getMaxSizeLabel } from '@/lib/fileConfig';
 
 interface FileUploadSectionProps {
-  title: string
-  icon: React.ReactNode
-  acceptedTypes: string
-  maxSize: string
-  uploadedFile: FileWithPreview | FileWithPreview[] | null | File
-  onTriggerUpload: () => void
-  onRemoveFile?: (index: number) => void
-  uploadProgress?: { [key: string]: number }
-  uploadErrors?: { [key: string]: string }
-  multiple?: boolean
-  disabled?: boolean
-  description?: string
+  title: string;
+  icon: React.ReactNode;
+  type: 'QUESTION_PAPER' | 'MODEL_PAPER' | 'ANSWER_SCRIPT' | 'IMAGE';
+  uploadedFile: FileWithPreview | FileWithPreview[] | null | File;
+  onTriggerUpload: () => void;
+  onRemoveFile?: (index: number) => void;
+  uploadProgress?: { [key: string]: number };
+  uploadErrors?: { [key: string]: string };
+  multiple?: boolean;
+  disabled?: boolean;
+  description?: string;
 }
 
 export function FileUploadSection({
   title,
   icon,
-  acceptedTypes,
-  maxSize,
+  type,
   uploadedFile,
   onTriggerUpload,
   onRemoveFile,
@@ -31,8 +31,11 @@ export function FileUploadSection({
   uploadErrors = {},
   multiple = false,
   disabled = false,
-  description
+  description,
 }: FileUploadSectionProps) {
+ 
+  const acceptedTypes = getAcceptedExtensions(FILE_CONFIG[type].types);
+  const maxSize = getMaxSizeLabel(FILE_CONFIG[type].maxSizeMB);
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {

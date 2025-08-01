@@ -425,10 +425,7 @@ export default function StudentAssessmentPage() {
 
               <FileUploadSection
                 title="Upload Answer Script"
-                acceptedTypes={FILE_CONFIG.ANSWER_SCRIPT.types
-                  .map((ext) => ext.toUpperCase().replace(".", ""))
-                  .join(", ")}
-                maxSize={`${FILE_CONFIG.ANSWER_SCRIPT.maxSizeMB}MB`}
+                type='ANSWER_SCRIPT'
                 icon={<FileIcon />}
                 uploadedFile={answerScriptFile}
                 onTriggerUpload={triggerFileInput}

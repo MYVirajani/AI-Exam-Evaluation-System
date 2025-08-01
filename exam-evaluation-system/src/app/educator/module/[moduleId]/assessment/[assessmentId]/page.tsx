@@ -7,6 +7,8 @@ import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import { FileUploadSection } from "@/components/Upload/FileUploadSection";
 import toast from "react-hot-toast";
+import { FILE_CONFIG } from "@/lib/fileConfig";
+
 
 interface User {
   first_name: string;
@@ -351,14 +353,14 @@ export default function AssessmentPage() {
               ref={questionPaperInputRef}
               onChange={(e) => handleFileChange(e, "questionPaper")}
               className="hidden"
-              accept=".pdf,.docx"
+              accept={FILE_CONFIG.QUESTION_PAPER.types.join(",")}
+
             />
             
             <FileUploadSection
               title="Upload Question Paper"
               icon={<FileIcon />}
-              acceptedTypes="PDF, DOCX"
-              maxSize="5MB"
+              type='QUESTION_PAPER'
               uploadedFile={uploadedFiles.questionPaper}
               onTriggerUpload={() => triggerFileInput(questionPaperInputRef)}
             />
@@ -398,14 +400,13 @@ export default function AssessmentPage() {
               ref={modelAnswerInputRef}
               onChange={(e) => handleFileChange(e, "modelAnswer")}
               className="hidden"
-              accept=".pdf,.docx"
+              accept={FILE_CONFIG.MODEL_PAPER.types.join(",")}
             />
             
             <FileUploadSection
               title="Upload Model Answer"
               icon={<FileIcon />}
-              acceptedTypes="PDF, DOCX"
-              maxSize="5MB"
+              type='MODEL_PAPER'
               uploadedFile={uploadedFiles.modelAnswer}
               onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
             />

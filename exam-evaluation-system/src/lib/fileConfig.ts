@@ -1,3 +1,4 @@
+// lib/fileConfig.ts
 export const FILE_CONFIG = {
   QUESTION_PAPER: {
     types: [".pdf", ".docx"],
@@ -9,7 +10,7 @@ export const FILE_CONFIG = {
   },
   ANSWER_SCRIPT: {
     types: [".pdf", ".docx"],
-    maxSizeMB: 10,
+    maxSizeMB: 5,
   },
   IMAGE: {
     types: [".png", ".jpg", ".jpeg", ".webp"],
@@ -17,5 +18,9 @@ export const FILE_CONFIG = {
   },
 };
 
-export const getAcceptedExtensions = (types: string[]) => types.join(",");
+
 export const getMaxSizeInBytes = (mb: number) => mb * 1024 * 1024;
+export const getAcceptedExtensions = (types: string[]) =>
+  types.map((ext) => ext.toUpperCase().replace(".", "")).join(", ");
+
+export const getMaxSizeLabel = (mb: number) => `${mb}MB`;

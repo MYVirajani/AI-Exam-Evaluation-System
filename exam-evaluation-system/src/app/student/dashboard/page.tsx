@@ -96,35 +96,40 @@ const StudentHomePage: React.FC = () => {
 
   // Countdown timers update every second
   useEffect(() => {
-    const updateCountdowns = () => {
-      const now = Date.now();
-      const newCountdowns: Record<string, string> = {};
+  const updateCountdowns = () => {
+  const now = Date.now();
+  const newCountdowns: Record<string, string> = {};
 
-      allAssessments.forEach(({ assessment_id, deadline }) => {
-        const deadlineTime = new Date(deadline).getTime();
-        const diff = deadlineTime - now;
+  allAssessments.forEach(({ assessment_id, deadline }) => {
+    const deadlineTime = new Date(deadline).getTime();
+    const diff = deadlineTime - now;
 
-        if (diff <= 0) {
-          newCountdowns[assessment_id] = "00:00:00";
-        } else {
-          const hours = Math.floor(diff / (1000 * 60 * 60));
-          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-          newCountdowns[assessment_id] = [
-            hours.toString().padStart(2, "0"),
-            minutes.toString().padStart(2, "0"),
-            seconds.toString().padStart(2, "0"),
-          ].join(":");
-        }
-      });
+    if (diff <= 0) {
+      newCountdowns[assessment_id] = "Expired";
+    } else {
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setCountdowns(newCountdowns);
-    };
+      const parts: string[] = [];
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0 || parts.length > 0) parts.push(`${hours}h`);
+      if (minutes > 0 || parts.length > 0) parts.push(`${minutes}m`);
+      parts.push(`${seconds}s`);
 
-    updateCountdowns(); // Initial call
-    const timer = setInterval(updateCountdowns, 1000);
-    return () => clearInterval(timer);
-  }, [allAssessments]);
+      newCountdowns[assessment_id] = parts.join(" ");
+    }
+  });
+
+  setCountdowns(newCountdowns);
+};
+
+
+  updateCountdowns(); // initial call
+  const timer = setInterval(updateCountdowns, 1000);
+  return () => clearInterval(timer);
+}, [allAssessments]);
 
   // Navigate to assessment detail page on event card click
   const handleEventCardClick = (moduleId: string, assessmentId: string) => {

@@ -2,7 +2,14 @@
 
 import React, { useState, useRef } from "react";
 import Link from "next/link";
-import { FiEdit, FiTrash2, FiFile, FiFileText, FiPlus, FiUpload } from "react-icons/fi";
+import {
+  FiEdit,
+  FiTrash2,
+  FiFile,
+  FiFileText,
+  FiPlus,
+  FiUpload,
+} from "react-icons/fi";
 import ConfirmDialog from "@/components/ConfimDialog";
 import toast from "react-hot-toast";
 
@@ -37,12 +44,13 @@ const LessonCard: React.FC<LessonCardProps> = ({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [localMaterials, setLocalMaterials] = useState<Material[]>(materials);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDelete = async () => {
     try {
       const userId = user_id;
-      console.log('userId: ', userId);
+      console.log("userId: ", userId);
       if (!userId) throw new Error("User not authenticated");
 
       const res = await fetch(
@@ -50,7 +58,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
         {
           method: "DELETE",
           headers: {
-            "userId": userId,
+            userId: userId,
           },
         }
       );
@@ -69,59 +77,124 @@ const LessonCard: React.FC<LessonCardProps> = ({
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      return;
+    }
+    
+    const newFileArray = Array.from(files);
+    
+    // Check for duplicate files by name and size
+    const existingFileKeys = selectedFiles.map(f => `${f.name}-${f.size}`);
+    const uniqueNewFiles = newFileArray.filter(newFile => {
+      const fileKey = `${newFile.name}-${newFile.size}`;
+      return !existingFileKeys.includes(fileKey);
+    });
+    
+    if (uniqueNewFiles.length === 0) {
+      toast.info("All selected files are already in the list");
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+    
+    // Add new unique files to existing selection
+    const updatedFiles = [...selectedFiles, ...uniqueNewFiles];
+    setSelectedFiles(updatedFiles);
+    
+    console.log("New files added:", uniqueNewFiles.length, uniqueNewFiles.map(f => f.name));
+    console.log("Total files now:", updatedFiles.length);
+    
+    if (uniqueNewFiles.length < newFileArray.length) {
+      const duplicateCount = newFileArray.length - uniqueNewFiles.length;
+      toast.info(`${uniqueNewFiles.length} new files added. ${duplicateCount} duplicate${duplicateCount > 1 ? 's' : ''} skipped.`);
+    } else {
+      toast.success(`${uniqueNewFiles.length} file${uniqueNewFiles.length > 1 ? 's' : ''} added to selection`);
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFiles || selectedFiles.length === 0) {
+      toast.error("Please select files first");
+      return;
+    }
 
     setUploading(true);
-    
+
     try {
       const formData = new FormData();
-      
-      // Append all selected files
-      Array.from(files).forEach((file) => {
-        formData.append('files', file);
-      });
-      
-      formData.append('lessonId', lesson_id);
-      formData.append('moduleId', module_id);
-      formData.append('userId', user_id);
 
-      const res = await fetch(`/api/educator/module/${module_id}/lesson/${lesson_id}/materials`, {
-        method: 'POST',
-        body: formData,
+      // Append each file individually
+      selectedFiles.forEach(file => {
+        formData.append("files", file);
       });
+
+      // Add other data
+      // if (description) {
+      //   formData.append("description", description);
+      // }
+
+      const res = await fetch(
+        `/api/educator/module/${module_id}/lesson/${lesson_id}/lecture-material`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to upload materials');
+        throw new Error(data.error || "Failed to upload materials");
       }
 
-      // Update local materials state
       const newMaterials = [...localMaterials, ...data.materials];
       setLocalMaterials(newMaterials);
-      
-      // Notify parent component if callback is provided
       if (onMaterialsUpdate) {
         onMaterialsUpdate(lesson_id, newMaterials);
       }
 
-      toast.success(`${files.length} material${files.length > 1 ? 's' : ''} uploaded successfully!`);
+      toast.success(data.message || "Upload successful!");
+      setSelectedFiles([]);
     } catch (err: any) {
-      console.error('Material upload failed:', err);
-      toast.error('Error uploading materials: ' + err.message);
+      console.error("Material upload failed:", err);
+      toast.error("Error uploading materials: " + err.message);
     } finally {
       setUploading(false);
-      // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
 
   const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     fileInputRef.current?.click();
+  };
+
+  const handleCancelUpload = () => {
+    setSelectedFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveFile = (indexToRemove: number) => {
+    const updatedFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
+    setSelectedFiles(updatedFiles);
+    
+    if (updatedFiles.length === 0 && fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -134,24 +207,21 @@ const LessonCard: React.FC<LessonCardProps> = ({
           </h3>
           <div className="flex items-center text-sm text-gray-500">
             <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
-              {localMaterials.length} material{localMaterials.length !== 1 ? 's' : ''}
+              {localMaterials.length} material
+              {localMaterials.length !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
-        
+
         {/* Action Buttons */}
         <div className="flex space-x-2 ml-4">
           <button
             className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleUploadClick}
             disabled={uploading}
-            title="Upload Materials"
+            title="Select Files"
           >
-            {uploading ? (
-              <div className="animate-spin w-[18px] h-[18px] border-2 border-green-600 border-t-transparent rounded-full"></div>
-            ) : (
-              <FiUpload size={18} />
-            )}
+            <FiUpload size={18} />
           </button>
           <button
             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
@@ -176,9 +246,74 @@ const LessonCard: React.FC<LessonCardProps> = ({
         type="file"
         multiple
         accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.mp4,.mp3"
-        onChange={handleFileUpload}
+        onChange={handleFileSelect}
         className="hidden"
       />
+
+      {/* File Selection and Upload Section */}
+      {selectedFiles && selectedFiles.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-blue-800">
+              Selected Files ({selectedFiles.length})
+            </h4>
+            <button
+              onClick={handleCancelUpload}
+              className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
+          
+          <div className="space-y-2 mb-4">
+            {selectedFiles.map((file, index) => (
+              <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white rounded-lg p-2 border border-blue-200">
+                <div className="flex items-center text-sm text-blue-700">
+                  <FiFile size={14} className="mr-2 flex-shrink-0" />
+                  <span className="truncate mr-2">{file.name}</span>
+                  <span className="text-xs text-blue-500 whitespace-nowrap">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleRemoveFile(index)}
+                  className="ml-2 text-red-500 hover:text-red-700 transition-colors p-1"
+                  title="Remove file"
+                >
+                  <FiTrash2 size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex space-x-2">
+            <button
+              onClick={handleFileUpload}
+              disabled={uploading}
+              className="flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {uploading ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <FiUpload size={16} className="mr-2" />
+                  Upload {selectedFiles.length} File{selectedFiles.length > 1 ? 's' : ''}
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleUploadClick}
+              disabled={uploading}
+              className="px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add More Files
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Materials Section */}
       <div className="border-t border-gray-100 pt-4">
@@ -186,24 +321,15 @@ const LessonCard: React.FC<LessonCardProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-gray-700">
-                Course Materials
+                Lecture Materials
               </h4>
               <button
                 onClick={handleUploadClick}
                 disabled={uploading}
                 className="inline-flex items-center px-3 py-1 text-xs font-medium text-green-600 bg-green-50 rounded-full hover:bg-green-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {uploading ? (
-                  <>
-                    <div className="animate-spin w-3 h-3 border border-green-600 border-t-transparent rounded-full mr-1"></div>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <FiPlus size={12} className="mr-1" />
-                    Add More
-                  </>
-                )}
+                <FiPlus size={12} className="mr-1" />
+                Add More
               </button>
             </div>
             {localMaterials.map((mat, index) => {
@@ -212,7 +338,10 @@ const LessonCard: React.FC<LessonCardProps> = ({
               const key = mat.material_id || `${fileUrl}-${index}`;
 
               return (
-                <div key={key} className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200">
+                <div
+                  key={key}
+                  className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200"
+                >
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0 mt-1">
                       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -223,8 +352,8 @@ const LessonCard: React.FC<LessonCardProps> = ({
                       <Link
                         href={fileUrl}
                         className={`block font-medium text-sm transition-colors duration-200 ${
-                          fileUrl === "#" 
-                            ? "text-gray-400 cursor-not-allowed" 
+                          fileUrl === "#"
+                            ? "text-gray-400 cursor-not-allowed"
                             : "text-gray-700 hover:text-blue-600"
                         }`}
                         target="_blank"
@@ -268,17 +397,8 @@ const LessonCard: React.FC<LessonCardProps> = ({
               disabled={uploading}
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {uploading ? (
-                <>
-                  <div className="animate-spin w-4 h-4 border border-blue-600 border-t-transparent rounded-full mr-2"></div>
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <FiUpload size={16} className="mr-2" />
-                  Upload Materials
-                </>
-              )}
+              <FiUpload size={16} className="mr-2" />
+              Select Files to Upload
             </button>
           </div>
         )}

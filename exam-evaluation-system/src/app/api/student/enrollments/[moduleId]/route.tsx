@@ -62,6 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: { moduleId: st
         description: true,
         deadline: true,
       },
+      orderBy: { deadline: 'asc' },
     });
 
     const lessons = await prisma.lesson.findMany({

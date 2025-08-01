@@ -1,0 +1,502 @@
+[
+  {
+    "id": 1,
+    "student_index": "EG/2020/4001",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 13.0,
+    "total_possible": 16.5,
+    "graded_at": "2025-07-30 09:43:50.074213"
+  },
+  {
+    "id": 2,
+    "student_index": "EG/2020/4002",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 14.0,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 09:44:08.832203"
+  },
+  {
+    "id": 3,
+    "student_index": "EG/2020/4003",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 13.5,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 09:45:01.075487"
+  },
+  {
+    "id": 4,
+    "student_index": "EG/2020/4004",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 11.25,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 09:45:17.004333"
+  },
+  {
+    "id": 5,
+    "student_index": "EG/2020/4005",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 11.0,
+    "total_possible": 16.0,
+    "graded_at": "2025-07-30 09:46:04.166783"
+  },
+  {
+    "id": 6,
+    "student_index": "EG/2020/4006",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 4.0,
+    "total_possible": 12.0,
+    "graded_at": "2025-07-30 09:46:20.07984"
+  },
+  {
+    "id": 7,
+    "student_index": "EG/2020/4007",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 14.5,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 09:47:05.184039"
+  },
+  {
+    "id": 8,
+    "student_index": "EG/2020/4008",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 11.5,
+    "total_possible": 13.5,
+    "graded_at": "2025-07-30 09:48:00.001718"
+  },
+  {
+    "id": 9,
+    "student_index": "EG/2020/4009",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 9.5,
+    "total_possible": 18.5,
+    "graded_at": "2025-07-30 09:48:12.520298"
+  },
+  {
+    "id": 10,
+    "student_index": "EG/2020/4010",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 18.0,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 09:49:02.782345"
+  },
+  {
+    "id": 11,
+    "student_index": "EG/2020/4011",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 11.5,
+    "total_possible": 16.0,
+    "graded_at": "2025-07-30 09:49:25.077417"
+  },
+  {
+    "id": 12,
+    "student_index": "EG/2020/4012",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 13.5,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 09:50:04.000914"
+  },
+  {
+    "id": 13,
+    "student_index": "EG/2020/4013",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 11.5,
+    "total_possible": 16.0,
+    "graded_at": "2025-07-30 09:50:22.672077"
+  },
+  {
+    "id": 14,
+    "student_index": "EG/2020/4014",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 10.0,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 09:51:09.597539"
+  },
+  {
+    "id": 15,
+    "student_index": "EG/2020/4039",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 7.5,
+    "total_possible": 14.5,
+    "graded_at": "2025-07-30 11:57:05.523728"
+  },
+  {
+    "id": 16,
+    "student_index": "EG/2020/4015",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 10.5,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 09:52:21.175097"
+  },
+  {
+    "id": 33,
+    "student_index": "EG/2020/4016",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 17.5,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 09:53:07.57206"
+  },
+  {
+    "id": 34,
+    "student_index": "EG/2020/4017",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 6.5,
+    "total_possible": 16.0,
+    "graded_at": "2025-07-30 09:53:24.343371"
+  },
+  {
+    "id": 35,
+    "student_index": "EG/2020/4018",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 15.0,
+    "total_possible": 18.5,
+    "graded_at": "2025-07-30 09:54:10.164511"
+  },
+  {
+    "id": 36,
+    "student_index": "EG/2020/4019",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 12.5,
+    "total_possible": 18.0,
+    "graded_at": "2025-07-30 09:54:25.949522"
+  },
+  {
+    "id": 37,
+    "student_index": "EG/2020/4020",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 11.5,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 09:55:10.302489"
+  },
+  {
+    "id": 38,
+    "student_index": "EG/2020/4021",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 15.5,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 11:35:03.851066"
+  },
+  {
+    "id": 39,
+    "student_index": "EG/2020/4022",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 3.5,
+    "total_possible": 8.5,
+    "graded_at": "2025-07-30 11:36:40.311563"
+  },
+  {
+    "id": 40,
+    "student_index": "EG/2020/4023",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 7.0,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 11:37:12.360065"
+  },
+  {
+    "id": 41,
+    "student_index": "EG/2020/4024",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 9.0,
+    "total_possible": 17.5,
+    "graded_at": "2025-07-30 11:38:27.827317"
+  },
+  {
+    "id": 42,
+    "student_index": "EG/2020/4025",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 9.5,
+    "total_possible": 12.5,
+    "graded_at": "2025-07-30 11:39:16.354499"
+  },
+  {
+    "id": 43,
+    "student_index": "EG/2020/4026",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 17.0,
+    "total_possible": 18.0,
+    "graded_at": "2025-07-30 11:40:28.861781"
+  },
+  {
+    "id": 44,
+    "student_index": "EG/2020/4027",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 8.5,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 11:41:39.725897"
+  },
+  {
+    "id": 45,
+    "student_index": "EG/2020/4028",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 11.0,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 11:42:20.065284"
+  },
+  {
+    "id": 46,
+    "student_index": "EG/2020/4029",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 6.0,
+    "total_possible": 16.5,
+    "graded_at": "2025-07-30 11:43:02.258526"
+  },
+  {
+    "id": 47,
+    "student_index": "EG/2020/4030",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 9.0,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 11:48:46.137721"
+  },
+  {
+    "id": 48,
+    "student_index": "EG/2020/4031",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 11.75,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 11:49:51.490754"
+  },
+  {
+    "id": 49,
+    "student_index": "EG/2020/4032",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 15.0,
+    "total_possible": 18.5,
+    "graded_at": "2025-07-30 11:50:31.833585"
+  },
+  {
+    "id": 50,
+    "student_index": "EG/2020/4033",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 8.25,
+    "total_possible": 13.5,
+    "graded_at": "2025-07-30 11:51:24.964037"
+  },
+  {
+    "id": 51,
+    "student_index": "EG/2020/4034",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 8.5,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 11:53:00.267407"
+  },
+  {
+    "id": 52,
+    "student_index": "EG/2020/4035",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 14.0,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 11:53:38.302741"
+  },
+  {
+    "id": 53,
+    "student_index": "EG/2020/4036",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 9.5,
+    "total_possible": 15.0,
+    "graded_at": "2025-07-30 11:54:15.006067"
+  },
+  {
+    "id": 54,
+    "student_index": "EG/2020/4037",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 14.5,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 11:54:55.849846"
+  },
+  {
+    "id": 55,
+    "student_index": "EG/2020/4038",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 10.0,
+    "total_possible": 13.5,
+    "graded_at": "2025-07-30 11:56:35.082438"
+  },
+  {
+    "id": 57,
+    "student_index": "EG/2020/4040",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 15.0,
+    "total_possible": 18.5,
+    "graded_at": "2025-07-30 11:58:04.969825"
+  },
+  {
+    "id": 58,
+    "student_index": "EG/2020/4041",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 7.75,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 11:58:50.009611"
+  },
+  {
+    "id": 59,
+    "student_index": "EG/2020/4042",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 7.0,
+    "total_possible": 15.0,
+    "graded_at": "2025-07-30 12:00:23.994205"
+  },
+  {
+    "id": 60,
+    "student_index": "EG/2020/4043",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 5.0,
+    "total_possible": 6.0,
+    "graded_at": "2025-07-30 12:08:40.663054"
+  },
+  {
+    "id": 61,
+    "student_index": "EG/2020/4044",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 9.5,
+    "total_possible": 16.5,
+    "graded_at": "2025-07-30 12:09:03.568555"
+  },
+  {
+    "id": 62,
+    "student_index": "EG/2020/4045",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 5.5,
+    "total_possible": 18.0,
+    "graded_at": "2025-07-30 12:09:59.859895"
+  },
+  {
+    "id": 63,
+    "student_index": "EG/2020/4046",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 12.5,
+    "total_possible": 16.5,
+    "graded_at": "2025-07-30 12:11:06.634465"
+  },
+  {
+    "id": 64,
+    "student_index": "EG/2020/4047",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 10.75,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 12:12:04.262929"
+  },
+  {
+    "id": 65,
+    "student_index": "EG/2020/4048",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 7.0,
+    "total_possible": 17.5,
+    "graded_at": "2025-07-30 12:12:44.867063"
+  },
+  {
+    "id": 66,
+    "student_index": "EG/2020/4049",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 15.0,
+    "total_possible": 20.0,
+    "graded_at": "2025-07-30 12:13:16.682789"
+  },
+  {
+    "id": 67,
+    "student_index": "EG/2020/4050",
+    "module_code": "EE3350",
+    "exam_year": 2025,
+    "exam_month": "JUNE",
+    "total_marks": 12.5,
+    "total_possible": 19.0,
+    "graded_at": "2025-07-30 12:14:07.964749"
+  }
+]

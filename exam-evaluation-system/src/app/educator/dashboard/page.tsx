@@ -3,11 +3,14 @@
 import React, { useRef, useState, useEffect } from "react";
 import { FiChevronLeft, FiChevronRight, FiLoader } from "react-icons/fi";
 import { Toaster } from "react-hot-toast";
-import EducatorEventCard from "./EducatorEventCard";
+import EducatorEventCard from "@/components/EducatorEventCard";
 import EducatorModuleCard from "./EducatorModuleCard";
 import ModuleCreationForm, { ModuleFormData } from "./ModuleCreationForm";
-import EventCreationPopup, { EventFormData } from "./EventCreationForm";
+import EventCreationForm, {
+  EventFormData,
+} from "@/components/EventCreationForm";
 import Link from "next/link";
+import Button from "@/components/Button";
 
 interface ModuleAPI {
   module_id: string;
@@ -16,6 +19,7 @@ interface ModuleAPI {
   education_institute: string;
   max_enrollments: number;
   module_image_url?: string;
+  number_of_enrollments:number;
 }
 
 interface AssessmentAPI {
@@ -24,9 +28,9 @@ interface AssessmentAPI {
   title: string;
   deadline: string;
   module_id: string;
+  number_of_submissions : number;
 }
 
-// point this at an actual image you have under public/background-images
 const FALLBACK_IMAGES = Array.from(
   { length: 13 },
   (_, i) => `/background-images/image${i + 1}.jpg`
@@ -35,36 +39,29 @@ const FALLBACK_IMAGES = Array.from(
 export default function EducatorHomePage() {
   const moduleScrollRef = useRef<HTMLDivElement>(null);
 
-  const [upcomingEvents, setUpcomingEvents] = useState<
-    {
-      id: string;
-      title: string;
-      module: string;
-      uploads: string;
-      date: string;
-      label: string;
-    }[]
-  >([]);
-
-  const [createdModules, setCreatedModules] = useState<
-    {
-      id: string;
-      title: string;
-      image: string;
-      enrolled: string;
-    }[]
-  >([]);
-
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [createdModules, setCreatedModules] = useState<any[]>([]);
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [educatorId, setEducatorId] = useState<string | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollButtons = () => {
+    const el = moduleScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth);
+  };
 
   const handleCreateModule = async (moduleData: ModuleFormData) => {
     const formData = new FormData();
     formData.append("moduleCode", moduleData.moduleCode);
     formData.append("moduleName", moduleData.moduleName);
     formData.append("educationInstitute", moduleData.educationInstitute);
+
     if (typeof moduleData.maxStudents === "number") {
       formData.append("maxStudents", moduleData.maxStudents.toString());
     }
@@ -76,38 +73,99 @@ export default function EducatorHomePage() {
     if (moduleData.moduleImage)
       formData.append("moduleImage", moduleData.moduleImage);
 
-    const res = await fetch("/api/educator", {
+    if (!educatorId) {
+      throw new Error("Educator ID is missing. Cannot create module.");
+    }
+
+    formData.append("createdBy", educatorId);
+    const res = await fetch("/api/educator/module", {
       method: "POST",
       body: formData,
     });
+
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Failed to create module");
+
+    const newModule = json.module;
+    const newCard = {
+      id: newModule.module_id,
+      title: `${newModule.module_code}: ${newModule.module_name}`,
+      image:
+        newModule.module_image_url ||
+        FALLBACK_IMAGES[createdModules.length % FALLBACK_IMAGES.length],
+      enrolled: `0/${newModule.max_enrollments}`,
+    };
+
+    setCreatedModules((prev) => [...prev, newCard]);
+    setIsModuleModalOpen(false);
     return json;
   };
 
   const handleCreateEvent = async (data: EventFormData) => {
+    if (!educatorId) {
+      throw new Error("Educator ID is missing. Cannot create assessment.");
+    }
+
     const form = new FormData();
     form.append("type", data.type);
     form.append("title", data.title);
     form.append("description", data.description || "");
     form.append("deadline", data.deadline);
     form.append("moduleId", data.moduleId);
+    form.append("createdBy", educatorId);
+
     if (data.questionPaper?.length)
       form.append("questionPaper", data.questionPaper[0]);
+    if (data.modelAnswerPaper?.length)
+      form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
+    if (data.markingScheme?.length)
+      form.append("markingScheme", data.markingScheme[0]);
 
     const res = await fetch("/api/educator/assessment", {
       method: "POST",
       body: form,
     });
+
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Failed to create event");
+
+    const newEvent = json.assessment;
+    const relatedModule = createdModules.find(
+      (m) => m.id === newEvent.module_id
+    );
+
+    const newCard = {
+      id: newEvent.assessment_id,
+      title: newEvent.title,
+      module: relatedModule?.title || "",
+      uploads: `0/${relatedModule?.max_enrollments || 0}`,
+      date: new Date(newEvent.deadline).toLocaleString(),
+      label: newEvent.type === "assignment" ? "Due on:" : "Scheduled on:",
+    };
+
+    setUpcomingEvents((prev) => [...prev, newCard]);
+    setIsEventModalOpen(false);
     return json;
   };
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const userId = user.user_id;
+    if (!userId) {
+      setError("Educator ID not found. Please login again.");
+      setLoading(false);
+      return;
+    }
+    setEducatorId(userId);
+  }, []);
+
+  useEffect(() => {
+    if (!educatorId) return;
+
     async function loadData() {
+      setLoading(true);
       try {
-        const res = await fetch("/api/educator/12345/dashboard");
+        const res = await fetch(`/api/educator/${educatorId}/dashboard`);
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
         const {
           modules,
@@ -115,35 +173,42 @@ export default function EducatorHomePage() {
         }: { modules: ModuleAPI[]; assessments: AssessmentAPI[] } =
           await res.json();
 
-        // Map modules → card data, using a real fallback
         const mappedModules = modules.map((m, idx) => ({
-          id: m.module_id,
-          title: `${m.module_code}: ${m.module_name}`,
-          // use uploaded image if present, otherwise pick one fallback by index
-          image:
-            m.module_image_url || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length],
-          enrolled: `0/${m.max_enrollments}`,
-        }));
+  id: m.module_id,
+  title: `${m.module_code}: ${m.module_name}`,
+  image: m.module_image_url || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length],
+  enrolled: `${m.number_of_enrollments}/${m.max_enrollments}`,
+  number_of_enrollments: m.number_of_enrollments,
+  max_enrollments: m.max_enrollments,
+}));
+
         setCreatedModules(mappedModules);
 
-        // Map assessments → event cards
         const mappedEvents = assessments.map((a) => {
-          const mod = modules.find((m) => m.module_id === a.module_id);
-          const moduleTitle = mod
-            ? `${mod.module_code} ${mod.module_name}`
-            : "";
-          const label = a.type === "assignment" ? "Due on:" : "Scheduled on:";
-          return {
-            id: a.assessment_id,
-            title: a.title,
-            module: moduleTitle,
-            uploads: `0/${mod?.max_enrollments ?? 0}`,
-            date: a.deadline,
-            label,
-          };
-        });
+  const mod = modules.find((m) => m.module_id === a.module_id);
+  const moduleTitle = mod ? `${mod.module_code} ${mod.module_name}` : "";
+  const label = a.type === "assignment" ? "Due on:" : "Scheduled on:";
+  const formattedDate = new Date(a.deadline).toLocaleString("en-US", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
 
-        setCreatedModules(mappedModules);
+  return {
+    id: a.assessment_id,
+    title: a.title,
+    module: moduleTitle,
+    uploads: `${a.number_of_submissions}/${mod?.number_of_enrollments ?? 0}`,
+    date: formattedDate,
+    label,
+    moduleId: mod?.module_id || '',
+  };
+});
+
         setUpcomingEvents(mappedEvents);
       } catch (err: any) {
         console.error("Dashboard load error:", err);
@@ -153,7 +218,19 @@ export default function EducatorHomePage() {
       }
     }
     loadData();
-  }, []);
+  }, [educatorId]);
+
+  useEffect(() => {
+    updateScrollButtons();
+    const el = moduleScrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateScrollButtons);
+    window.addEventListener("resize", updateScrollButtons);
+    return () => {
+      el.removeEventListener("scroll", updateScrollButtons);
+      window.removeEventListener("resize", updateScrollButtons);
+    };
+  }, [createdModules]);
 
   if (loading) {
     return (
@@ -187,21 +264,32 @@ export default function EducatorHomePage() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Upcoming Events</h2>
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => setIsEventModalOpen(true)}
-            className="bg-blue-900 text-white text-sm px-4 py-2 rounded-md"
           >
             + New Event
-          </button>
+          </Button>
         </div>
         {upcomingEvents.length === 0 ? (
           <p className="text-gray-600">No upcoming events yet.</p>
         ) : (
           <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
             {upcomingEvents.map((evt) => (
-              <EducatorEventCard key={evt.id} {...evt} />
+              <EducatorEventCard
+                key={evt.id}
+                title={evt.title}
+                module={evt.module}
+                uploads={evt.uploads}
+                date={evt.date}
+                label={evt.label}
+                assessmentId={evt.id}
+                moduleId={
+                  createdModules.find((m) => m.title === evt.module)?.id
+                }
+              />
             ))}
-            <FiChevronRight className="text-2xl text-black cursor-pointer" />
           </div>
         )}
       </div>
@@ -210,23 +298,26 @@ export default function EducatorHomePage() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Created Modules</h2>
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => setIsModuleModalOpen(true)}
-            className="bg-blue-900 text-white text-sm px-4 py-2 rounded-md"
           >
             + New Module
-          </button>
+          </Button>
         </div>
         {createdModules.length === 0 ? (
           <p className="text-gray-600">You have not created any modules yet.</p>
         ) : (
           <div className="relative">
-            <button
-              onClick={scrollLeft}
-              className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
-            >
-              <FiChevronLeft className="text-2xl text-black" />
-            </button>
+            {canScrollLeft && (
+              <button
+                onClick={scrollLeft}
+                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
+              >
+                <FiChevronLeft className="text-2xl text-black" />
+              </button>
+            )}
             <div
               ref={moduleScrollRef}
               className="flex space-x-4 overflow-x-auto scrollbar-hide px-8"
@@ -241,14 +332,23 @@ export default function EducatorHomePage() {
                 </Link>
               ))}
             </div>
-            <button
-              onClick={scrollRight}
-              className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
-            >
-              <FiChevronRight className="text-2xl text-black" />
-            </button>
+            {canScrollRight && (
+              <button
+                onClick={scrollRight}
+                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-md rounded-full p-2 z-10"
+              >
+                <FiChevronRight className="text-2xl text-black" />
+              </button>
+            )}
           </div>
         )}
+      </div>
+      <div className="flex justify-end">
+        <Link href="/educator/dashboard/results-dashboard">
+          <Button variant="secondary" size="sm">
+            View Student Results
+          </Button>
+        </Link>
       </div>
 
       {/* Module Creation Modal */}
@@ -259,7 +359,7 @@ export default function EducatorHomePage() {
       />
 
       {/* Event Creation Modal */}
-      <EventCreationPopup
+      <EventCreationForm
         isOpen={isEventModalOpen}
         onClose={() => setIsEventModalOpen(false)}
         onSubmit={handleCreateEvent}

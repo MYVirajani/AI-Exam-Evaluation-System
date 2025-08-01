@@ -1,7 +1,5 @@
 "use client";
 
-import { ReactNode } from "react";
-
 interface ConfirmDialogProps {
   isOpen: boolean;
   title?: string;
@@ -24,10 +22,10 @@ export default function ConfirmDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
       <div className="bg-white rounded shadow p-6 w-96">
-        <h3 className="text-lg font-bold mb-4">{title}</h3>
-        <p className="mb-6">{message}</p>
+        <h3 className="text-lg font-bold mb-4 text-gray-900">{title}</h3>
+        <p className="mb-6 text-gray-800">{message}</p>
         <div className="flex justify-end gap-4">
           <button
             className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"

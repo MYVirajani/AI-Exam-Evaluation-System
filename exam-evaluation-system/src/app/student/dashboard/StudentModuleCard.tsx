@@ -24,34 +24,30 @@ interface StudentModuleCardProps {
   title: string;
   image?: string | null;
   event: string;
+  onClick?: () => void; // ✅ Add this
 }
 
-const StudentModuleCard: React.FC<StudentModuleCardProps> = ({ title, image, event }) => {
+const StudentModuleCard: React.FC<StudentModuleCardProps> = ({ title, image, event, onClick }) => {
   const src = image?.trim() ? image : getRandomFallback();
 
   return (
-     <div className="min-w-[250px] bg-gray-100 rounded-2xl shadow p-0 text-center">
-          {/* Image */}
-          <div className="relative w-full h-32 rounded-t-2xl overflow-hidden">
-            <Image
-              src={src}
-              alt={title}
-              fill
-              className="object-cover object-center"
-            />
-          </div>
-    
-          {/* Body */}
-          <div className="p-4">
-            <p className="text-sm font-semibold text-blue-900 leading-snug 
-                          whitespace-normal break-words">
-              {title}
-            </p>
-            <p className="text-xs text-blue-800 mt-1">
-              {event}
-            </p>
-          </div>
-        </div>
+    <div
+      onClick={onClick} // ✅ Use the callback
+      className="min-w-[250px] bg-gray-100 rounded-2xl shadow p-0 text-center cursor-pointer hover:shadow-md transition-shadow duration-200"
+    >
+      {/* Image */}
+      <div className="relative w-full h-32 rounded-t-2xl overflow-hidden">
+        <Image src={src} alt={title} fill className="object-cover object-center" />
+      </div>
+
+      {/* Body */}
+      <div className="p-4">
+        <p className="text-sm font-semibold text-blue-900 leading-snug whitespace-normal break-words">
+          {title}
+        </p>
+        <p className="text-xs text-blue-800 mt-1">{event}</p>
+      </div>
+    </div>
   );
 };
 

@@ -32,12 +32,16 @@ const StudentHomePage: React.FC = () => {
   const [popupOpen, setPopupOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [countdowns, setCountdowns] = useState<Record<string, string>>({});
-  const [fallbackImages, setFallbackImages] = useState<Record<string, string>>({});
+  const [fallbackImages, setFallbackImages] = useState<Record<string, string>>(
+    {}
+  );
 
   const fetchEnrolledModules = async (currentUserId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/student/enrollments?user_id=${currentUserId}`);
+      const res = await fetch(
+        `/api/student/enrollments?user_id=${currentUserId}`
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
@@ -124,15 +128,18 @@ const StudentHomePage: React.FC = () => {
 
   // Navigate to assessment detail page on event card click
   const handleEventCardClick = (moduleId: string, assessmentId: string) => {
-   router.push(`/student/assessments/${assessmentId}?studentId=${userId}&moduleId=${moduleId}`);
-
+    router.push(
+      `/student/assessments/${assessmentId}?studentId=${userId}&moduleId=${moduleId}`
+    );
   };
 
   return (
     <div className="w-full min-h-screen space-y-12 px-0 sm:px-2 overflow-auto">
       {/* Upcoming Events */}
       <div>
-        <h2 className="text-xl font-bold text-blue-900 mb-4">Upcoming Events</h2>
+        <h2 className="text-xl font-bold text-blue-900 mb-4">
+          Upcoming Events
+        </h2>
         {loading ? (
           <p>Loading events...</p>
         ) : allAssessments.length === 0 ? (
@@ -161,7 +168,11 @@ const StudentHomePage: React.FC = () => {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-blue-900">Enrolled Modules</h2>
-          <Button variant="primary" size="sm" onClick={() => setPopupOpen(true)}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setPopupOpen(true)}
+          >
             Enroll New Module
           </Button>
         </div>
@@ -169,7 +180,8 @@ const StudentHomePage: React.FC = () => {
           <p>Loading enrolled modules...</p>
         ) : modules.length === 0 ? (
           <p className="text-gray-600">
-            You are not enrolled in any modules yet. Please enroll to start learning.
+            You are not enrolled in any modules yet. Please enroll to start
+            learning.
           </p>
         ) : (
           <div className="flex items-center space-x-4 overflow-x-auto">
@@ -183,6 +195,7 @@ const StudentHomePage: React.FC = () => {
                     : fallbackImages[mod.module_id] || getRandomFallback()
                 }
                 event={mod.assessments[0]?.title || "No upcoming events"}
+                onClick={() => router.push(`/student/module/${mod.module_id}?studentId=${userId}`)} // ✅ Navigate to module page
               />
             ))}
           </div>

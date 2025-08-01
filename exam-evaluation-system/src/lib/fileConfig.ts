@@ -16,6 +16,10 @@ export const FILE_CONFIG = {
     types: [".png", ".jpg", ".jpeg", ".webp"],
     maxSizeMB: 2,
   },
+  LECTURE_MATERIAL: {
+    types: [".pdf", ".docx", ".pptx", ".xlsx"],
+    maxSizeMB: 20,
+  },
 };
 
 

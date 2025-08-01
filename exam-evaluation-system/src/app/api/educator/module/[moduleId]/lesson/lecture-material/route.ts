@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { FILE_CONFIG } from "@/lib/fileConfig";
 
 export async function POST(request: Request) {
   try {
@@ -24,22 +25,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const validExtensions = [".pdf", ".docx", ".pptx", ".xlsx"];
+    const { types: validExtensions, maxSizeMB } = FILE_CONFIG.LECTURE_MATERIAL;
     const fileExtension = path.extname(file.name).toLowerCase();
 
     if (!validExtensions.includes(fileExtension)) {
       console.log("[LectureUpload] Invalid file type");
       return NextResponse.json(
-        { error: "Invalid file type for lecture materials" },
+        { error: `Invalid file type. Allowed types: ${validExtensions.join(", ")}` },
         { status: 400 }
       );
     }
 
-    const maxSizeMB = 20;
     if (file.size > maxSizeMB * 1024 * 1024) {
-      console.log(
-        `[LectureUpload] File too large: ${(file.size / (1024 * 1024)).toFixed(2)}MB`
-      );
+      const actualSize = (file.size / (1024 * 1024)).toFixed(2);
+      console.log(`[LectureUpload] File too large: ${actualSize}MB`);
       return NextResponse.json(
         { error: `File size exceeds ${maxSizeMB}MB limit` },
         { status: 400 }
@@ -55,7 +54,6 @@ export async function POST(request: Request) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    // Use original filename as is:
     const fileName = file.name;
     const filePath = path.join(uploadDir, fileName);
 

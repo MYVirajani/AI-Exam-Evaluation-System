@@ -81,7 +81,6 @@ const StudentModulePage = () => {
   }, [moduleId, studentId]);
 
   // Real-time countdown updater
-  // Real-time countdown updater
 useEffect(() => {
   const updateCountdowns = () => {
     const now = Date.now();

@@ -19,7 +19,7 @@ interface ModuleAPI {
   education_institute: string;
   max_enrollments: number;
   module_image_url?: string;
-  number_of_enrollments:number;
+  number_of_enrollments: number;
 }
 
 interface AssessmentAPI {
@@ -28,7 +28,7 @@ interface AssessmentAPI {
   title: string;
   deadline: string;
   module_id: string;
-  number_of_submissions : number;
+  number_of_submissions: number;
 }
 
 const FALLBACK_IMAGES = Array.from(
@@ -174,40 +174,45 @@ export default function EducatorHomePage() {
           await res.json();
 
         const mappedModules = modules.map((m, idx) => ({
-  id: m.module_id,
-  title: `${m.module_code}: ${m.module_name}`,
-  image: m.module_image_url || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length],
-  enrolled: `${m.number_of_enrollments}/${m.max_enrollments}`,
-  number_of_enrollments: m.number_of_enrollments,
-  max_enrollments: m.max_enrollments,
-}));
+          id: m.module_id,
+          title: `${m.module_code}: ${m.module_name}`,
+          image:
+            m.module_image_url || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length],
+          enrolled: `${m.number_of_enrollments}/${m.max_enrollments}`,
+          number_of_enrollments: m.number_of_enrollments,
+          max_enrollments: m.max_enrollments,
+        }));
 
         setCreatedModules(mappedModules);
 
         const mappedEvents = assessments.map((a) => {
-  const mod = modules.find((m) => m.module_id === a.module_id);
-  const moduleTitle = mod ? `${mod.module_code} ${mod.module_name}` : "";
-  const label = a.type === "assignment" ? "Due on:" : "Scheduled on:";
-  const formattedDate = new Date(a.deadline).toLocaleString("en-US", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
+          const mod = modules.find((m) => m.module_id === a.module_id);
+          const moduleTitle = mod
+            ? `${mod.module_code} ${mod.module_name}`
+            : "";
+          const label = a.type === "assignment" ? "Due on:" : "Scheduled on:";
+          const formattedDate = new Date(a.deadline).toLocaleString("en-US", {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true,
+          });
 
-  return {
-    id: a.assessment_id,
-    title: a.title,
-    module: moduleTitle,
-    uploads: `${a.number_of_submissions}/${mod?.number_of_enrollments ?? 0}`,
-    date: formattedDate,
-    label,
-    moduleId: mod?.module_id || '',
-  };
-});
+          return {
+            id: a.assessment_id,
+            title: a.title,
+            module: moduleTitle,
+            uploads: `${a.number_of_submissions}/${
+              mod?.number_of_enrollments ?? 0
+            }`,
+            date: formattedDate,
+            label,
+            moduleId: mod?.module_id || "",
+          };
+        });
 
         setUpcomingEvents(mappedEvents);
       } catch (err: any) {
@@ -285,9 +290,7 @@ export default function EducatorHomePage() {
                 date={evt.date}
                 label={evt.label}
                 assessmentId={evt.id}
-                moduleId={
-                  createdModules.find((m) => m.title === evt.module)?.id
-                }
+                moduleId={evt.moduleId}
               />
             ))}
           </div>

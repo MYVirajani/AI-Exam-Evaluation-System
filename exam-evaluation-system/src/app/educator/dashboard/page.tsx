@@ -34,6 +34,7 @@ interface AssessmentAPI {
 
 export default function EducatorHomePage() {
   const moduleScrollRef = useRef<HTMLDivElement>(null);
+  const eventScrollRef = useRef<HTMLDivElement>(null);
 
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [createdModules, setCreatedModules] = useState<any[]>([]);
@@ -44,12 +45,22 @@ export default function EducatorHomePage() {
   const [educatorId, setEducatorId] = useState<string | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [canScrollEventLeft, setCanScrollEventLeft] = useState(false);
+  const [canScrollEventRight, setCanScrollEventRight] = useState(false);
 
   const updateScrollButtons = () => {
-    const el = moduleScrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 0);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth);
+    const moduleEl = moduleScrollRef.current;
+    const eventEl = eventScrollRef.current;
+    
+    if (moduleEl) {
+      setCanScrollLeft(moduleEl.scrollLeft > 10);
+      setCanScrollRight(moduleEl.scrollLeft + moduleEl.clientWidth < moduleEl.scrollWidth - 10);
+    }
+    
+    if (eventEl) {
+      setCanScrollEventLeft(eventEl.scrollLeft > 10);
+      setCanScrollEventRight(eventEl.scrollLeft + eventEl.clientWidth < eventEl.scrollWidth - 10);
+    }
   };
 
   const handleCreateModule = async (moduleData: ModuleFormData) => {
@@ -86,7 +97,7 @@ export default function EducatorHomePage() {
     const newCard = {
       id: newModule.module_id,
       title: `${newModule.module_code}: ${newModule.module_name}`,
-      image: newModule.module_image_url || null, // Use null instead of fallback image
+      image: newModule.module_image_url || null,
       enrolled: `0/${newModule.max_enrollments}`,
       maxEnrollments: newModule.max_enrollments,
     };
@@ -171,7 +182,7 @@ export default function EducatorHomePage() {
         const mappedModules = modules.map((m) => ({
           id: m.module_id,
           title: `${m.module_code}: ${m.module_name}`,
-          image: m.module_image_url || null, // Use null instead of fallback image
+          image: m.module_image_url || null,
           enrolled: `${m.number_of_enrollments}/${m.max_enrollments}`,
           number_of_enrollments: m.number_of_enrollments,
           maxEnrollments: m.max_enrollments,
@@ -221,15 +232,22 @@ export default function EducatorHomePage() {
 
   useEffect(() => {
     updateScrollButtons();
-    const el = moduleScrollRef.current;
-    if (!el) return;
-    el.addEventListener("scroll", updateScrollButtons);
-    window.addEventListener("resize", updateScrollButtons);
+    const moduleEl = moduleScrollRef.current;
+    const eventEl = eventScrollRef.current;
+    
+    const handleScroll = () => updateScrollButtons();
+    const handleResize = () => updateScrollButtons();
+    
+    if (moduleEl) moduleEl.addEventListener("scroll", handleScroll);
+    if (eventEl) eventEl.addEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleResize);
+    
     return () => {
-      el.removeEventListener("scroll", updateScrollButtons);
-      window.removeEventListener("resize", updateScrollButtons);
+      if (moduleEl) moduleEl.removeEventListener("scroll", handleScroll);
+      if (eventEl) eventEl.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
     };
-  }, [createdModules]);
+  }, [createdModules, upcomingEvents]);
 
   if (loading) {
     return (
@@ -271,13 +289,46 @@ export default function EducatorHomePage() {
     );
   }
 
-  const scrollLeft = () =>
-    moduleScrollRef.current?.scrollBy({ left: -300, behavior: "smooth" });
-  const scrollRight = () =>
-    moduleScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" });
+  const scrollModuleLeft = () => {
+    moduleScrollRef.current?.scrollBy({ 
+      left: -400, 
+      behavior: "smooth" 
+    });
+  };
+  
+  const scrollModuleRight = () => {
+    moduleScrollRef.current?.scrollBy({ 
+      left: 400, 
+      behavior: "smooth" 
+    });
+  };
+
+  const scrollEventLeft = () => {
+    eventScrollRef.current?.scrollBy({ 
+      left: -350, 
+      behavior: "smooth" 
+    });
+  };
+  
+  const scrollEventRight = () => {
+    eventScrollRef.current?.scrollBy({ 
+      left: 350, 
+      behavior: "smooth" 
+    });
+  };
 
   return (
     <div className="w-full min-h-screen space-y-12 px-4 py-6">
+      <style jsx global>{`
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+      
       <Toaster position="top-right" />
 
       {/* Page Header with Welcome Message */}
@@ -313,19 +364,40 @@ export default function EducatorHomePage() {
             <p className="text-gray-600">Create your first assessment to get started</p>
           </div>
         ) : (
-          <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide pb-2">
-            {upcomingEvents.map((evt) => (
-              <EducatorEventCard
-                key={evt.id}
-                title={evt.title}
-                module={evt.module}
-                uploads={evt.uploads}
-                date={evt.date}
-                label={evt.label}
-                assessmentId={evt.id}
-                moduleId={evt.moduleId}
-              />
-            ))}
+          <div className="relative">
+            {canScrollEventLeft && (
+              <button
+                onClick={scrollEventLeft}
+                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-full p-3 z-20 border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-110 hover:bg-gray-50"
+              >
+                <FiChevronLeft className="text-xl text-gray-700" />
+              </button>
+            )}
+            <div
+              ref={eventScrollRef}
+              className="flex items-center space-x-4 overflow-x-auto hide-scrollbar px-8 py-2"
+            >
+              {upcomingEvents.map((evt) => (
+                <EducatorEventCard
+                  key={evt.id}
+                  title={evt.title}
+                  module={evt.module}
+                  uploads={evt.uploads}
+                  date={evt.date}
+                  label={evt.label}
+                  assessmentId={evt.id}
+                  moduleId={evt.moduleId}
+                />
+              ))}
+            </div>
+            {canScrollEventRight && (
+              <button
+                onClick={scrollEventRight}
+                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-full p-3 z-20 border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-110 hover:bg-gray-50"
+              >
+                <FiChevronRight className="text-xl text-gray-700" />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -360,15 +432,15 @@ export default function EducatorHomePage() {
           <div className="relative">
             {canScrollLeft && (
               <button
-                onClick={scrollLeft}
-                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-full p-3 z-10 border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-105"
+                onClick={scrollModuleLeft}
+                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-full p-3 z-20 border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-110 hover:bg-gray-50"
               >
                 <FiChevronLeft className="text-xl text-gray-700" />
               </button>
             )}
             <div
               ref={moduleScrollRef}
-              className="flex space-x-6 overflow-x-auto scrollbar-hide px-8 py-2"
+              className="flex space-x-6 overflow-x-auto hide-scrollbar px-8 py-2"
             >
               {createdModules.map((mod) => (
                 <Link
@@ -387,8 +459,8 @@ export default function EducatorHomePage() {
             </div>
             {canScrollRight && (
               <button
-                onClick={scrollRight}
-                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-full p-3 z-10 border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-105"
+                onClick={scrollModuleRight}
+                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-full p-3 z-20 border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-110 hover:bg-gray-50"
               >
                 <FiChevronRight className="text-xl text-gray-700" />
               </button>

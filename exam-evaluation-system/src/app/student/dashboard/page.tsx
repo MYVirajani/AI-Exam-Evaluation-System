@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import StudentEventCard from "./StudentEventCard";
-import StudentModuleCard, { getRandomFallback } from "./StudentModuleCard";
+import StudentModuleCard from "./StudentModuleCard";
 import Button from "@/components/Button";
 import toast from "react-hot-toast";
 import EnrollModulePopup from "./ModuleEnrollPopup";
@@ -32,9 +32,6 @@ const StudentHomePage: React.FC = () => {
   const [popupOpen, setPopupOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [countdowns, setCountdowns] = useState<Record<string, string>>({});
-  const [fallbackImages, setFallbackImages] = useState<Record<string, string>>(
-    {}
-  );
 
   const fetchEnrolledModules = async (currentUserId: string) => {
     setLoading(true);
@@ -83,53 +80,41 @@ const StudentHomePage: React.FC = () => {
     );
   }, [modules]);
 
-  // Generate fallback images for modules without images
-  useEffect(() => {
-    const newFallbacks: Record<string, string> = {};
-    modules.forEach((mod) => {
-      if (!mod.module_image_url?.trim()) {
-        newFallbacks[mod.module_id] = getRandomFallback();
-      }
-    });
-    setFallbackImages(newFallbacks);
-  }, [modules]);
-
   // Countdown timers update every second
   useEffect(() => {
-  const updateCountdowns = () => {
-  const now = Date.now();
-  const newCountdowns: Record<string, string> = {};
+    const updateCountdowns = () => {
+      const now = Date.now();
+      const newCountdowns: Record<string, string> = {};
 
-  allAssessments.forEach(({ assessment_id, deadline }) => {
-    const deadlineTime = new Date(deadline).getTime();
-    const diff = deadlineTime - now;
+      allAssessments.forEach(({ assessment_id, deadline }) => {
+        const deadlineTime = new Date(deadline).getTime();
+        const diff = deadlineTime - now;
 
-    if (diff <= 0) {
-      newCountdowns[assessment_id] = "Expired";
-    } else {
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        if (diff <= 0) {
+          newCountdowns[assessment_id] = "Expired";
+        } else {
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      const parts: string[] = [];
-      if (days > 0) parts.push(`${days}d`);
-      if (hours > 0 || parts.length > 0) parts.push(`${hours}h`);
-      if (minutes > 0 || parts.length > 0) parts.push(`${minutes}m`);
-      parts.push(`${seconds}s`);
+          const parts: string[] = [];
+          if (days > 0) parts.push(`${days}d`);
+          if (hours > 0 || parts.length > 0) parts.push(`${hours}h`);
+          if (minutes > 0 || parts.length > 0) parts.push(`${minutes}m`);
+          parts.push(`${seconds}s`);
 
-      newCountdowns[assessment_id] = parts.join(" ");
-    }
-  });
+          newCountdowns[assessment_id] = parts.join(" ");
+        }
+      });
 
-  setCountdowns(newCountdowns);
-};
+      setCountdowns(newCountdowns);
+    };
 
-
-  updateCountdowns(); // initial call
-  const timer = setInterval(updateCountdowns, 1000);
-  return () => clearInterval(timer);
-}, [allAssessments]);
+    updateCountdowns(); // initial call
+    const timer = setInterval(updateCountdowns, 1000);
+    return () => clearInterval(timer);
+  }, [allAssessments]);
 
   // Navigate to assessment detail page on event card click
   const handleEventCardClick = (moduleId: string, assessmentId: string) => {
@@ -194,13 +179,9 @@ const StudentHomePage: React.FC = () => {
               <StudentModuleCard
                 key={mod.module_id}
                 title={`${mod.module_code} ${mod.module_name}`}
-                image={
-                  mod.module_image_url?.trim()
-                    ? mod.module_image_url
-                    : fallbackImages[mod.module_id] || getRandomFallback()
-                }
+                image={mod.module_image_url}
                 event={mod.assessments[0]?.title || "No upcoming events"}
-                onClick={() => router.push(`/student/module/${mod.module_id}?studentId=${userId}`)} // ✅ Navigate to module page
+                onClick={() => router.push(`/student/module/${mod.module_id}?studentId=${userId}`)}
               />
             ))}
           </div>

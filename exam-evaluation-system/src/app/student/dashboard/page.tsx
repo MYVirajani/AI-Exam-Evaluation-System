@@ -10,7 +10,7 @@ import EnrollModulePopup from "./ModuleEnrollPopup";
 
 interface Assessment {
   assessment_id: string;
-  module_id: string; // needed for navigation
+  module_id: string;
   title: string;
   type: string;
   deadline: string;

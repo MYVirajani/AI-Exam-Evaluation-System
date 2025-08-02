@@ -6,6 +6,7 @@ import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import StudentEventCard from "./StudentEventCard";
 import StudentModuleCard from "./StudentModuleCard";
 import Button from "@/components/Button";
+import LoadingAnimation from "@/components/LoadingAnimation";
 import toast from "react-hot-toast";
 import EnrollModulePopup from "./ModuleEnrollPopup";
 
@@ -31,7 +32,7 @@ const StudentHomePage: React.FC = () => {
   const eventScrollRef = useRef<HTMLDivElement>(null);
 
   const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Changed to true for initial load
   const [popupOpen, setPopupOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [countdowns, setCountdowns] = useState<Record<string, string>>({});
@@ -95,6 +96,7 @@ const StudentHomePage: React.FC = () => {
       fetchEnrolledModules(user.user_id);
     } else {
       toast.error("User ID not found. Please log in again.");
+      setLoading(false);
     }
   }, []);
 
@@ -202,6 +204,19 @@ const StudentHomePage: React.FC = () => {
     });
   };
 
+  // Show full screen loading animation on initial load
+  if (loading) {
+    return (
+      <LoadingAnimation
+        size="lg"
+        variant="wave"
+        text="Loading your dashboard..."
+        fullScreen={true}
+        color="blue"
+      />
+    );
+  }
+
   return (
     <div className="w-full min-h-screen space-y-12 px-0 sm:px-2 overflow-auto">
       <style jsx global>{`
@@ -235,14 +250,7 @@ const StudentHomePage: React.FC = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
-            <div className="animate-pulse">
-              <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-32 mx-auto"></div>
-            </div>
-          </div>
-        ) : allAssessments.length === 0 ? (
+        {allAssessments.length === 0 ? (
           <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
@@ -326,14 +334,7 @@ const StudentHomePage: React.FC = () => {
           </Button>
         </div>
 
-        {loading ? (
-          <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
-            <div className="animate-pulse">
-              <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-40 mx-auto"></div>
-            </div>
-          </div>
-        ) : modules.length === 0 ? (
+        {modules.length === 0 ? (
           <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg

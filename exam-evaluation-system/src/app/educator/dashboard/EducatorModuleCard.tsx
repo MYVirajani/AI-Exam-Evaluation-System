@@ -1,6 +1,7 @@
 // components/EducatorModuleCard.tsx
 import React from "react";
 import Image from "next/image";
+import { getRandomGradient, type GradientColor } from "../../../constants/gradientColors";
 
 interface EducatorModuleCardProps {
   title: string;
@@ -9,38 +10,6 @@ interface EducatorModuleCardProps {
   maxEnrollments?: number; // New prop for maximum enrollments allowed
 }
 
-// List all your fallback images here (paths are relative to /public)
-const FALLBACK_IMAGES = [
-  "/background-images/image1.jpg",
-  "/background-images/image2.jpg",
-  "/background-images/image3.jpg",
-  "/background-images/image4.jpg",
-  "/background-images/image5.jpg",
-  "/background-images/image6.jpg",
-  "/background-images/image7.jpg",
-  "/background-images/image8.jpg",
-  "/background-images/image9.jpg",
-  "/background-images/image10.jpg",
-  "/background-images/image11.jpg",
-  "/background-images/image12.jpg",
-  "/background-images/image13.jpg",
-];
-
-// Color palette from the provided image
-const FALLBACK_COLORS = [
-  "from-blue-900 to-blue-800",     // Dark navy blue
-  "from-blue-600 to-blue-500",     // Medium blue
-  "from-cyan-500 to-cyan-400",     // Bright cyan
-  "from-sky-400 to-sky-300",       // Light blue
-  "from-blue-200 to-blue-100",     // Very light blue
-];
-
-const getRandomFallback = () =>
-  FALLBACK_IMAGES[Math.floor(Math.random() * FALLBACK_IMAGES.length)];
-
-const getRandomColor = () =>
-  FALLBACK_COLORS[Math.floor(Math.random() * FALLBACK_COLORS.length)];
-
 const EducatorModuleCard: React.FC<EducatorModuleCardProps> = ({
   title,
   image,
@@ -48,8 +17,7 @@ const EducatorModuleCard: React.FC<EducatorModuleCardProps> = ({
   maxEnrollments = 100, // Default max enrollments if not provided
 }) => {
   const hasValidImage = image?.trim();
-  const fallbackSrc = getRandomFallback();
-  const fallbackColor = getRandomColor();
+  const randomGradient: GradientColor = React.useMemo(() => getRandomGradient(), []);
   
   // Calculate enrollment metrics
   const enrolledCount = parseInt(enrolled.replace(/,/g, ''), 10) || 0;
@@ -72,27 +40,41 @@ const EducatorModuleCard: React.FC<EducatorModuleCardProps> = ({
 
   return (
     <div className="group min-w-[280px] max-w-[320px] bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-2 hover:scale-105 transition-all duration-300 ease-out overflow-hidden transform cursor-pointer">
-      {/* Image or Color Background */}
+      {/* Image or Header-Style Gradient Background */}
       <div className="relative w-full h-36 overflow-hidden">
         {hasValidImage ? (
           <Image
             src={image}
             alt={title}
             fill
-            className="object-cover object-center"
-            onError={() => {
-              // Fallback to random image if the provided image fails to load
-              const img = document.querySelector(`img[alt="${title}"]`) as HTMLImageElement;
-              if (img) {
-                img.src = fallbackSrc;
-              }
-            }}
+            className="object-cover object-center group-hover:scale-110 transition-transform duration-300"
           />
         ) : (
-          <div className={`w-full h-full bg-gradient-to-br ${fallbackColor} flex items-center justify-center`}>
-            <div className="text-white text-2xl font-semibold opacity-20">
-              {title.charAt(0).toUpperCase()}
+          <div className="relative w-full h-full overflow-hidden">
+            {/* Main gradient background */}
+            <div className={`absolute inset-0 bg-gradient-to-r ${randomGradient.gradient}`} />
+            
+            {/* Glass morphism overlay */}
+            <div className={`absolute inset-0 ${randomGradient.overlayPattern} backdrop-blur-sm`} />
+            
+            {/* Animated background elements similar to header */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+              <div className="absolute -top-2 -left-2 w-16 h-16 bg-white/5 rounded-full animate-pulse" />
+              <div 
+                className="absolute top-4 right-8 w-12 h-12 bg-white/3 rounded-full animate-bounce" 
+                style={{ animationDelay: '1s', animationDuration: '3s' }} 
+              />
+              <div 
+                className="absolute bottom-2 left-1/4 w-14 h-14 bg-white/4 rounded-full animate-pulse" 
+                style={{ animationDelay: '0.5s' }} 
+              />
+              <div className="absolute top-1/2 right-4 w-8 h-8 bg-white/6 rounded-full animate-pulse" 
+                style={{ animationDelay: '2s' }} 
+              />
             </div>
+            
+            {/* Bottom gradient accent line (similar to header) */}
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-white/30 via-white/50 to-white/30" />
           </div>
         )}
       </div>

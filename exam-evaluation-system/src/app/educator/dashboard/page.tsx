@@ -31,11 +31,6 @@ interface AssessmentAPI {
   number_of_submissions: number;
 }
 
-const FALLBACK_IMAGES = Array.from(
-  { length: 13 },
-  (_, i) => `/background-images/image${i + 1}.jpg`
-);
-
 export default function EducatorHomePage() {
   const moduleScrollRef = useRef<HTMLDivElement>(null);
 
@@ -90,10 +85,9 @@ export default function EducatorHomePage() {
     const newCard = {
       id: newModule.module_id,
       title: `${newModule.module_code}: ${newModule.module_name}`,
-      image:
-        newModule.module_image_url ||
-        FALLBACK_IMAGES[createdModules.length % FALLBACK_IMAGES.length],
+      image: newModule.module_image_url || null, // Use null instead of fallback image
       enrolled: `0/${newModule.max_enrollments}`,
+      maxEnrollments: newModule.max_enrollments,
     };
 
     setCreatedModules((prev) => [...prev, newCard]);
@@ -138,7 +132,7 @@ export default function EducatorHomePage() {
       id: newEvent.assessment_id,
       title: newEvent.title,
       module: relatedModule?.title || "",
-      uploads: `0/${relatedModule?.max_enrollments || 0}`,
+      uploads: `0/${relatedModule?.maxEnrollments || 0}`,
       date: new Date(newEvent.deadline).toLocaleString(),
       label: newEvent.type === "assignment" ? "Due on:" : "Scheduled on:",
     };
@@ -173,14 +167,13 @@ export default function EducatorHomePage() {
         }: { modules: ModuleAPI[]; assessments: AssessmentAPI[] } =
           await res.json();
 
-        const mappedModules = modules.map((m, idx) => ({
+        const mappedModules = modules.map((m) => ({
           id: m.module_id,
           title: `${m.module_code}: ${m.module_name}`,
-          image:
-            m.module_image_url || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length],
+          image: m.module_image_url || null, // Use null instead of fallback image
           enrolled: `${m.number_of_enrollments}/${m.max_enrollments}`,
           number_of_enrollments: m.number_of_enrollments,
-          max_enrollments: m.max_enrollments,
+          maxEnrollments: m.max_enrollments,
         }));
 
         setCreatedModules(mappedModules);
@@ -331,7 +324,12 @@ export default function EducatorHomePage() {
                   href={`/educator/module/${mod.id}`}
                   className="cursor-pointer"
                 >
-                  <EducatorModuleCard {...mod} />
+                  <EducatorModuleCard
+                    title={mod.title}
+                    image={mod.image}
+                    enrolled={mod.enrolled}
+                    maxEnrollments={mod.maxEnrollments}
+                  />
                 </Link>
               ))}
             </div>

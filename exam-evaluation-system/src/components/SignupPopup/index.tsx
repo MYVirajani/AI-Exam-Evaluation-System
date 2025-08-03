@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog } from "@headlessui/react";
+import { Dialog,DialogPanel,DialogTitle } from "@headlessui/react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import {
@@ -13,6 +13,7 @@ import {
   FaIdBadge,
 } from "react-icons/fa";
 import { siteConfig } from "@/config/site";
+import { FiX } from "react-icons/fi";
 
 interface SignupPopupProps {
   isOpen: boolean;
@@ -109,7 +110,17 @@ export default function SignupPopup({ isOpen, onClose,onSwitchToSignIn }: Signup
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="w-full max-w-4xl bg-white rounded-lg shadow-lg flex overflow-hidden">
+        <DialogPanel className="relative w-full max-w-4xl bg-white rounded-lg shadow-lg flex overflow-hidden">
+          {/* Close button in top-right */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
+            disabled={submitting}
+            aria-label="Close"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+          
           {/* Left Section */}
           <div className="bg-blue-900 text-white w-1/3 p-8 hidden md:block">
             <h2 className="text-3xl font-bold mb-4">WELCOME TO AUTOEVAL360</h2>
@@ -123,9 +134,9 @@ export default function SignupPopup({ isOpen, onClose,onSwitchToSignIn }: Signup
 
           {/* Right Section */}
           <div className="w-full md:w-2/3 p-8 overflow-y-auto max-h-[90vh]">
-            <Dialog.Title className="text-2xl font-bold text-blue-900 mb-6">
+            <DialogTitle className="text-2xl font-bold text-blue-900 mb-6">
               Sign Up
-            </Dialog.Title>
+            </DialogTitle>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               {/* First & Last Name */}
@@ -357,17 +368,10 @@ export default function SignupPopup({ isOpen, onClose,onSwitchToSignIn }: Signup
                     Sign In
                   </button>
                 </p>
-                <button
-                  onClick={onClose}
-                  className="mt-2 text-sm text-blue-900 hover:underline"
-                  disabled={submitting}
-                >
-                  Close
-                </button>
               </div>
             </form>
           </div>
-        </Dialog.Panel>
+        </DialogPanel>
       </div>
     </Dialog>
   );

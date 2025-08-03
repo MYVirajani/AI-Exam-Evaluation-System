@@ -159,19 +159,29 @@ enum assessmentType {
   assignment
   quiz
 }
-
+enum QuestionType {
+  MCQ
+  SHORT
+  ESSAY
+}
 
 model Question {
-  question_id       String @id
-  question_paper_id String
-  type              String
-  question_number   String
-  question          String
-  marks_allocated   Int
+  question_id         String           @id @default(cuid())
+  question_paper_id   String
+  type                QuestionType
+  question_number     String
+  question            String
+  model_answer        String
+  mcq_answer_options  String[]        @default([])
+  marks_allowed       Int
 
-  question_paper Question_Paper   @relation(fields: [question_paper_id], references: [question_paper_id])
-  grades         Question_Grade[]
+  question_paper      Question_Paper   @relation(fields: [question_paper_id], references: [question_paper_id])
+  grades              Question_Grade[]
+
+  @@index([question_paper_id])
 }
+
+
 
 
 model Submission {

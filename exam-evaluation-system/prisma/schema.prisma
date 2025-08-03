@@ -111,6 +111,8 @@ model Assessment {
   type                  assessmentType
   title                 String
   description           String
+  instructions          String[]
+  duration              Int
   deadline              DateTime
   module_id             String
   created_by            String

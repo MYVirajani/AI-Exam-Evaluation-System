@@ -34,7 +34,7 @@ export async function GET(
       },
     });
 
-    if (!module) {
+    if (!moduleData) {
       return NextResponse.json(
         { success: false, message: "Module not found" },
         { status: 404 }
@@ -103,6 +103,8 @@ export async function GET(
           type: assessment.type,
           title: assessment.title,
           description: assessment.description,
+          instructions: assessment.instructions, 
+          duration: assessment.duration,         
           deadline: assessment.deadline,
           model_answer_paper: assessment.model_answer_paper || null,
           question_paper: assessment.question_paper || null,
@@ -120,8 +122,8 @@ export async function GET(
         },
       ],
     };
-    console.log("Assessment response data:", JSON.stringify(responseData, null, 2));
 
+    console.log("Assessment response data:", JSON.stringify(responseData, null, 2));
     return NextResponse.json(responseData);
   } catch (err) {
     console.error("[GET educator/module/[moduleId]/assessment/[assessmentId]]", err);
@@ -131,4 +133,3 @@ export async function GET(
     );
   }
 }
-

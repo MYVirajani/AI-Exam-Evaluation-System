@@ -123,6 +123,7 @@ model Assessment {
   model_answer_paper Model_Answer_Paper?
   marking_scheme     Marking_Scheme?
   submissions        Submission[]
+  questions          Question[]
 }
 
 model Question_Paper {
@@ -167,6 +168,7 @@ enum QuestionType {
 
 model Question {
   question_id         String           @id @default(cuid())
+  assessment_id       String
   question_paper_id   String
   type                QuestionType
   question_number     String
@@ -176,6 +178,7 @@ model Question {
   marks_allowed       Int
 
   question_paper      Question_Paper   @relation(fields: [question_paper_id], references: [question_paper_id])
+  assessment          Assessment       @relation(fields: [assessment_id], references: [assessment_id])
   grades              Question_Grade[]
 
   @@index([question_paper_id])

@@ -11,9 +11,10 @@ import { useRouter } from "next/navigation";
 interface SignInPopupProps {
   isOpen: boolean;
   onClose: () => void;
+  onSwitchToSignUp: () => void;
 }
 
-export default function SignInPopup({ isOpen, onClose }: SignInPopupProps) {
+export default function SignInPopup({ isOpen, onClose,onSwitchToSignUp }: SignInPopupProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -144,7 +145,10 @@ export default function SignInPopup({ isOpen, onClose }: SignInPopupProps) {
             <p className="mt-4 text-sm text-center text-gray-600">
               Don’t have an account?{" "}
               <button
-                onClick={onClose}
+                 onClick={() => {
+                      onClose();
+                      onSwitchToSignUp();
+                    }}
                 className="text-blue-900 hover:underline"
                 disabled={submitting}
               >

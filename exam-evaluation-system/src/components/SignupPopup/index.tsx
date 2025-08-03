@@ -17,9 +17,10 @@ import { siteConfig } from "@/config/site";
 interface SignupPopupProps {
   isOpen: boolean;
   onClose: () => void;
+  onSwitchToSignIn: () => void;
 }
 
-export default function SignupPopup({ isOpen, onClose }: SignupPopupProps) {
+export default function SignupPopup({ isOpen, onClose,onSwitchToSignIn }: SignupPopupProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [title, setTitle] = useState("");
@@ -347,7 +348,10 @@ export default function SignupPopup({ isOpen, onClose }: SignupPopupProps) {
                   <button
                     type="button"
                     className="text-blue-900 hover:underline"
-                    onClick={onClose}
+                     onClick={() => {
+                      onClose();
+                      onSwitchToSignIn();
+                    }}
                     disabled={submitting}
                   >
                     Sign In

@@ -8,6 +8,7 @@ import SignupPopup from '@/components/SignupPopup';
 export default function Home() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+  
 
   return (
     <>
@@ -35,8 +36,14 @@ export default function Home() {
         This is the home page of our exam evaluation system.
       </p>
 
-      <SignInPopup isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
-      <SignupPopup isOpen={isSignupOpen} onClose={() => setIsSignupOpen(false)} />
+      <SignInPopup isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onSwitchToSignUp={() => {
+          setIsLoginOpen(false);
+          setIsSignupOpen(true);
+        }} />
+      <SignupPopup isOpen={isSignupOpen} onClose={() => setIsSignupOpen(false)} onSwitchToSignIn={() =>{
+          setIsSignupOpen(false);
+          setIsLoginOpen(true);
+      }} />
     </>
   );
 }

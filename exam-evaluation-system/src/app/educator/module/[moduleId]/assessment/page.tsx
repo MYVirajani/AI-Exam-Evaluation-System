@@ -8,10 +8,13 @@ import Textarea from "@/components/ui/Textarea";
 import Button from "@/components/Button";
 
 interface Question {
+  id: string;
+  questionType: 'mcq' | 'short_answer';
   questionText: string;
   options: string[];
   correctAnswerIndex: number;
-  marks?: number;
+  marks: number;
+  expectedAnswer?: string; // For short answer questions
 }
 
 const assessmentTypes = [
@@ -19,6 +22,11 @@ const assessmentTypes = [
   { label: "Assignment", value: "assignment" },
   { label: "Mid Exam", value: "midExam" },
   { label: "End Exam", value: "endExam" },
+];
+
+const questionTypes = [
+  { label: "Multiple Choice (MCQ)", value: "mcq" },
+  { label: "Short Answer", value: "short_answer" },
 ];
 
 export default function AssessmentFormPage() {
@@ -33,6 +41,8 @@ export default function AssessmentFormPage() {
   const [instructions, setInstructions] = useState("");
   const [questions, setQuestions] = useState<Question[]>([
     {
+      id: Date.now().toString(),
+      questionType: 'mcq',
       questionText: "",
       options: ["", "", "", ""],
       correctAnswerIndex: 0,
@@ -41,6 +51,8 @@ export default function AssessmentFormPage() {
   ]);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const generateQuestionId = () => Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
   const handleQuestionChange = (
     index: number,
     field: keyof Question,
@@ -48,6 +60,25 @@ export default function AssessmentFormPage() {
   ) => {
     const newQuestions = [...questions];
     newQuestions[index][field] = value;
+    setQuestions(newQuestions);
+  };
+
+  const handleQuestionTypeChange = (index: number, questionType: 'mcq' | 'short_answer') => {
+    const newQuestions = [...questions];
+    newQuestions[index].questionType = questionType;
+    
+    if (questionType === 'mcq') {
+      // Reset to default MCQ structure
+      newQuestions[index].options = ["", "", "", ""];
+      newQuestions[index].correctAnswerIndex = 0;
+      delete newQuestions[index].expectedAnswer;
+    } else {
+      // Reset to short answer structure
+      newQuestions[index].options = [];
+      newQuestions[index].correctAnswerIndex = -1;
+      newQuestions[index].expectedAnswer = "";
+    }
+    
     setQuestions(newQuestions);
   };
 
@@ -76,16 +107,21 @@ export default function AssessmentFormPage() {
     setQuestions(newQuestions);
   };
 
-  const addQuestion = () => {
-    setQuestions([
-      ...questions,
-      {
-        questionText: "",
-        options: ["", "", "", ""],
-        correctAnswerIndex: 0,
-        marks: 1,
-      },
-    ]);
+  const addQuestion = (questionType: 'mcq' | 'short_answer' = 'mcq') => {
+    const newQuestion: Question = {
+      id: generateQuestionId(),
+      questionType,
+      questionText: "",
+      options: questionType === 'mcq' ? ["", "", "", ""] : [],
+      correctAnswerIndex: questionType === 'mcq' ? 0 : -1,
+      marks: 1,
+    };
+
+    if (questionType === 'short_answer') {
+      newQuestion.expectedAnswer = "";
+    }
+
+    setQuestions([...questions, newQuestion]);
   };
 
   const removeQuestion = (index: number) => {
@@ -97,17 +133,14 @@ export default function AssessmentFormPage() {
   const generatePDF = async () => {
     setIsGenerating(true);
     try {
-      // Import jsPDF dynamically to avoid SSR issues
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF();
       
-      // Set up document styling
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 20;
       const lineHeight = 7;
       let yPosition = margin;
 
-      // Helper function to add text with word wrapping
       const addText = (text: string, x: number, y: number, maxWidth: number, fontSize = 11) => {
         doc.setFontSize(fontSize);
         const lines = doc.splitTextToSize(text, maxWidth);
@@ -159,15 +192,15 @@ export default function AssessmentFormPage() {
 
         // Question number and text
         doc.setFont('helvetica', 'bold');
-        const questionHeader = `${index + 1}. ${question.marks ? `[${question.marks} marks] ` : ''}`;
+        const questionHeader = `${index + 1}. [${question.marks} marks] ${question.questionType === 'short_answer' ? '(Short Answer)' : '(MCQ)'} `;
         yPosition = addText(questionHeader, margin, yPosition, pageWidth - 2 * margin, 12);
         
         doc.setFont('helvetica', 'normal');
         yPosition = addText(question.questionText, margin, yPosition, pageWidth - 2 * margin);
         yPosition += 5;
 
-        // Options (for quiz type)
-        if (type === 'quiz' && question.options.length > 0) {
+        // Handle different question types
+        if (question.questionType === 'mcq' && question.options.length > 0) {
           question.options.forEach((option, optIndex) => {
             if (option.trim()) {
               const optionText = `${String.fromCharCode(97 + optIndex)}) ${option}`;
@@ -176,19 +209,19 @@ export default function AssessmentFormPage() {
             }
           });
         } else {
-          // Add answer space for non-quiz questions
-          yPosition += 20; // Space for answer
+          // Add answer space for short answer questions
+          yPosition += 10;
           doc.setDrawColor(200, 200, 200);
-          for (let i = 0; i < 3; i++) {
+          const answerLines = question.questionType === 'short_answer' ? 4 : 3;
+          for (let i = 0; i < answerLines; i++) {
             doc.line(margin, yPosition + (i * 8), pageWidth - margin, yPosition + (i * 8));
           }
-          yPosition += 25;
+          yPosition += (answerLines * 8) + 5;
         }
         
         yPosition += 10; // Space between questions
       });
 
-      // Save the PDF
       const fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'assessment'}_question_paper.pdf`;
       doc.save(fileName);
     } catch (error) {
@@ -203,7 +236,6 @@ export default function AssessmentFormPage() {
   const generateDOCX = async () => {
     setIsGenerating(true);
     try {
-      // Import docx library dynamically
       const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import('docx');
       const { saveAs } = await import('file-saver');
 
@@ -262,7 +294,7 @@ export default function AssessmentFormPage() {
       // Questions
       questions.forEach((question, index) => {
         // Question header
-        const questionHeader = `${index + 1}. ${question.marks ? `[${question.marks} marks] ` : ''}`;
+        const questionHeader = `${index + 1}. [${question.marks} marks] ${question.questionType === 'short_answer' ? '(Short Answer)' : '(MCQ)'} `;
         children.push(
           new Paragraph({
             children: [
@@ -273,8 +305,8 @@ export default function AssessmentFormPage() {
           })
         );
 
-        // Options for quiz
-        if (type === 'quiz' && question.options.length > 0) {
+        // Handle different question types
+        if (question.questionType === 'mcq' && question.options.length > 0) {
           question.options.forEach((option, optIndex) => {
             if (option.trim()) {
               children.push(
@@ -290,25 +322,16 @@ export default function AssessmentFormPage() {
             }
           });
         } else {
-          // Add answer space
-          children.push(
-            new Paragraph({
-              children: [new TextRun({ text: '_'.repeat(80), size: 22 })],
-              spacing: { after: 100 }
-            })
-          );
-          children.push(
-            new Paragraph({
-              children: [new TextRun({ text: '_'.repeat(80), size: 22 })],
-              spacing: { after: 100 }
-            })
-          );
-          children.push(
-            new Paragraph({
-              children: [new TextRun({ text: '_'.repeat(80), size: 22 })],
-              spacing: { after: 200 }
-            })
-          );
+          // Add answer space for short answer questions
+          const answerLines = question.questionType === 'short_answer' ? 5 : 3;
+          for (let i = 0; i < answerLines; i++) {
+            children.push(
+              new Paragraph({
+                children: [new TextRun({ text: '_'.repeat(80), size: 22 })],
+                spacing: { after: 100 }
+              })
+            );
+          }
         }
 
         children.push(
@@ -360,6 +383,9 @@ export default function AssessmentFormPage() {
     return questions.reduce((total, q) => total + (q.marks || 0), 0);
   };
 
+  const getMCQCount = () => questions.filter(q => q.questionType === 'mcq').length;
+  const getShortAnswerCount = () => questions.filter(q => q.questionType === 'short_answer').length;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-6 py-8">
@@ -369,7 +395,7 @@ export default function AssessmentFormPage() {
             Create Assessment
           </h1>
           <p className="text-gray-600">
-            Design your assessment and download as PDF or DOCX format
+            Design your assessment with MCQ and short answer questions, then download as PDF or DOCX format
           </p>
         </div>
 
@@ -471,19 +497,23 @@ export default function AssessmentFormPage() {
                   Quiz Questions
                 </h2>
                 <div className="text-sm text-gray-600">
-                  Total: {questions.length} question{questions.length !== 1 ? 's' : ''}
+                  Total: {questions.length} question{questions.length !== 1 ? 's' : ''} 
+                  ({getMCQCount()} MCQ, {getShortAnswerCount()} Short Answer)
                 </div>
               </div>
 
               <div className="space-y-6">
                 {questions.map((q, qIdx) => (
                   <div
-                    key={qIdx}
+                    key={q.id}
                     className="border border-gray-200 p-6 rounded-lg bg-gray-50"
                   >
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-medium text-gray-900">
-                        Question {qIdx + 1}
+                        Question {qIdx + 1} 
+                        <span className="ml-2 text-sm text-gray-600">
+                          ({q.questionType === 'mcq' ? 'Multiple Choice' : 'Short Answer'})
+                        </span>
                       </h3>
                       {questions.length > 1 && (
                         <button
@@ -497,17 +527,22 @@ export default function AssessmentFormPage() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                      <div className="md:col-span-3">
-                        <Textarea
-                          placeholder="Enter your question here..."
-                          value={q.questionText}
-                          onChange={(e) =>
-                            handleQuestionChange(qIdx, "questionText", e.target.value)
-                          }
-                          className="text-gray-900"
-                          rows={2}
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                          Question Type
+                        </label>
+                        <select
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          value={q.questionType}
+                          onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value as 'mcq' | 'short_answer')}
+                        >
+                          {questionTypes.map((type) => (
+                            <option key={type.value} value={type.value}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block mb-2 text-sm font-medium text-gray-700">
@@ -526,68 +561,114 @@ export default function AssessmentFormPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Answer Options
+                    <div className="mb-4">
+                      <label className="block mb-2 text-sm font-medium text-gray-700">
+                        Question Text
                       </label>
-                      {q.options.map((opt, optIdx) => (
-                        <div key={optIdx} className="flex items-center gap-3">
-                          <div className="flex items-center">
-                            <input
-                              type="radio"
-                              name={`correct-${qIdx}`}
-                              checked={q.correctAnswerIndex === optIdx}
-                              onChange={() =>
-                                handleQuestionChange(qIdx, "correctAnswerIndex", optIdx)
-                              }
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                            />
-                            <label className="ml-2 text-sm text-gray-700">
-                              {String.fromCharCode(97 + optIdx).toUpperCase()}
-                            </label>
-                          </div>
-                          <Input
-                            placeholder={`Option ${optIdx + 1}`}
-                            value={opt}
-                            onChange={(e) =>
-                              handleOptionChange(qIdx, optIdx, e.target.value)
-                            }
-                            className="text-gray-900 flex-1"
-                          />
-                          {q.options.length > 2 && (
-                            <button
-                              type="button"
-                              onClick={() => removeOption(qIdx, optIdx)}
-                              className="text-red-600 hover:text-red-700 p-1"
-                              title="Remove Option"
-                            >
-                              <FiTrash2 size={16} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      
-                      {q.options.length < 6 && (
-                        <button
-                          type="button"
-                          onClick={() => addOption(qIdx)}
-                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                        >
-                          + Add Option
-                        </button>
-                      )}
+                      <Textarea
+                        placeholder="Enter your question here..."
+                        value={q.questionText}
+                        onChange={(e) =>
+                          handleQuestionChange(qIdx, "questionText", e.target.value)
+                        }
+                        className="text-gray-900"
+                        rows={2}
+                      />
                     </div>
+
+                    {/* MCQ Options */}
+                    {q.questionType === 'mcq' && (
+                      <div className="space-y-3">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Answer Options
+                        </label>
+                        {q.options.map((opt, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-3">
+                            <div className="flex items-center">
+                              <input
+                                type="radio"
+                                name={`correct-${qIdx}`}
+                                checked={q.correctAnswerIndex === optIdx}
+                                onChange={() =>
+                                  handleQuestionChange(qIdx, "correctAnswerIndex", optIdx)
+                                }
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                              />
+                              <label className="ml-2 text-sm text-gray-700">
+                                {String.fromCharCode(97 + optIdx).toUpperCase()}
+                              </label>
+                            </div>
+                            <Input
+                              placeholder={`Option ${optIdx + 1}`}
+                              value={opt}
+                              onChange={(e) =>
+                                handleOptionChange(qIdx, optIdx, e.target.value)
+                              }
+                              className="text-gray-900 flex-1"
+                            />
+                            {q.options.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => removeOption(qIdx, optIdx)}
+                                className="text-red-600 hover:text-red-700 p-1"
+                                title="Remove Option"
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        
+                        {q.options.length < 6 && (
+                          <button
+                            type="button"
+                            onClick={() => addOption(qIdx)}
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          >
+                            + Add Option
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Short Answer Expected Answer */}
+                    {q.questionType === 'short_answer' && (
+                      <div className="space-y-3">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Expected Answer (Optional - for reference)
+                        </label>
+                        <Textarea
+                          placeholder="Enter the expected answer or key points..."
+                          value={q.expectedAnswer || ''}
+                          onChange={(e) =>
+                            handleQuestionChange(qIdx, "expectedAnswer", e.target.value)
+                          }
+                          className="text-gray-900"
+                          rows={3}
+                        />
+                        <p className="text-xs text-gray-500">
+                          This will not be shown on the question paper. It's for your reference only.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
 
-              <div className="mt-6">
+              <div className="mt-6 flex gap-2">
                 <button
                   type="button"
-                  onClick={addQuestion}
-                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => addQuestion('mcq')}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50"
                 >
-                  + Add Question
+                  + Add MCQ Question
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addQuestion('short_answer')}
+                  className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium px-4 py-2 rounded-lg border border-green-200 hover:bg-green-50"
+                >
+                  + Add Short Answer Question
                 </button>
               </div>
             </div>

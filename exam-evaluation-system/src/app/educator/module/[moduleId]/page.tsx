@@ -256,6 +256,7 @@ export default function ModulePage({ params }: ModulePageProps) {
                 }
                 assessmentId={assess.assessment_id}
                 moduleId={moduleData.moduleId}
+                assessmentType={assess.type}
               />
             ))}
           </div>

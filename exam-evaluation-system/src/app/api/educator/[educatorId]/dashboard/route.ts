@@ -52,7 +52,7 @@ export async function GET(
         title: true,
         description: true,
         deadline: true,
-        module_id: true, // ✅ Ensure module_id is fetched
+        module_id: true, 
         _count: {
           select: {
             submissions: true,

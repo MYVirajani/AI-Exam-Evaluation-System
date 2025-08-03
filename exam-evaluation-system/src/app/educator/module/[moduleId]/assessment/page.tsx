@@ -46,7 +46,7 @@ export default function AssessmentFormPage() {
       questionText: "",
       options: ["", "", "", ""],
       correctAnswerIndex: 0,
-      marks: 1,
+      marks: 0.5,
     },
   ]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -114,7 +114,7 @@ export default function AssessmentFormPage() {
       questionText: "",
       options: questionType === 'mcq' ? ["", "", "", ""] : [],
       correctAnswerIndex: questionType === 'mcq' ? 0 : -1,
-      marks: 1,
+      marks: 0.5,
     };
 
     if (questionType === 'short_answer') {
@@ -380,7 +380,7 @@ export default function AssessmentFormPage() {
   };
 
   const calculateTotalMarks = () => {
-    return questions.reduce((total, q) => total + (q.marks || 0), 0);
+    return questions.reduce((total, q) => total + (q.marks || 0), 0).toFixed(1);
   };
 
   const getMCQCount = () => questions.filter(q => q.questionType === 'mcq').length;
@@ -550,11 +550,12 @@ export default function AssessmentFormPage() {
                         </label>
                         <Input
                           type="number"
-                          min="1"
+                          min="0"
+                          step="0.1"
                           placeholder="Marks"
                           value={q.marks || ''}
                           onChange={(e) =>
-                            handleQuestionChange(qIdx, "marks", parseInt(e.target.value) || 1)
+                            handleQuestionChange(qIdx, "marks", parseFloat(e.target.value) || 0)
                           }
                           className="text-gray-900"
                         />

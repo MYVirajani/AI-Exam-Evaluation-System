@@ -28,6 +28,7 @@ interface Assessment {
   description: string;
   deadline: string;
   type: string;
+  submissionsCount: number;
 }
 
 interface ModuleData {
@@ -36,6 +37,7 @@ interface ModuleData {
   moduleCode?: string;
   lessons: Lesson[];
   assessments: Assessment[];
+  enrollmentsCount: number;
 }
 
 interface ModulePageProps {
@@ -79,7 +81,25 @@ export default function ModulePage({ params }: ModulePageProps) {
         if (!res.ok) throw new Error("Failed to fetch module data");
 
         const data = await res.json();
-        setModuleData(data);
+
+        // ✅ Map assessments and ensure numbers are valid
+        const mappedData: ModuleData = {
+          moduleId: data.moduleId,
+          moduleName: data.moduleName,
+          moduleCode: data.moduleCode,
+          lessons: data.lessons || [],
+          enrollmentsCount: Number(data.enrollmentsCount) || 0,
+          assessments: (data.assessments || []).map((a: any) => ({
+            assessment_id: a.assessment_id,
+            title: a.title,
+            description: a.description,
+            deadline: a.deadline,
+            type: a.type,
+            submissionsCount: Number(a.submissionsCount) || 0,
+          })),
+        };
+
+        setModuleData(mappedData);
       } catch (err) {
         console.error("[getModuleData_ERROR]", err);
         setModuleData(null);
@@ -221,7 +241,7 @@ export default function ModulePage({ params }: ModulePageProps) {
                 key={assess.assessment_id}
                 title={assess.title}
                 module={moduleName}
-                uploads="0"
+                uploads={`${assess.submissionsCount}/${moduleData.enrollmentsCount}`}
                 date={new Date(assess.deadline).toLocaleString("en-US", {
                   year: "numeric",
                   month: "numeric",

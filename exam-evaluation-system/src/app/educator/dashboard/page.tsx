@@ -216,6 +216,7 @@ export default function EducatorHomePage() {
             date: formattedDate,
             label,
             moduleId: mod?.module_id || "",
+            assessmentType: a.type
           };
         });
 
@@ -387,6 +388,7 @@ export default function EducatorHomePage() {
                   label={evt.label}
                   assessmentId={evt.id}
                   moduleId={evt.moduleId}
+                  assessmentType={evt.assessmentType}
                 />
               ))}
             </div>

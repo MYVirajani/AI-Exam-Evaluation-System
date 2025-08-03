@@ -9,6 +9,7 @@ interface EducatorEventCardProps {
   label: string; // "Due on:" or "Scheduled on:"
   moduleId: string;
   assessmentId: string;
+  assessmentType?: string; // <-- added
   enrollments?: number; // Optional override for enrolled students
   onDelete?: (moduleId: string, assessmentId: string) => Promise<void>;
 }
@@ -21,6 +22,7 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
   label,
   moduleId,
   assessmentId,
+  assessmentType, // <-- added
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -46,7 +48,12 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
   };
 
   const educatorId = getEducatorId();
-  const navigationUrl = `/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`;
+
+  // ✅ Updated navigation logic
+  const navigationUrl =
+    assessmentType === 'quiz'
+      ? `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
+      : `/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`;
 
   const parseUploadsData = () => {
     let submissions = 0;

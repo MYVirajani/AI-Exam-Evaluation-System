@@ -17,9 +17,8 @@ export async function POST(req: NextRequest) {
       createdBy,
       questions,
     } = body;
-    // moduleId || !createdBy ||
 
-    if (!assessmentId || !title ||  !Array.isArray(questions)) {
+    if (!assessmentId || !title || !Array.isArray(questions)) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
@@ -28,27 +27,43 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
 
-    // Upsert the assessment
-    const assessment = await prisma.assessment.upsert({
+    // Check if assessment exists
+    const existingAssessment = await prisma.assessment.findUnique({
       where: { assessment_id: assessmentId },
-      update: {
-        title,
-        description,
-        instructions,
-        duration,
-      },
-      create: {
-        assessment_id: assessmentId,
-        type,
-        title,
-        description,
-        instructions,
-        duration,
-        deadline: deadline || new Date(),
-        module_id: moduleId,
-        created_by: createdBy,
-      },
     });
+
+    let assessment;
+
+    if (existingAssessment) {
+      // Update only fields that are provided; preserve others
+      assessment = await prisma.assessment.update({
+        where: { assessment_id: assessmentId },
+        data: {
+          title,
+          description,
+          instructions,
+          duration,
+          ...(moduleId ? { module_id: moduleId } : {}),
+          ...(createdBy ? { created_by: createdBy } : {}),
+          ...(deadline ? { deadline } : {}),
+        },
+      });
+    } else {
+      // If not exists, create new assessment (all required)
+      assessment = await prisma.assessment.create({
+        data: {
+          assessment_id: assessmentId,
+          type,
+          title,
+          description,
+          instructions,
+          duration,
+          deadline: deadline || now,
+          module_id: moduleId,
+          created_by: createdBy,
+        },
+      });
+    }
 
     // Create new question paper
     const questionPaperId = uuidv4();
@@ -61,7 +76,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Bulk create new questions
+    // Format and create questions
     const formattedQuestions = questions.map((q: any, index: number) => ({
       assessment_id: assessmentId,
       question_paper_id: questionPaperId,
@@ -79,10 +94,10 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Assessment and questions saved',
       assessment,
-      questionPaper
+      questionPaper,
     });
   } catch (err) {
-    console.error('[POST /api/educator/assessment/questions]', err);
+    console.error('[POST /api/educator/assessment/quiz]', err);
     return NextResponse.json(
       { success: false, message: 'Internal Server Error' },
       { status: 500 }

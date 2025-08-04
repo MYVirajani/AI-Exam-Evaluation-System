@@ -94,9 +94,11 @@ export default function SignupPopup({ isOpen, onClose,onSwitchToSignIn }: Signup
           icon: "ℹ️",
         });
         onClose();
+        onSwitchToSignIn();
       } else {
         toast.success("Account created successfully!");
         onClose();
+        onSwitchToSignIn();
       }
     } catch (err: any) {
       console.error("Signup error:", err);

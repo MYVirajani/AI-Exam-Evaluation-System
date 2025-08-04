@@ -1,5 +1,6 @@
 import { siteConfig } from "@/config/site";
-import { FiMenu, FiUser } from "react-icons/fi";
+//import { FiMenu, FiUser } from "react-icons/fi";
+import { FiMenu } from "react-icons/fi";
 
 interface HeaderProps {
   title?: string;
@@ -50,12 +51,12 @@ const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* User profile button */}
-          <button className="group relative p-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110">
+          {/* <button className="group relative p-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110">
             <FiUser className="text-white text-xl" />
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400/30 to-purple-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             {/* Status indicator */}
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white shadow-lg animate-pulse" />
-          </button>
+            {/* <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white shadow-lg animate-pulse" />
+          </button> */} 
         </div>
       </div>
       

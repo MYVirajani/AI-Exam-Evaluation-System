@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import Button from "@/components/Button";
 import QuizForm from "@/components/QuizForm";
 import AutoResizeTextarea from "@/components/AutoResizeTextarea";
+import PasswordInput from "@/components/PasswordInput";
 import Dropdown from "@/components/ui/Dropdown";
 import {
   FiBook,
@@ -18,7 +19,6 @@ import {
   FiCalendar,
   FiList,
   FiHash,
-  FiLock,
   FiShuffle,
 } from "react-icons/fi";
 
@@ -50,7 +50,7 @@ export default function AssessmentFormPage() {
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [password, setPassword] = useState("123");
+  const [password, setPassword] = useState("");
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
 
   // Other states
@@ -211,7 +211,7 @@ export default function AssessmentFormPage() {
         }
 
         // Set password and shuffle settings if available
-        setPassword(assessment.password || "123");
+        setPassword(assessment.password || "");
         setShuffleQuestions(assessment.shuffle_questions ?? true);
 
         // Set module info
@@ -605,32 +605,17 @@ export default function AssessmentFormPage() {
                 )}
               </div>
 
-              {/* Password */}
+              {/* Password Input Component */}
               <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-semibold text-gray-800 mb-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    <FiLock className="h-4 w-4 text-gray-600" />
-                    <span>
-                      Assessment Password{" "}
-                      <span className="text-red-500">*</span>
-                    </span>
-                  </div>
-                </label>
-                <input
-                  type="text"
-                  id="password"
+                <PasswordInput
+                  label="Assessment Password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={setPassword}
                   placeholder="Enter assessment password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 bg-white"
-                  required
+                  required={true}
+                  helperText="Students will need this password to access the assessment"
+                  id="assessmentPassword"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Students will need this password to access the assessment
-                </p>
               </div>
 
               {/* Shuffle Questions */}

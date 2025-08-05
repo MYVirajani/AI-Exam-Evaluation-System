@@ -16,6 +16,7 @@
     "bcryptjs": "^3.0.2",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
+    "generate-password": "^1.7.1",
     "jspdf": "^3.0.1",
     "next": "^15.3.4",
     "react": "^19.1.0",

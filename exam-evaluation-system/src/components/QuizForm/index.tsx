@@ -31,6 +31,20 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
   const generateQuestionId = () =>
     Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
+  // Ensure all questions have valid marks when component initializes
+  React.useEffect(() => {
+    const updatedQuestions = questions.map(q => ({
+      ...q,
+      marks: q.marks != null ? q.marks : 1 // Default to 1 if marks is undefined/null
+    }));
+    
+    // Only update if there were changes
+    const hasChanges = questions.some((q, index) => q.marks !== updatedQuestions[index].marks);
+    if (hasChanges) {
+      setQuestions(updatedQuestions);
+    }
+  }, []);
+
   const handleQuestionChange = (
     index: number,
     field: keyof Question,
@@ -91,7 +105,7 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
       questionText: "",
       options: questionType === "MCQ" ? ["", "", "", ""] : [],
       correctAnswerIndex: questionType === "MCQ" ? 0 : -1,
-      marks: 0.5,
+      marks: 1, // Ensure marks is always initialized as a number
     };
 
     if (questionType === "SHORT") {
@@ -157,8 +171,13 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
                   min="0"
                   step="0.1"
                   placeholder="Marks"
-                  value={q.marks || ""}
-                  onChange={(e) => handleQuestionChange(qIdx, "marks", parseFloat(e.target.value) || 0)}
+                  value={q.marks != null ? q.marks.toString() : ""} // Handle undefined/null marks
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Handle empty string and convert to number
+                    const marks = value === "" ? 0 : parseFloat(value);
+                    handleQuestionChange(qIdx, "marks", isNaN(marks) ? 0 : marks);
+                  }}
                   className="text-gray-900"
                 />
               </div>

@@ -115,7 +115,7 @@ model Assessment {
   deadline          DateTime
   module_id         String
   created_by        String
-  total_marks       Float
+  total_marks       Decimal        @db.Decimal(4, 1)
   password          String? // For quiz access
   question_count    Int? // Number of questions to show (for quizzes)
   shuffle_questions Boolean        @default(false) // Whether to shuffle questions
@@ -178,7 +178,7 @@ model Question {
   question           String
   model_answer       String
   mcq_answer_options String[]     @default([])
-  marks_allowed      Float
+  marks_allowed      Decimal      @db.Decimal(4, 1)
 
   assessment  Assessment       @relation(fields: [assessment_id], references: [assessment_id])
   grades      Question_Grade[]
@@ -209,8 +209,8 @@ model Quiz_Submission {
   submitted_at   DateTime?
   ipAddress      String?
   device_info    String?
-  total_marks    Float?
-  obtained_marks Float?
+  total_marks    Decimal?  @db.Decimal(4, 1)
+  obtained_marks Decimal?  @db.Decimal(4, 1)
   is_graded      Boolean   @default(false)
 
   assessment Assessment    @relation(fields: [assessment_id], references: [assessment_id])
@@ -227,7 +227,7 @@ model Quiz_Answer {
   question_id    String
   student_answer String
   is_correct     Boolean?
-  marks_awarded  Float?
+  marks_awarded  Decimal?  @db.Decimal(4, 1)
   graded_at      DateTime?
   feedback       String?
 
@@ -242,8 +242,8 @@ model Quiz_Answer {
 model Quiz_Grade {
   submission_id String
   question_id   String
-  marks_awarded Float
-  max_marks     Float
+  marks_awarded Decimal  @db.Decimal(4, 1)
+  max_marks     Decimal  @db.Decimal(4, 1)
   feedback      String?
   graded_at     DateTime @default(now())
   auto_graded   Boolean  @default(true)
@@ -258,7 +258,7 @@ model Question_Grade {
   q_grade_id    String   @id
   question_id   String
   submission_id String
-  marks_awarded Float
+  marks_awarded Decimal  @db.Decimal(4, 1)
   grading_time  DateTime
   auto_graded   Boolean
   feedback      String
@@ -274,8 +274,8 @@ model Question_Grade {
 model Assessment_Grade {
   grade_id      String   @id
   submission_id String   @unique
-  total_marks   Float
-  marks_awarded Float
+  total_marks   Decimal  @db.Decimal(4, 1)
+  marks_awarded Decimal  @db.Decimal(4, 1)
   feedback      String
   grading_time  DateTime
   auto_graded   Boolean
@@ -298,10 +298,10 @@ model Evaluation_Model {
 }
 
 model Pricing_Plan {
-  pricing_plan_id String @id
+  pricing_plan_id String  @id
   name            String
   duration        Int
-  price           Float
+  price           Decimal @db.Decimal(6, 1)
   description     String
   payment_method  String
 

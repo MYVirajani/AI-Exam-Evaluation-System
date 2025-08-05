@@ -5,6 +5,7 @@ import React from "react";
 import { FiTrash2 } from "react-icons/fi";
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
+import Dropdown from "@/components/ui/Dropdown";
 
 interface Question {
   id: string;
@@ -27,19 +28,25 @@ const questionTypes = [
   { label: "Short Answer", value: "SHORT" },
 ];
 
-const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }) => {
+const QuizForm: React.FC<QuizFormProps> = ({
+  questions,
+  setQuestions,
+  onSubmit,
+}) => {
   const generateQuestionId = () =>
     Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
   // Ensure all questions have valid marks when component initializes
   React.useEffect(() => {
-    const updatedQuestions = questions.map(q => ({
+    const updatedQuestions = questions.map((q) => ({
       ...q,
-      marks: q.marks != null ? q.marks : 1 // Default to 1 if marks is undefined/null
+      marks: q.marks != null ? q.marks : 1, // Default to 1 if marks is undefined/null
     }));
-    
+
     // Only update if there were changes
-    const hasChanges = questions.some((q, index) => q.marks !== updatedQuestions[index].marks);
+    const hasChanges = questions.some(
+      (q, index) => q.marks !== updatedQuestions[index].marks
+    );
     if (hasChanges) {
       setQuestions(updatedQuestions);
     }
@@ -91,7 +98,9 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
     const newQuestions = [...questions];
     newQuestions[qIdx].options.splice(optIdx, 1);
 
-    if (newQuestions[qIdx].correctAnswerIndex >= newQuestions[qIdx].options.length) {
+    if (
+      newQuestions[qIdx].correctAnswerIndex >= newQuestions[qIdx].options.length
+    ) {
       newQuestions[qIdx].correctAnswerIndex = 0;
     }
 
@@ -120,25 +129,37 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
     setQuestions(newQuestions);
   };
 
-  const getMCQCount = () => questions.filter((q) => q.questionType === "MCQ").length;
-  const getShortAnswerCount = () => questions.filter((q) => q.questionType === "SHORT").length;
+  const getMCQCount = () =>
+    questions.filter((q) => q.questionType === "MCQ").length;
+  const getShortAnswerCount = () =>
+    questions.filter((q) => q.questionType === "SHORT").length;
 
   return (
     <div className="mt-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-gray-900">Quiz Questions</h2>
         <div className="text-sm text-gray-600">
-          Total: {questions.length} question{questions.length !== 1 ? "s" : ""} (
-          {getMCQCount()} MCQ, {getShortAnswerCount()} Short Answer)
+          Total: {questions.length} question{questions.length !== 1 ? "s" : ""}{" "}
+          ({getMCQCount()} MCQ, {getShortAnswerCount()} Short Answer)
         </div>
       </div>
 
       <div className="space-y-6">
         {questions.map((q, qIdx) => (
-          <div key={q.id} className="border border-gray-200 p-6 rounded-lg bg-gray-50">
+          <div
+            key={q.id}
+            className="border border-gray-200 p-6 rounded-lg bg-gray-50"
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-gray-900">
-                Question {qIdx + 1} <span className="ml-2 text-sm text-gray-600">({q.questionType === "MCQ" ? "Multiple Choice" : "Short Answer"})</span>
+                Question {qIdx + 1}{" "}
+                <span className="ml-2 text-sm text-gray-600">
+                  (
+                  {q.questionType === "MCQ"
+                    ? "Multiple Choice"
+                    : "Short Answer"}
+                  )
+                </span>
               </h3>
               {questions.length > 1 && (
                 <button
@@ -152,20 +173,19 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Dropdown
+                label="Question Type"
+                options={questionTypes}
+                value={q.questionType}
+                onChange={(value) =>
+                  handleQuestionTypeChange(qIdx, value as "MCQ" | "SHORT")
+                }
+                arrowPosition="left"
+              />
               <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">Question Type</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={q.questionType}
-                  onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value as "MCQ" | "SHORT")}
-                >
-                  {questionTypes.map((type) => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">Marks</label>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Marks
+                </label>
                 <Input
                   type="number"
                   min="0"
@@ -176,7 +196,11 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
                     const value = e.target.value;
                     // Handle empty string and convert to number
                     const marks = value === "" ? 0 : parseFloat(value);
-                    handleQuestionChange(qIdx, "marks", isNaN(marks) ? 0 : marks);
+                    handleQuestionChange(
+                      qIdx,
+                      "marks",
+                      isNaN(marks) ? 0 : marks
+                    );
                   }}
                   className="text-gray-900"
                 />
@@ -184,11 +208,15 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
             </div>
 
             <div className="mb-4">
-              <label className="block mb-2 text-sm font-medium text-gray-700">Question Text</label>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Question Text
+              </label>
               <Textarea
                 placeholder="Enter your question here..."
                 value={q.questionText}
-                onChange={(e) => handleQuestionChange(qIdx, "questionText", e.target.value)}
+                onChange={(e) =>
+                  handleQuestionChange(qIdx, "questionText", e.target.value)
+                }
                 className="text-gray-900"
                 rows={2}
               />
@@ -197,7 +225,9 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
             {/* MCQ Options */}
             {q.questionType === "MCQ" && (
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">Answer Options</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Answer Options
+                </label>
                 {q.options.map((opt, optIdx) => (
                   <div key={optIdx} className="flex items-center gap-3">
                     <div className="flex items-center">
@@ -205,7 +235,13 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
                         type="radio"
                         name={`correct-${qIdx}`}
                         checked={q.correctAnswerIndex === optIdx}
-                        onChange={() => handleQuestionChange(qIdx, "correctAnswerIndex", optIdx)}
+                        onChange={() =>
+                          handleQuestionChange(
+                            qIdx,
+                            "correctAnswerIndex",
+                            optIdx
+                          )
+                        }
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500"
                       />
                       <label className="ml-2 text-sm text-gray-700">
@@ -215,7 +251,9 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
                     <Input
                       placeholder={`Option ${optIdx + 1}`}
                       value={opt}
-                      onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
+                      onChange={(e) =>
+                        handleOptionChange(qIdx, optIdx, e.target.value)
+                      }
                       className="text-gray-900 flex-1"
                     />
                     {q.options.length > 2 && (
@@ -246,15 +284,25 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
             {/* Short Answer Expected Answer */}
             {q.questionType === "SHORT" && (
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">Expected Answer (Optional - for reference)</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Correct Answer
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
                 <Textarea
-                  placeholder="Enter the expected answer or key points..."
+                  placeholder="Enter the correct answer students should provide (this will be used for auto-grading)"
                   value={q.expectedAnswer || ""}
-                  onChange={(e) => handleQuestionChange(qIdx, "expectedAnswer", e.target.value)}
+                  onChange={(e) =>
+                    handleQuestionChange(qIdx, "expectedAnswer", e.target.value)
+                  }
                   className="text-gray-900"
                   rows={3}
+                  required
                 />
-                <p className="text-xs text-gray-500">This will not be shown on the question paper. It's for your reference only.</p>
+                <p className="text-xs text-gray-500">
+                  This answer will be used to automatically grade student
+                  responses. Be specific and include all possible correct
+                  variations if needed.
+                </p>
               </div>
             )}
           </div>

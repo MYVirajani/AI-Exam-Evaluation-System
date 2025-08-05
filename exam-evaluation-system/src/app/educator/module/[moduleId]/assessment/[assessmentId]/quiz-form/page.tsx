@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import Button from "@/components/Button";
 import QuizForm from "@/components/QuizForm";
+import AutoResizeTextarea from "@/components/AutoResizeTextarea";
+import Dropdown from "@/components/ui/Dropdown";
 import {
   FiBook,
   FiClock,
@@ -29,6 +31,11 @@ interface Question {
   marks: number;
   expectedAnswer?: string;
 }
+
+const shuffleOptions = [
+  { label: "Shuffle questions for each student", value: "true" },
+  { label: "Keep questions in same order", value: "false" },
+];
 
 export default function AssessmentFormPage() {
   const { moduleId, assessmentId } = useParams();
@@ -63,6 +70,10 @@ export default function AssessmentFormPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Refs for textareas
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const instructionsRef = useRef<HTMLTextAreaElement>(null);
 
   // Instructions formatting functions
   const addBulletPoints = () => {
@@ -284,8 +295,6 @@ export default function AssessmentFormPage() {
       };
     });
 
-    // const totalMarks = parseFloat(calculateTotalMarks());
-    // console.log('totalMarks: ', totalMarks);
     const totalQuestions = questions.length;
 
     const quiz = {
@@ -302,7 +311,6 @@ export default function AssessmentFormPage() {
       deadline: new Date(deadline).toISOString(),
       questions: sanitizedQuestions,
       createdBy: educatorId,
-      // totalMarks,
       totalQuestions,
       password: password.trim(),
       shuffleQuestions,
@@ -322,7 +330,6 @@ export default function AssessmentFormPage() {
 
       if (result.success) {
         toast.success("Assessment saved successfully!", {
-          // icon: "🎉",
           duration: 4000,
         });
         
@@ -332,7 +339,6 @@ export default function AssessmentFormPage() {
         }, 1000);
       } else {
         toast.error(`Failed to save assessment: ${result.message}`, {
-          // icon: "❌",
           duration: 5000,
         });
       }
@@ -394,23 +400,6 @@ export default function AssessmentFormPage() {
                 <FiX className="h-4 w-4" />
                 <span>Cancel</span>
               </Button>
-              {/* <Button
-                onClick={handleSubmit}
-                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <FiSave className="h-4 w-4" />
-                    <span>Save Quiz</span>
-                  </>
-                )}
-              </Button> */}
             </div>
           </div>
         </div>
@@ -421,7 +410,7 @@ export default function AssessmentFormPage() {
         {moduleCode && moduleName && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
             <div className="flex items-center space-x-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-blue-100 rounded-lg">
                 <FiBook className="h-5 w-5 text-blue-600" />
               </div>
               <div>
@@ -528,13 +517,13 @@ export default function AssessmentFormPage() {
                 >
                   Description
                 </label>
-                <textarea
+                <AutoResizeTextarea
+                  ref={descriptionRef}
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Enter assessment description..."
-                  rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-vertical text-gray-900 bg-white"
+                  minHeight={80}
                 />
               </div>
 
@@ -584,13 +573,13 @@ export default function AssessmentFormPage() {
                   </button>
                 </div>
 
-                <textarea
+                <AutoResizeTextarea
+                  ref={instructionsRef}
                   id="instructions"
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
                   placeholder="Enter instructions (one per line)&#10;• Read all questions carefully&#10;• Answer all questions&#10;• Submit before the deadline&#10;&#10;Or use numbered format:&#10;1. Read all questions carefully&#10;2. Answer all questions&#10;3. Submit before the deadline"
-                  rows={6}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-vertical text-gray-900 bg-white"
+                  minHeight={80}
                 />
 
                 {/* Instructions Preview */}
@@ -646,28 +635,18 @@ export default function AssessmentFormPage() {
 
               {/* Shuffle Questions */}
               <div>
-                <label
-                  htmlFor="shuffleQuestions"
-                  className="block text-sm font-semibold text-gray-800 mb-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    <FiShuffle className="h-4 w-4 text-gray-600" />
-                    <span>Question Order</span>
-                  </div>
-                </label>
-                <select
-                  id="shuffleQuestions"
-                  value={shuffleQuestions ? "true" : "false"}
-                  onChange={(e) =>
-                    setShuffleQuestions(e.target.value === "true")
+                <Dropdown
+                  label={
+                    <div className="flex items-center space-x-2">
+                      <FiShuffle className="h-4 w-4 text-gray-600" />
+                      <span>Question Order</span>
+                    </div>
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 bg-white"
-                >
-                  <option value="true">
-                    Shuffle questions for each student
-                  </option>
-                  <option value="false">Keep questions in same order</option>
-                </select>
+                  options={shuffleOptions}
+                  value={shuffleQuestions ? "true" : "false"}
+                  onChange={(value) => setShuffleQuestions(value === "true")}
+                  arrowPosition="right"
+                />
                 <p className="text-xs text-gray-500 mt-1">
                   Shuffling helps prevent cheating by randomizing question order
                 </p>

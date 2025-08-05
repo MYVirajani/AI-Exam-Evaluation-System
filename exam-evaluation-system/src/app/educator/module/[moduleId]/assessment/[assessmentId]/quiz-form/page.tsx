@@ -284,7 +284,8 @@ export default function AssessmentFormPage() {
       };
     });
 
-    const totalMarks = parseFloat(calculateTotalMarks());
+    // const totalMarks = parseFloat(calculateTotalMarks());
+    // console.log('totalMarks: ', totalMarks);
     const totalQuestions = questions.length;
 
     const quiz = {
@@ -301,7 +302,7 @@ export default function AssessmentFormPage() {
       deadline: new Date(deadline).toISOString(),
       questions: sanitizedQuestions,
       createdBy: educatorId,
-      totalMarks,
+      // totalMarks,
       totalQuestions,
       password: password.trim(),
       shuffleQuestions,
@@ -393,7 +394,7 @@ export default function AssessmentFormPage() {
                 <FiX className="h-4 w-4" />
                 <span>Cancel</span>
               </Button>
-              <Button
+              {/* <Button
                 onClick={handleSubmit}
                 className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
                 disabled={isSaving}
@@ -409,7 +410,7 @@ export default function AssessmentFormPage() {
                     <span>Save Quiz</span>
                   </>
                 )}
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>

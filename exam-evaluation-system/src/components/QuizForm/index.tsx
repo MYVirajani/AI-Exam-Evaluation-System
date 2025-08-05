@@ -276,13 +276,13 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
         >
           + Add Short Answer Question
         </button>
-        <button
+        {/* <button
           type="button"
           onClick={onSubmit}
           className="ml-auto bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700"
         >
           Submit Quiz
-        </button>
+        </button> */}
       </div>
     </div>
   );

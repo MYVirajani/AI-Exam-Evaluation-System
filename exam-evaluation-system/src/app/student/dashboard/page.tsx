@@ -100,12 +100,13 @@ const StudentHomePage: React.FC = () => {
     }
   }, []);
 
-  // Flatten all assessments for event cards
+  // Flatten all assessments for event cards - include type
   const allAssessments = useMemo(() => {
     return modules.flatMap((mod) =>
       mod.assessments.map((assess) => ({
         ...assess,
         module: `${mod.module_code} ${mod.module_name}`,
+        type: assess.type, // Make sure type is included
       }))
     );
   }, [modules]);
@@ -168,11 +169,17 @@ const StudentHomePage: React.FC = () => {
     };
   }, [modules, allAssessments]);
 
-  // Navigate to assessment detail page on event card click
-  const handleEventCardClick = (moduleId: string, assessmentId: string) => {
-    router.push(
-      `/student/assessments/${assessmentId}?studentId=${userId}&moduleId=${moduleId}`
-    );
+  // Navigate to assessment detail page on event card click - Updated with type-based routing
+  const handleEventCardClick = (moduleId: string, assessmentId: string, assessmentType: string) => {
+    if (assessmentType.toLowerCase() === 'quiz') {
+      router.push(
+        `/student/quiz/${assessmentId}?studentId=${userId}&moduleId=${moduleId}`
+      );
+    } else {
+      router.push(
+        `/student/assessments/${assessmentId}?studentId=${userId}&moduleId=${moduleId}`
+      );
+    }
   };
 
   // Scroll functions
@@ -296,7 +303,7 @@ const StudentHomePage: React.FC = () => {
                   countdown={countdowns[assess.assessment_id] || "--:--:--"}
                   date={new Date(assess.deadline).toLocaleString()}
                   onClick={() =>
-                    handleEventCardClick(assess.module_id, assess.assessment_id)
+                    handleEventCardClick(assess.module_id, assess.assessment_id, assess.type)
                   }
                 />
               ))}

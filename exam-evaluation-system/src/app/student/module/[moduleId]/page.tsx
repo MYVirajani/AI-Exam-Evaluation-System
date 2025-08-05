@@ -81,42 +81,54 @@ const StudentModulePage = () => {
   }, [moduleId, studentId]);
 
   // Real-time countdown updater
-useEffect(() => {
-  const updateCountdowns = () => {
-    const now = Date.now();
-    const newCountdowns: Record<string, string> = {};
+  useEffect(() => {
+    const updateCountdowns = () => {
+      const now = Date.now();
+      const newCountdowns: Record<string, string> = {};
 
-    assessments.forEach(({ assessment_id, deadline }) => {
-      const deadlineTime = new Date(deadline).getTime();
-      const diff = deadlineTime - now;
+      assessments.forEach(({ assessment_id, deadline }) => {
+        const deadlineTime = new Date(deadline).getTime();
+        const diff = deadlineTime - now;
 
-      if (diff <= 0) {
-        newCountdowns[assessment_id] = "Expired";
-      } else {
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        if (diff <= 0) {
+          newCountdowns[assessment_id] = "Expired";
+        } else {
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-        // Only include non-zero units in the display
-        const parts = [];
-        if (days > 0) parts.push(`${days}d`);
-        if (hours > 0 || days > 0) parts.push(`${hours}h`);
-        if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
-        parts.push(`${seconds}s`);
+          // Only include non-zero units in the display
+          const parts = [];
+          if (days > 0) parts.push(`${days}d`);
+          if (hours > 0 || days > 0) parts.push(`${hours}h`);
+          if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
+          parts.push(`${seconds}s`);
 
-        newCountdowns[assessment_id] = parts.join(" ");
-      }
-    });
+          newCountdowns[assessment_id] = parts.join(" ");
+        }
+      });
 
-    setCountdowns(newCountdowns);
+      setCountdowns(newCountdowns);
+    };
+
+    updateCountdowns(); // Initial call
+    const timer = setInterval(updateCountdowns, 1000);
+    return () => clearInterval(timer);
+  }, [assessments]);
+
+  // Navigate to assessment detail page on event card click - Updated with type-based routing
+  const handleEventCardClick = (moduleId: string, assessmentId: string, assessmentType: string) => {
+    if (assessmentType.toLowerCase() === 'quiz') {
+      router.push(
+        `/student/quiz/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`
+      );
+    } else {
+      router.push(
+        `/student/assessments/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`
+      );
+    }
   };
-
-  updateCountdowns(); // Initial call
-  const timer = setInterval(updateCountdowns, 1000);
-  return () => clearInterval(timer);
-}, [assessments]);
-
 
   if (loading) return <div className="p-6 text-gray-500">Loading module data...</div>;
   if (!module) return <div className="p-6 text-red-500">Module not found or access denied.</div>;
@@ -147,9 +159,7 @@ useEffect(() => {
                 countdown={countdowns[assess.assessment_id] || "--:--:--"}
                 date={new Date(assess.deadline).toLocaleString()}
                 onClick={() =>
-                  router.push(
-                    `/student/assessments/${assess.assessment_id}?studentId=${studentId}&moduleId=${module.module_id}`
-                  )
+                  handleEventCardClick(module.module_id, assess.assessment_id, assess.type)
                 }
               />
             ))}

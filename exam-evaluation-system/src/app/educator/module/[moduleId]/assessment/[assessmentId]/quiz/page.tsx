@@ -29,6 +29,7 @@ interface Assessment {
   description?: string;
   deadline: string;
   duration?: number;
+  total_marks?: number;
   instructions?: string[];
   questions?: Question[];
   submissions: {
@@ -113,10 +114,9 @@ export default function QuizAssessmentPage() {
   };
 
   const calculateTotalMarks = () => {
-    if (!assessment?.questions) return 0;
-    return assessment.questions.reduce((total, q) => total + parseInt(q.marks_allowed || '0'), 0);
-  };
-
+  return assessment?.total_marks ?? 
+    (assessment?.questions?.reduce((total, q) => total + parseInt(q.marks_allowed || '0'), 0) ?? 0);
+};
   const getMCQCount = () => {
     if (!assessment?.questions) return 0;
     return assessment.questions.filter(q => q.type === 'MCQ').length;

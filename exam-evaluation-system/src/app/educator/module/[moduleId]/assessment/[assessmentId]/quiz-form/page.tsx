@@ -37,7 +37,7 @@ const shuffleOptions = [
   { label: "Keep questions in same order", value: "false" },
 ];
 
-export default function AssessmentFormPage() {
+export default function QuizBuilderPage() {
   const { moduleId, assessmentId } = useParams();
   const searchParams = useSearchParams();
   const educatorId = searchParams.get("educatorId");

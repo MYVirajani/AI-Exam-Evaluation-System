@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,13 +42,20 @@ export async function POST(req: NextRequest) {
 
     // ✅ Build questions with proper decimal handling
     const parsedQuestions = questions.map((q: any, index: number) => {
-      console.log(`Question ${index + 1} - type of q.marks:`, typeof q.marks, '| value:', q.marks);
+      console.log(
+        `Question ${index + 1} - type of q.marks:`,
+        typeof q.marks,
+        "| value:",
+        q.marks
+      );
 
       // Convert marks to proper Decimal format
       const cleanMarks = new Decimal(
-        typeof q.marks === 'number' ? q.marks.toFixed(1) :
-        typeof q.marks === 'string' ? parseFloat(q.marks).toFixed(1) :
-        '0.0'
+        typeof q.marks === "number"
+          ? q.marks.toFixed(1)
+          : typeof q.marks === "string"
+          ? parseFloat(q.marks).toFixed(1)
+          : "0.0"
       );
 
       const modelAnswer =
@@ -69,10 +77,12 @@ export async function POST(req: NextRequest) {
     // ✅ Calculate total marks using Decimal arithmetic
     const calculatedTotalMarks = parsedQuestions.reduce(
       (sum: Decimal, q) => sum.plus(q.marks_allowed),
-      new Decimal('0.0')
+      new Decimal("0.0")
     );
 
     // ✅ Update the assessment with proper decimal handling
+
+    // Inside the try block, in the prisma.assessment.update call:
     const updatedAssessment = await prisma.assessment.update({
       where: { assessment_id: assessmentId },
       data: {
@@ -86,12 +96,15 @@ export async function POST(req: NextRequest) {
           : existingAssessment.instructions,
         type: "quiz",
         deadline: deadline ? new Date(deadline) : existingAssessment.deadline,
-        total_marks: totalMarks 
-          ? new Decimal(totalMarks.toString()) 
+        total_marks: totalMarks
+          ? new Decimal(totalMarks.toString())
           : calculatedTotalMarks,
-        password: password ?? existingAssessment.password,
+        password: password
+          ? await bcrypt.hash(password, 10)
+          : existingAssessment.password,
         question_count: questionCount ?? parsedQuestions.length,
-        shuffle_questions: shuffleQuestions ?? existingAssessment.shuffle_questions,
+        shuffle_questions:
+          shuffleQuestions ?? existingAssessment.shuffle_questions,
       },
     });
 
@@ -116,7 +129,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: error instanceof Error ? error.message : "Internal server error",
+        message:
+          error instanceof Error ? error.message : "Internal server error",
       },
       { status: 500 }
     );

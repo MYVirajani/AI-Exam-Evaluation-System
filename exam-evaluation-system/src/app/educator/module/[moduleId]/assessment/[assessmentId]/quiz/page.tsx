@@ -2,10 +2,8 @@
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { FileIcon, BotIcon, PlusIcon, EditIcon } from "@/components/Icons";
+import { FileIcon, PlusIcon, EditIcon } from "@/components/Icons";
 import Button from "@/components/Button";
-import Dropdown from "@/components/Dropdown";
-import toast from "react-hot-toast";
 
 interface User {
   first_name: string;
@@ -67,9 +65,7 @@ export default function QuizAssessmentPage() {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState("ChatGPT");
 
-  const models = ["ChatGPT", "Deepseek", "Gemini", "Llama"];
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {
@@ -117,29 +113,7 @@ export default function QuizAssessmentPage() {
     router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?edit=true`);
   };
 
-  const handleStartEvaluation = () => {
-    if (!assessment?.questions || assessment.questions.length === 0) {
-      toast.error("Please create a quiz first");
-      return;
-    }
 
-    if (!assessment?.submissions || assessment.submissions.length === 0) {
-      toast.error("No student submissions found for evaluation");
-      return;
-    }
-
-    console.log("Starting quiz evaluation with model:", selectedModel);
-    toast.success(`Starting quiz evaluation with ${selectedModel}...`);
-  };
-
-  const isEvaluationReady = () => {
-    return (
-      assessment?.questions &&
-      assessment.questions.length > 0 &&
-      assessment?.submissions &&
-      assessment.submissions.length > 0
-    );
-  };
 
   const calculateTotalMarks = () => {
     if (!assessment?.questions) return 0;
@@ -384,55 +358,7 @@ export default function QuizAssessmentPage() {
           )}
         </div>
 
-        {/* Evaluation Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">AI Evaluation</h2>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700">
-                Select AI Model:
-              </label>
-              <Dropdown
-                options={models}
-                selectedOption={selectedModel}
-                onSelect={setSelectedModel}
-              />
-            </div>
-            <Button
-              disabled={!isEvaluationReady()}
-              onClick={handleStartEvaluation}
-              className="px-6 py-2.5"
-            >
-              <BotIcon className="w-5 h-5 mr-2" />
-              Start Quiz Evaluation
-            </Button>
-          </div>
-          
-          {/* Status Messages */}
-          {!isEvaluationReady() && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">
-                <span className="font-medium">Requirements for evaluation:</span>
-              </p>
-              <ul className="text-sm text-amber-700 mt-2 space-y-1">
-                {(!assessment?.questions || assessment.questions.length === 0) && (
-                  <li>• Quiz questions need to be created</li>
-                )}
-                {(!assessment?.submissions || assessment.submissions.length === 0) && (
-                  <li>• No student submissions available</li>
-                )}
-              </ul>
-            </div>
-          )}
-
-          {isEvaluationReady() && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">
-                <span className="font-medium">Ready for evaluation!</span> Quiz has {assessment.questions?.length} questions and {assessment.submissions.length} student submissions are available.
-              </p>
-            </div>
-          )}
-        </div>
+       
       </div>
     </div>
   );

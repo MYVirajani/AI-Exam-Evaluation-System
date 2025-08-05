@@ -114,6 +114,7 @@ export async function GET(
           instructions: assessment.instructions,
           duration: assessment.duration,
           deadline: assessment.deadline,
+          total_marks: assessment.total_marks, // Added total_marks here
           model_answer_paper: assessment.model_answer_paper || null,
           question_paper: assessment.question_paper || null,
           questions: assessment.questions,

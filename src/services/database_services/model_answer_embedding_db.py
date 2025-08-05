@@ -589,3 +589,15 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
                 "max_marks": row[3]
             }
         return None
+    def get_embedding(self, full_question_id: str, module_code: str, exam_year: int, exam_month: str) -> list[float] | None:
+        self.cursor.execute(f"""
+            SELECT answer_embedding
+            FROM {self.table}
+            WHERE full_question_id = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
+        """, (full_question_id, module_code, exam_year, exam_month))
+
+        row = self.cursor.fetchone()
+        if row and row[0] is not None:
+            return list(row[0])  # Convert from vector to Python list
+        return None
+

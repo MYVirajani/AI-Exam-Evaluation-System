@@ -13,7 +13,7 @@ model User {
   first_name        String
   last_name         String
   title             String
-  role              Role     
+  role              Role
   username          String   @unique
   password          String
   email             String   @unique
@@ -22,10 +22,10 @@ model User {
   country           String?
   city              String?
   profile_image_url String?
-  created_on        DateTime  @default(now())
+  created_on        DateTime @default(now())
 
-  educator          Educator?
-  student           Student?
+  educator Educator?
+  student  Student?
 }
 
 model Educator {
@@ -40,12 +40,13 @@ model Educator {
 }
 
 model Student {
-  user_id             String       @id
-  registration_number String       @unique
+  user_id             String            @id
+  registration_number String            @unique
   education_institute String
-  user                User         @relation(fields: [user_id], references: [user_id])
+  user                User              @relation(fields: [user_id], references: [user_id])
   enrollments         Enrollment[]
   submissions         Submission[]
+  Quiz_Submission     Quiz_Submission[]
 }
 
 enum Role {
@@ -73,72 +74,74 @@ model Module {
 }
 
 model Enrollment {
-  enrollment_id String @id @default(uuid())
-  registration_number     String
-  module_id      String
+  enrollment_id       String @id @default(uuid())
+  registration_number String
+  module_id           String
 
   student Student @relation(fields: [registration_number], references: [registration_number])
   module  Module  @relation(fields: [module_id], references: [module_id])
 
-  @@unique([registration_number, module_id]) 
+  @@unique([registration_number, module_id])
 }
 
-
-
 model Lesson {
-  lesson_id    String    @id @default(uuid())
-  module_id    String
-  title        String
-  created_on   DateTime  @default(now())
+  lesson_id  String   @id @default(uuid())
+  module_id  String
+  title      String
+  created_on DateTime @default(now())
 
-  module       Module            @relation(fields: [module_id], references: [module_id])
-  materials    LectureMaterial[] 
+  module    Module            @relation(fields: [module_id], references: [module_id])
+  materials LectureMaterial[]
 }
 
 model LectureMaterial {
-  material_id String    @id @default(uuid())
+  material_id String   @id @default(uuid())
   lesson_id   String
   file_name   String?
   file_url    String
-  uploaded_on DateTime  @default(now())
-  description String?   
+  uploaded_on DateTime @default(now())
+  description String?
 
-  lesson      Lesson    @relation(fields: [lesson_id], references: [lesson_id])
+  lesson Lesson @relation(fields: [lesson_id], references: [lesson_id])
 }
 
 model Assessment {
-  assessment_id         String   @id
-  type                  assessmentType
-  title                 String
-  description           String
-  instructions          String[]
-  duration              Int
-  deadline              DateTime
-  module_id             String
-  created_by            String
+  assessment_id     String         @id
+  type              assessmentType
+  title             String
+  description       String
+  instructions      String[]
+  duration          Int
+  deadline          DateTime
+  module_id         String
+  created_by        String
+  total_marks       Float
+  password          String? // For quiz access
+  question_count    Int? // Number of questions to show (for quizzes)
+  shuffle_questions Boolean        @default(false) // Whether to shuffle questions
 
-  module             Module             @relation(fields: [module_id], references: [module_id])
-  educator           Educator           @relation(fields: [created_by], references: [user_id])
+  module             Module              @relation(fields: [module_id], references: [module_id])
+  educator           Educator            @relation(fields: [created_by], references: [user_id])
   question_paper     Question_Paper?
   model_answer_paper Model_Answer_Paper?
   marking_scheme     Marking_Scheme?
   submissions        Submission[]
   questions          Question[]
+  Quiz_Submission    Quiz_Submission[]
 }
 
 model Question_Paper {
-  question_paper_id String   @id
-  assessment_id     String   @unique
+  question_paper_id String     @id
+  assessment_id     String     @unique
   assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
 
   file_url   String
   created_on DateTime
-  questions  Question[]
 }
 
 model Model_Answer_Paper {
-  model_answer_paper_id String   @id
-  assessment_id         String   @unique
+  model_answer_paper_id String     @id
+  assessment_id         String     @unique
   assessment            Assessment @relation(fields: [assessment_id], references: [assessment_id])
 
   file_url   String
@@ -146,8 +149,8 @@ model Model_Answer_Paper {
 }
 
 model Marking_Scheme {
-  marking_scheme_id String   @id
-  assessment_id     String   @unique
+  marking_scheme_id String     @id
+  assessment_id     String     @unique
   assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
 
   file_url   String
@@ -160,6 +163,7 @@ enum assessmentType {
   assignment
   quiz
 }
+
 enum QuestionType {
   MCQ
   SHORT
@@ -167,25 +171,22 @@ enum QuestionType {
 }
 
 model Question {
-  question_id         String           @id @default(cuid())
-  assessment_id       String
-  question_paper_id   String
-  type                QuestionType
-  question_number     String
-  question            String
-  model_answer        String
-  mcq_answer_options  String[]        @default([])
-  marks_allowed       Int
+  question_id        String       @id @default(cuid())
+  assessment_id      String
+  type               QuestionType
+  question_number    String
+  question           String
+  model_answer       String
+  mcq_answer_options String[]     @default([])
+  marks_allowed      Float
 
-  question_paper      Question_Paper   @relation(fields: [question_paper_id], references: [question_paper_id])
-  assessment          Assessment       @relation(fields: [assessment_id], references: [assessment_id])
-  grades              Question_Grade[]
+  assessment  Assessment       @relation(fields: [assessment_id], references: [assessment_id])
+  grades      Question_Grade[]
+  Quiz_Answer Quiz_Answer[]
+  Quiz_Grade  Quiz_Grade[]
 
-  @@index([question_paper_id])
+  @@index([assessment_id])
 }
-
-
-
 
 model Submission {
   submission_id   String   @id
@@ -200,11 +201,64 @@ model Submission {
   assessment_grade Assessment_Grade?
 }
 
+model Quiz_Submission {
+  id             String    @id @default(uuid())
+  assessment_id  String
+  student_id     String
+  started_at     DateTime  @default(now())
+  submitted_at   DateTime?
+  ipAddress      String?
+  device_info    String?
+  total_marks    Float?
+  obtained_marks Float?
+  is_graded      Boolean   @default(false)
+
+  assessment Assessment    @relation(fields: [assessment_id], references: [assessment_id])
+  student    Student       @relation(fields: [student_id], references: [user_id])
+  answers    Quiz_Answer[]
+  grades     Quiz_Grade[]
+
+  @@index([assessment_id])
+  @@index([student_id])
+}
+
+model Quiz_Answer {
+  submission_id  String
+  question_id    String
+  student_answer String
+  is_correct     Boolean?
+  marks_awarded  Float?
+  graded_at      DateTime?
+  feedback       String?
+
+  submission Quiz_Submission @relation(fields: [submission_id], references: [id])
+  question   Question        @relation(fields: [question_id], references: [question_id])
+
+  @@id([submission_id, question_id]) // Composite primary key
+  @@index([submission_id])
+  @@index([question_id])
+}
+
+model Quiz_Grade {
+  submission_id String
+  question_id   String
+  marks_awarded Float
+  max_marks     Float
+  feedback      String?
+  graded_at     DateTime @default(now())
+  auto_graded   Boolean  @default(true)
+
+  submission Quiz_Submission @relation(fields: [submission_id], references: [id])
+  question   Question        @relation(fields: [question_id], references: [question_id])
+
+  @@id([submission_id, question_id]) // Composite primary key
+}
+
 model Question_Grade {
   q_grade_id    String   @id
   question_id   String
   submission_id String
-  marks_awarded Int
+  marks_awarded Float
   grading_time  DateTime
   auto_graded   Boolean
   feedback      String
@@ -220,8 +274,8 @@ model Question_Grade {
 model Assessment_Grade {
   grade_id      String   @id
   submission_id String   @unique
-  total_marks   Int
-  marks_awarded Int
+  total_marks   Float
+  marks_awarded Float
   feedback      String
   grading_time  DateTime
   auto_graded   Boolean

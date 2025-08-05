@@ -8,7 +8,7 @@ import Textarea from "@/components/ui/Textarea";
 
 interface Question {
   id: string;
-  questionType: "mcq" | "short_answer";
+  questionType: "MCQ" | "SHORT";
   questionText: string;
   options: string[];
   correctAnswerIndex: number;
@@ -23,8 +23,8 @@ interface QuizFormProps {
 }
 
 const questionTypes = [
-  { label: "Multiple Choice (MCQ)", value: "mcq" },
-  { label: "Short Answer", value: "short_answer" },
+  { label: "Multiple Choice (MCQ)", value: "MCQ" },
+  { label: "Short Answer", value: "SHORT" },
 ];
 
 const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }) => {
@@ -43,12 +43,12 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
 
   const handleQuestionTypeChange = (
     index: number,
-    questionType: "mcq" | "short_answer"
+    questionType: "MCQ" | "SHORT"
   ) => {
     const newQuestions = [...questions];
     newQuestions[index].questionType = questionType;
 
-    if (questionType === "mcq") {
+    if (questionType === "MCQ") {
       newQuestions[index].options = ["", "", "", ""];
       newQuestions[index].correctAnswerIndex = 0;
       delete newQuestions[index].expectedAnswer;
@@ -84,17 +84,17 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
     setQuestions(newQuestions);
   };
 
-  const addQuestion = (questionType: "mcq" | "short_answer" = "mcq") => {
+  const addQuestion = (questionType: "MCQ" | "SHORT" = "MCQ") => {
     const newQuestion: Question = {
       id: generateQuestionId(),
       questionType,
       questionText: "",
-      options: questionType === "mcq" ? ["", "", "", ""] : [],
-      correctAnswerIndex: questionType === "mcq" ? 0 : -1,
+      options: questionType === "MCQ" ? ["", "", "", ""] : [],
+      correctAnswerIndex: questionType === "MCQ" ? 0 : -1,
       marks: 0.5,
     };
 
-    if (questionType === "short_answer") {
+    if (questionType === "SHORT") {
       newQuestion.expectedAnswer = "";
     }
 
@@ -106,8 +106,8 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
     setQuestions(newQuestions);
   };
 
-  const getMCQCount = () => questions.filter((q) => q.questionType === "mcq").length;
-  const getShortAnswerCount = () => questions.filter((q) => q.questionType === "short_answer").length;
+  const getMCQCount = () => questions.filter((q) => q.questionType === "MCQ").length;
+  const getShortAnswerCount = () => questions.filter((q) => q.questionType === "SHORT").length;
 
   return (
     <div className="mt-8">
@@ -124,7 +124,7 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
           <div key={q.id} className="border border-gray-200 p-6 rounded-lg bg-gray-50">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-gray-900">
-                Question {qIdx + 1} <span className="ml-2 text-sm text-gray-600">({q.questionType === "mcq" ? "Multiple Choice" : "Short Answer"})</span>
+                Question {qIdx + 1} <span className="ml-2 text-sm text-gray-600">({q.questionType === "MCQ" ? "Multiple Choice" : "Short Answer"})</span>
               </h3>
               {questions.length > 1 && (
                 <button
@@ -143,7 +143,7 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
                 <select
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   value={q.questionType}
-                  onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value as "mcq" | "short_answer")}
+                  onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value as "MCQ" | "SHORT")}
                 >
                   {questionTypes.map((type) => (
                     <option key={type.value} value={type.value}>{type.label}</option>
@@ -176,7 +176,7 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
             </div>
 
             {/* MCQ Options */}
-            {q.questionType === "mcq" && (
+            {q.questionType === "MCQ" && (
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-700">Answer Options</label>
                 {q.options.map((opt, optIdx) => (
@@ -225,7 +225,7 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
             )}
 
             {/* Short Answer Expected Answer */}
-            {q.questionType === "short_answer" && (
+            {q.questionType === "SHORT" && (
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-700">Expected Answer (Optional - for reference)</label>
                 <Textarea
@@ -245,14 +245,14 @@ const QuizForm: React.FC<QuizFormProps> = ({ questions, setQuestions, onSubmit }
       <div className="mt-6 flex gap-2">
         <button
           type="button"
-          onClick={() => addQuestion("mcq")}
+          onClick={() => addQuestion("MCQ")}
           className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50"
         >
           + Add MCQ Question
         </button>
         <button
           type="button"
-          onClick={() => addQuestion("short_answer")}
+          onClick={() => addQuestion("SHORT")}
           className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium px-4 py-2 rounded-lg border border-green-200 hover:bg-green-50"
         >
           + Add Short Answer Question

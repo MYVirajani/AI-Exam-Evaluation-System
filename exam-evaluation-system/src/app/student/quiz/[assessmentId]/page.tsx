@@ -6,6 +6,7 @@ import { Clock, BookOpen, User, Calendar, FileText, Play } from "lucide-react";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import Button from "@/components/Button";
 import toast from "react-hot-toast";
+import QuizPasswordPopup from "@/components/QuizPasswordPopup";
 
 interface AssessmentData {
   assessment_id: string;
@@ -50,6 +51,7 @@ const StudentQuizPage: React.FC = () => {
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState<string>("");
+  const [showPasswordPopup, setShowPasswordPopup] = useState(false);
 
   useEffect(() => {
     if (!assessmentId || !studentId || !moduleId) {
@@ -123,7 +125,12 @@ const StudentQuizPage: React.FC = () => {
   }, [quizData]);
 
   const handleAttemptQuiz = () => {
-    // Navigate to quiz attempt page (you can implement this route)
+    // Show password popup instead of directly navigating
+    setShowPasswordPopup(true);
+  };
+
+  const handlePasswordSuccess = () => {
+    // Navigate to quiz questions page after successful password verification
     router.push(`/student/quiz/attempt/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`);
   };
 
@@ -344,6 +351,15 @@ const StudentQuizPage: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* Password Popup */}
+      <QuizPasswordPopup
+        isOpen={showPasswordPopup}
+        onClose={() => setShowPasswordPopup(false)}
+        onSuccess={handlePasswordSuccess}
+        assessmentId={assessmentId as string}
+        quizTitle={quizData?.assessment_data.title || "Quiz"}
+      />
     </div>
   );
 };

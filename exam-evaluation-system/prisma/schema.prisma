@@ -119,6 +119,7 @@ model Assessment {
   password          String? // For quiz access
   question_count    Int? // Number of questions to show (for quizzes)
   shuffle_questions Boolean        @default(false) // Whether to shuffle questions
+  max_attempts      Int?
 
   module             Module              @relation(fields: [module_id], references: [module_id])
   educator           Educator            @relation(fields: [created_by], references: [user_id])

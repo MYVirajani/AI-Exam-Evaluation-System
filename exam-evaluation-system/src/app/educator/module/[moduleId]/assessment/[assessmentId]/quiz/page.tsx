@@ -110,7 +110,7 @@ export default function QuizAssessmentPage() {
   }, [moduleId, assessmentId, educatorId]);
 
   const handleCreateQuiz = () => {
-    router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form`);
+    router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?educatorId=${educatorId}`);
   };
 
   const handleEditQuiz = () => {

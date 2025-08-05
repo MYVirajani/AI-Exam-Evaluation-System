@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
 import Button from "@/components/Button";
 import QuizForm from "@/components/QuizForm";
 import {
@@ -174,7 +175,10 @@ export default function AssessmentFormPage() {
         );
         const data = await res.json();
 
-        if (data.success === false) return;
+        if (data.success === false) {
+          toast.error("Failed to load assessment data");
+          return;
+        }
 
         const assessment = data.assessments[0];
 
@@ -215,8 +219,11 @@ export default function AssessmentFormPage() {
           );
           setQuestions(questionsWithIds);
         }
+
+        // toast.success("Assessment data loaded successfully");
       } catch (err) {
         console.error("Failed to load assessment data:", err);
+        toast.error("Failed to load assessment data. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -229,90 +236,116 @@ export default function AssessmentFormPage() {
     return questions.reduce((total, q) => total + (q.marks || 0), 0).toFixed(1);
   };
 
-  // In your AssessmentFormPage component, update the handleSubmit function
+  const handleSubmit = async () => {
+    if (!moduleId || !assessmentId || !educatorId) {
+      toast.error("Missing required identifiers");
+      return;
+    }
 
-const handleSubmit = async () => {
-  if (!moduleId || !assessmentId || !educatorId) {
-    alert("Missing required identifiers");
-    return;
-  }
+    // Validation with improved toast messages
+    if (!title.trim()) {
+      toast.error("Please enter a title for the assessment", {
+        icon: "📝",
+      });
+      return;
+    }
 
-  // Validation
-  if (!title.trim()) {
-    alert("Please enter a title for the assessment");
-    return;
-  }
+    if (!duration || parseInt(duration) <= 0) {
+      toast.error("Please enter a valid duration", {
+        icon: "⏰",
+      });
+      return;
+    }
 
-  if (!duration || parseInt(duration) <= 0) {
-    alert("Please enter a valid duration");
-    return;
-  }
+    if (!deadline) {
+      toast.error("Please select a deadline", {
+        icon: "📅",
+      });
+      return;
+    }
 
-  if (!deadline) {
-    alert("Please select a deadline");
-    return;
-  }
+    if (!password.trim()) {
+      toast.error("Please enter a password for the assessment", {
+        icon: "🔒",
+      });
+      return;
+    }
 
-  if (!password.trim()) {
-    alert("Please enter a password for the assessment");
-    return;
-  }
-
-  setIsSaving(true);
-  
-  // Transform questions to match database schema
-  const sanitizedQuestions = questions.map(({ id, ...rest }) => {
-    return {
-      ...rest,
-      // Map questionType to the correct database enum values
-      questionType: rest.questionType === "MCQ" ? "MCQ" : "SHORT"
-    };
-  });
-
-  const totalMarks = parseFloat(calculateTotalMarks());
-  const totalQuestions = questions.length;
-
-  const quiz = {
-    moduleId,
-    type: "quiz",
-    assessmentId,
-    title: title.trim(),
-    duration: parseInt(duration, 10),
-    description: description.trim(),
-    instructions: instructions
-      .trim()
-      .split("\n")
-      .filter((line) => line.trim() !== ""),
-    deadline: new Date(deadline).toISOString(),
-    questions: sanitizedQuestions,
-    createdBy: educatorId,
-    totalMarks,
-    totalQuestions,
-    password: password.trim(),
-    shuffleQuestions,
-  };
-
-  try {
-    const res = await fetch("/api/educator/assessment/quiz", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(quiz),
+    // Show loading toast
+    const loadingToast = toast.loading("Saving assessment...");
+    setIsSaving(true);
+    
+    // Transform questions to match database schema
+    const sanitizedQuestions = questions.map(({ id, ...rest }) => {
+      return {
+        ...rest,
+        // Map questionType to the correct database enum values
+        questionType: rest.questionType === "MCQ" ? "MCQ" : "SHORT"
+      };
     });
 
-    const result = await res.json();
-    if (result.success) {
-      alert("Assessment saved successfully!");
-      router.push(`/educator/module/${moduleId}`);
-    } else {
-      alert("Failed to save assessment: " + result.message);
+    const totalMarks = parseFloat(calculateTotalMarks());
+    const totalQuestions = questions.length;
+
+    const quiz = {
+      moduleId,
+      type: "quiz",
+      assessmentId,
+      title: title.trim(),
+      duration: parseInt(duration, 10),
+      description: description.trim(),
+      instructions: instructions
+        .trim()
+        .split("\n")
+        .filter((line) => line.trim() !== ""),
+      deadline: new Date(deadline).toISOString(),
+      questions: sanitizedQuestions,
+      createdBy: educatorId,
+      totalMarks,
+      totalQuestions,
+      password: password.trim(),
+      shuffleQuestions,
+    };
+
+    try {
+      const res = await fetch("/api/educator/assessment/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(quiz),
+      });
+
+      const result = await res.json();
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+
+      if (result.success) {
+        toast.success("Assessment saved successfully!", {
+          // icon: "🎉",
+          duration: 4000,
+        });
+        
+        // Small delay before navigation to show success message
+        setTimeout(() => {
+          router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`);
+        }, 1000);
+      } else {
+        toast.error(`Failed to save assessment: ${result.message}`, {
+          // icon: "❌",
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      console.error("Error submitting quiz:", err);
+      toast.dismiss(loadingToast);
+      toast.error("Something went wrong. Please check your connection and try again.", {
+        icon: "⚠️",
+        duration: 5000,
+      });
+    } finally {
+      setIsSaving(false);
     }
-  } catch (err) {
-    console.error("Error submitting quiz:", err);
-    alert("Something went wrong. Check console for details.");
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   if (loading) {
     return (

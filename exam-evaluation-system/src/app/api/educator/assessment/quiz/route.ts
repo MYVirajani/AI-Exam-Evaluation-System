@@ -1,4 +1,4 @@
-// Updated API route: /api/educator/assessment/quiz/route.ts
+//  /api/educator/assessment/quiz/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -122,6 +122,8 @@ export async function POST(req: NextRequest) {
         });
       })
     );
+    console.log('updatedAssessment: ',updatedAssessment);
+    console.log('createdQuestions: ',createdQuestions);
 
     return NextResponse.json({
       success: true,

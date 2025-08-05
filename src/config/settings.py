@@ -28,7 +28,6 @@ class OpenAIConfig:
     api_key: str
     model: str = "gpt-4o"
     embedding_model: str = "text-embedding-3-small"
-    temperature: float = 0.1
     max_tokens: Optional[int] = None
     
     @classmethod
@@ -41,7 +40,6 @@ class OpenAIConfig:
             api_key=api_key,
             model=os.getenv("OPENAI_MODEL", "gpt-4o"),
             embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
-            temperature=float(os.getenv("OPENAI_TEMPERATURE", "0.1")),
         )
 
 @dataclass

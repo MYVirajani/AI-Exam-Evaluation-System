@@ -181,10 +181,10 @@ model Question {
   mcq_answer_options String[]     @default([])
   marks_allowed      Decimal      @db.Decimal(4, 1)
 
-  assessment  Assessment       @relation(fields: [assessment_id], references: [assessment_id])
-  grades      Question_Grade[]
-  Quiz_Answer Quiz_Answer[]
-  Quiz_Grade  Quiz_Grade[]
+  assessment     Assessment       @relation(fields: [assessment_id], references: [assessment_id])
+  grades         Question_Grade[]
+  student_answer Student_Answer[]
+  Quiz_Grade     Quiz_Grade[]
 
   @@index([assessment_id])
 }
@@ -214,16 +214,16 @@ model Quiz_Submission {
   obtained_marks Decimal?  @db.Decimal(4, 1)
   is_graded      Boolean   @default(false)
 
-  assessment Assessment    @relation(fields: [assessment_id], references: [assessment_id])
-  student    Student       @relation(fields: [student_id], references: [user_id])
-  answers    Quiz_Answer[]
-  grades     Quiz_Grade[]
+  assessment      Assessment       @relation(fields: [assessment_id], references: [assessment_id])
+  student         Student          @relation(fields: [student_id], references: [user_id])
+  student_answers Student_Answer[]
+  grades          Quiz_Grade[]
 
   @@index([assessment_id])
   @@index([student_id])
 }
 
-model Quiz_Answer {
+model Student_Answer {
   submission_id  String
   question_id    String
   student_answer String
@@ -302,7 +302,7 @@ model Pricing_Plan {
   pricing_plan_id String  @id
   name            String
   duration        Int
-  price           Decimal @db.Decimal(6, 1)
+  price           Decimal @db.Decimal(9, 3)
   description     String
   payment_method  String
 

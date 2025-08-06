@@ -25,7 +25,7 @@ export async function GET(
         submissions: {
           where: studentId ? { student_id: studentId } : undefined,
           include: {
-            assessment_grade: true,
+            grade: true, // ✅ use `grade` instead of `assessment_grade`
           },
         },
       },
@@ -42,7 +42,7 @@ export async function GET(
     }
 
     const submission = assessment.submissions.length > 0 ? assessment.submissions[0] : null;
-    const grade = submission?.assessment_grade || null;
+    const grade = submission?.grade || null;
 
     console.log("Submission data:", submission);
     console.log("Grade data:", grade);
@@ -56,7 +56,7 @@ export async function GET(
         title: assessment.title,
         description: assessment.description,
         deadline: assessment.deadline,
-        instructions:assessment.instructions,
+        instructions: assessment.instructions,
       },
       question_paper: assessment.question_paper
         ? {

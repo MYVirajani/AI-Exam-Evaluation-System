@@ -101,15 +101,18 @@ const StudentHomePage: React.FC = () => {
   }, []);
 
   // Flatten all assessments for event cards - include type
-  const allAssessments = useMemo(() => {
-    return modules.flatMap((mod) =>
+ const allAssessments = useMemo(() => {
+  return modules
+    .flatMap((mod) =>
       mod.assessments.map((assess) => ({
         ...assess,
         module: `${mod.module_code} ${mod.module_name}`,
-        type: assess.type, // Make sure type is included
+        type: assess.type,
       }))
-    );
-  }, [modules]);
+    )
+    .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+}, [modules]);
+
 
   // Countdown timers update every second
   useEffect(() => {

@@ -331,7 +331,7 @@ export default function EditQuizFormPage() {
         createdBy: educatorId,
         totalQuestions: formData.questions.length,
         password: formData.password.trim(),
-        shuffleQuestions: assessment?.shuffle_questions ?? true, // Use existing shuffle setting or default
+        shuffleQuestions: assessment?.shuffle_questions ?? true, 
       };
 
       const res = await fetch("/api/educator/assessment/quiz", {
@@ -346,7 +346,7 @@ export default function EditQuizFormPage() {
         setSaveMessage("Quiz saved successfully!");
         setTimeout(() => {
           router.push(
-            `/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
+            `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
           );
         }, 1500);
       } else {

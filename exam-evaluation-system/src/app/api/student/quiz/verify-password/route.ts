@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     // Create new submission
     const newSubmission = await prisma.submission.create({
       data: {
-        submission_id:'1234',
+        submission_id:uuidv4(),
         assessment_id: assessmentId,
         student_id: studentId,
         submission_start_time: new Date(),

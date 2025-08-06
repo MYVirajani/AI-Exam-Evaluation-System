@@ -251,7 +251,7 @@ const StudentQuizPage: React.FC = () => {
                 <span className="font-medium text-green-800">Quiz Submitted</span>
               </div>
               <p className="text-green-700 text-sm">
-                Submitted on: {new Date(quizData.submission.submission_time).toLocaleString()}
+                Submitted on: {new Date(quizData.submission.submission_start_time).toLocaleString()}
               </p>
               {isGraded && (
                 <div className="mt-3 p-3 bg-white rounded border border-green-200">

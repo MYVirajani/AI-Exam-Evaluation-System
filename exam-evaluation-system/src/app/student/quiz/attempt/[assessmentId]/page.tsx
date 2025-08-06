@@ -150,7 +150,7 @@ const QuizAttemptPage = () => {
 
       toast.success("Quiz submitted successfully!");
       router.push(
-        `/student/quiz/results/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`
+        `/student/quiz/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`
       );
     } catch (error: any) {
       toast.error(error.message || "Failed to submit quiz");

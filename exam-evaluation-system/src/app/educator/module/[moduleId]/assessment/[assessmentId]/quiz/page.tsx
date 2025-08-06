@@ -266,6 +266,18 @@ export default function QuizAssessmentPage() {
               Quiz Questions
             </h2>
             <div className="flex gap-3">
+              {assessment.questions && assessment.questions.length > 0 && (
+                <Button
+                  onClick={handleEditQuiz}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <EditIcon className="w-4 h-4" />
+                  Edit Quiz
+                </Button>
+              )}
+            </div>
+            {/* <div className="flex gap-3">
               {assessment.questions && assessment.questions.length > 0 ? (
                 <Button
                   onClick={handleEditQuiz}
@@ -284,7 +296,7 @@ export default function QuizAssessmentPage() {
                   Create Quiz
                 </Button>
               )}
-            </div>
+            </div> */}
           </div>
 
           {assessment.questions && assessment.questions.length > 0 ? (

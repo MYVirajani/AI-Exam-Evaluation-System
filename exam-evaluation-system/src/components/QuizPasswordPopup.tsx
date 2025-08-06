@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 interface QuizPasswordPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (submissionId: string) => void;
   assessmentId: string;
   studentId: string;
   quizTitle: string;
@@ -81,7 +81,7 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
 
       if (data.success) {
         toast.success("Password verified! Starting quiz...");
-        onSuccess();
+        onSuccess(data.submissionId);
         onClose();
       } else {
         toast.error("Incorrect password. Please try again.");

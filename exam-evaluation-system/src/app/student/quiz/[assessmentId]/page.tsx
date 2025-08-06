@@ -129,10 +129,12 @@ const StudentQuizPage: React.FC = () => {
     setShowPasswordPopup(true);
   };
 
-  const handlePasswordSuccess = () => {
-    // Navigate to quiz questions page after successful password verification
-    router.push(`/student/quiz/attempt/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`);
-  };
+ const handlePasswordSuccess = (submissionId: string) => {
+  router.push(
+    `/student/quiz/attempt/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}&submissionId=${submissionId}`
+  );
+};
+
 
   const handleViewResults = () => {
     // Navigate to results page if already submitted and graded

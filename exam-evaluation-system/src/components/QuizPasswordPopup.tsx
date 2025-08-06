@@ -11,6 +11,7 @@ interface QuizPasswordPopupProps {
   onClose: () => void;
   onSuccess: () => void;
   assessmentId: string;
+  studentId: string;
   quizTitle: string;
 }
 
@@ -19,6 +20,7 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
   onClose,
   onSuccess,
   assessmentId,
+  studentId,
   quizTitle,
 }) => {
   const [password, setPassword] = useState("");
@@ -49,23 +51,24 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!password.trim()) {
       toast.error("Please enter the quiz password");
       return;
     }
 
     setLoading(true);
-    setAttemptCount(prev => prev + 1);
-    
+    setAttemptCount((prev) => prev + 1);
+
     try {
-      const response = await fetch(`/api/quiz/verify-password`, {
+      const response = await fetch(`/api/student/quiz/verify-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           assessmentId,
+          studentId,
           password: password.trim(),
         }),
       });
@@ -95,7 +98,9 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
 
   const handleAttemptClick = () => {
     // Trigger form submission
-    const form = document.getElementById('quiz-password-form') as HTMLFormElement;
+    const form = document.getElementById(
+      "quiz-password-form"
+    ) as HTMLFormElement;
     if (form) {
       form.requestSubmit();
     }
@@ -130,7 +135,7 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={handleBackdropClick}
     >
@@ -142,8 +147,12 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
               <Lock className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Quiz Password Required</h2>
-              <p className="text-sm text-gray-600 mt-1">Enter password to start the quiz</p>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Quiz Password Required
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Enter password to start the quiz
+              </p>
             </div>
           </div>
           <button
@@ -159,20 +168,27 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
         <form id="quiz-password-form" onSubmit={handleSubmit} className="p-6">
           {/* Quiz Info */}
           <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="font-medium text-blue-900 mb-1">Quiz: {quizTitle}</h3>
+            <h3 className="font-medium text-blue-900 mb-1">
+              Quiz: {quizTitle}
+            </h3>
             <p className="text-sm text-blue-700">
-              This quiz is password protected. Please enter the correct password to proceed.
+              This quiz is password protected. Please enter the correct password
+              to proceed.
             </p>
             {attemptCount > 0 && (
               <p className="text-xs text-blue-600 mt-2 font-medium">
-                Attempt {attemptCount} {attemptCount > 1 ? "- Please double-check your password" : ""}
+                Attempt {attemptCount}{" "}
+                {attemptCount > 1 ? "- Please double-check your password" : ""}
               </p>
             )}
           </div>
 
           {/* Password Input */}
           <div className="mb-6">
-            <label htmlFor="quiz-password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="quiz-password"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Quiz Password
             </label>
             <div className="relative">
@@ -192,7 +208,11 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 disabled={loading}
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
               </button>
             </div>
           </div>
@@ -227,8 +247,8 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
         {/* Footer */}
         <div className="px-6 pb-6">
           <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-            <strong>Note:</strong> Make sure you have a stable internet connection. Once you start the quiz, 
-            you cannot pause or restart it.
+            <strong>Note:</strong> Make sure you have a stable internet
+            connection. Once you start the quiz, you cannot pause or restart it.
           </div>
         </div>
       </div>

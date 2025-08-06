@@ -358,6 +358,7 @@ const StudentQuizPage: React.FC = () => {
         onClose={() => setShowPasswordPopup(false)}
         onSuccess={handlePasswordSuccess}
         assessmentId={assessmentId as string}
+        studentId={studentId as string}
         quizTitle={quizData?.assessment_data.title || "Quiz"}
       />
     </div>

@@ -1,42 +1,205 @@
 'use client'
 
 import { useState } from 'react';
-import { siteConfig } from '@/config/site';
+import { Brain, CheckCircle, ArrowRight, Users, BookOpen, Award, BarChart3, Clock, Shield } from 'lucide-react';
 import SignInPopup from '@/components/SignInPopup';
 import SignupPopup from '@/components/SignupPopup';
 
 export default function Home() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+  
+  const institutionConfig = {
+    name: "Univerity of Ruhuna",
+    department: "Faculty of Engineering",
+    systemName: "AutoEval360"
+  };
 
   return (
-    <>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">
-          Welcome to {siteConfig.title}
-        </h2>
-        <div className="space-x-3">
-          <button
-            onClick={() => setIsLoginOpen(true)}
-            className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800"
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => setIsSignupOpen(true)}
-            className="px-4 py-2 border border-blue-900 text-blue-900 rounded-md hover:bg-blue-50"
-          >
-            Sign Up
-          </button>
+    <div className="min-h-screen bg-gray-50">
+
+      {/* Welcome Section */}
+      <section className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <h3 className="text-4xl font-bold text-gray-800 mb-4">
+              Welcome to
+            </h3>
+            <h3 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 leading-snug mb-6">
+              Smart Learning Management System
+            </h3>
+
+            <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-3xl mx-auto">
+              Our internal AI-powered exam evaluation platform designed specifically for Universities. 
+              Streamline your grading process with intelligent assessment tools tailored to academic standards.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button 
+                onClick={() => setIsLoginOpen(true)}
+                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 flex items-center space-x-2 font-semibold"
+              >
+                <span>Get Started</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <button className="px-8 py-4 border-2 border-blue-200 text-blue-700 rounded-xl hover:bg-blue-50 transition-all duration-300 font-semibold">
+                System Guide
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <p className="text-gray-600">
-        This is the home page of our exam evaluation system.
-      </p>
+      {/* Key Benefits */}
+      <section className="py-12 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="text-center p-6 bg-blue-50 rounded-xl">
+              <Users className="w-8 h-8 text-blue-600 mx-auto mb-3" />
+              <div className="text-lg font-semibold text-gray-800 mb-2">Faculty Access</div>
+              <div className="text-gray-600 text-sm">Secure login for authorized university faculty members</div>
+            </div>
+            <div className="text-center p-6 bg-green-50 rounded-xl">
+              <BookOpen className="w-8 h-8 text-green-600 mx-auto mb-3" />
+              <div className="text-lg font-semibold text-gray-800 mb-2">Exam Processing</div>
+              <div className="text-gray-600 text-sm">Automated evaluation of various exam formats and types</div>
+            </div>
+            <div className="text-center p-6 bg-purple-50 rounded-xl">
+              <Award className="w-8 h-8 text-purple-600 mx-auto mb-3" />
+              <div className="text-lg font-semibold text-gray-800 mb-2">Multi-Department</div>
+              <div className="text-gray-600 text-sm">Support for all university departments and courses</div>
+            </div>
+            <div className="text-center p-6 bg-orange-50 rounded-xl">
+              <Clock className="w-8 h-8 text-orange-600 mx-auto mb-3" />
+              <div className="text-lg font-semibold text-gray-800 mb-2">Time Efficient</div>
+              <div className="text-gray-600 text-sm">Significantly reduce grading time and workload</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <SignInPopup isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
-      <SignupPopup isOpen={isSignupOpen} onClose={() => setIsSignupOpen(false)} />
-    </>
+      {/* System Features */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl font-bold text-gray-800 mb-4">System Capabilities</h3>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Designed specifically for Univerity's academic requirements and standards
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
+                <Brain className="w-6 h-6 text-blue-600" />
+              </div>
+              <h4 className="text-xl font-bold text-gray-800 mb-4">Intelligent Grading</h4>
+              <p className="text-gray-600 leading-relaxed">
+                AI-powered evaluation system trained on our university's grading standards and rubrics. Consistent assessment across all departments and courses.
+              </p>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-6">
+                <BarChart3 className="w-6 h-6 text-green-600" />
+              </div>
+              <h4 className="text-xl font-bold text-gray-800 mb-4">Actionable Analytics</h4>
+              <p className="text-gray-600 leading-relaxed">
+                Comprehensive performance tracking and analytics for each module. Monitor student progress and identify areas for curriculum improvement.
+              </p>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-6">
+                <Shield className="w-6 h-6 text-purple-600" />
+              </div>
+              <h4 className="text-xl font-bold text-gray-800 mb-4">Secure & Private</h4>
+              <p className="text-gray-600 leading-relaxed">
+                All student data and exam results remain within our university's secure infrastructure.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* For Faculty Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h3 className="text-3xl font-bold text-gray-800 mb-6">For Your Faculty</h3>
+              <p className="text-lg text-gray-600 mb-8">
+                Streamline your evaluation process with tools designed specifically for your academic environment.
+              </p>
+              
+              <div className="space-y-6">
+                <div className="flex items-start space-x-4">
+                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <CheckCircle className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-1">Department-Specific Rubrics</h4>
+                    <p className="text-gray-600 text-sm">Pre-configured evaluation criteria for each department and course type within your university.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-4">
+                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <CheckCircle className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-1">Gradebook Integration</h4>
+                    <p className="text-gray-600 text-sm">Seamless integration with your existing student information system and gradebook platforms.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-4">
+                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <CheckCircle className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-1">Review & Human Validation</h4>
+                    <p className="text-gray-600 text-sm">Empowers lecturers to review, modify, and validate AI-generated assessments, ensuring academic accuracy, transparency, and human oversight in the grading process.</p></div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <button 
+                  onClick={() => setIsSignupOpen(true)}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Get Your Access
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden shadow-lg">
+                <img 
+                  src="/images/HomePageImage.jpg" 
+                  alt="Faculty using system" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+      {/* Popups */}
+      <SignInPopup 
+        isOpen={isLoginOpen} 
+        onClose={() => setIsLoginOpen(false)} 
+        onSwitchToSignUp={() => {
+          setIsLoginOpen(false);
+          setIsSignupOpen(true);
+        }} 
+      />
+      <SignupPopup 
+        isOpen={isSignupOpen} 
+        onClose={() => setIsSignupOpen(false)} 
+        onSwitchToSignIn={() => {
+          setIsSignupOpen(false);
+          setIsLoginOpen(true);
+        }} 
+      />
+    </div>
   );
 }

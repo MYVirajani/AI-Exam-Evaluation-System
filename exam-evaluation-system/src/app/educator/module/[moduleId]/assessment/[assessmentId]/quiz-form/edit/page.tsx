@@ -2,17 +2,17 @@
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { 
-  Save, 
-  ArrowLeft, 
-  Plus, 
-  Trash2, 
+import {
+  Save,
+  ArrowLeft,
+  Plus,
+  Trash2,
   AlertCircle,
   CheckCircle,
   Clock,
   Hash,
   FileText,
-  HelpCircle
+  HelpCircle,
 } from "lucide-react";
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
@@ -27,7 +27,7 @@ interface User {
 interface Question {
   question_id: string;
   assessment_id: string;
-  type: 'MCQ' | 'SHORT';
+  type: "MCQ" | "SHORT";
   question_number: string;
   question: string;
   model_answer: string;
@@ -78,12 +78,12 @@ export default function EditQuizFormPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<QuizFormData>({
-    title: '',
-    description: '',
+    title: "",
+    description: "",
     duration: 60,
-    instructions: [''],
+    instructions: [""],
     questions: [],
-    password: ''
+    password: "",
   });
 
   useEffect(() => {
@@ -112,21 +112,28 @@ export default function EditQuizFormPage() {
         };
 
         setAssessment(enrichedAssessment);
-        
+
         // Populate form data
         setFormData({
-          title: enrichedAssessment.title || '',
-          description: enrichedAssessment.description || '',
+          title: enrichedAssessment.title || "",
+          description: enrichedAssessment.description || "",
           duration: enrichedAssessment.duration || 60,
-          instructions: enrichedAssessment.instructions?.length ? enrichedAssessment.instructions : [''],
-          questions: enrichedAssessment.questions?.map(q => ({
-            ...q,
-            mcq_answer_options: q.mcq_answer_options?.length ? q.mcq_answer_options : ['', '', '', '']
-          })) || [],
-          password: enrichedAssessment.password || ''
+          instructions: enrichedAssessment.instructions?.length
+            ? enrichedAssessment.instructions
+            : [""],
+          questions:
+            enrichedAssessment.questions?.map((q) => ({
+              ...q,
+              mcq_answer_options: q.mcq_answer_options?.length
+                ? q.mcq_answer_options
+                : ["", "", "", ""],
+            })) || [],
+          password: enrichedAssessment.password || "",
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch assessment");
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch assessment"
+        );
       } finally {
         setLoading(false);
       }
@@ -136,28 +143,32 @@ export default function EditQuizFormPage() {
   }, [moduleId, assessmentId, educatorId]);
 
   const handleGoBack = () => {
-    router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`);
+    router.push(
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
+    );
   };
 
   const addInstruction = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      instructions: [...prev.instructions, '']
+      instructions: [...prev.instructions, ""],
     }));
   };
 
   const updateInstruction = (index: number, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      instructions: prev.instructions.map((inst, i) => i === index ? value : inst)
+      instructions: prev.instructions.map((inst, i) =>
+        i === index ? value : inst
+      ),
     }));
   };
 
   const removeInstruction = (index: number) => {
     if (formData.instructions.length > 1) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        instructions: prev.instructions.filter((_, i) => i !== index)
+        instructions: prev.instructions.filter((_, i) => i !== index),
       }));
     }
   };
@@ -166,45 +177,49 @@ export default function EditQuizFormPage() {
     const newQuestion: Question = {
       question_id: `temp_${Date.now()}`,
       assessment_id: assessmentId,
-      type: 'MCQ',
+      type: "MCQ",
       question_number: String(formData.questions.length + 1),
-      question: '',
-      model_answer: '',
-      mcq_answer_options: ['', '', '', ''],
-      marks_allowed: '1'
+      question: "",
+      model_answer: "",
+      mcq_answer_options: ["", "", "", ""],
+      marks_allowed: "1",
     };
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      questions: [...prev.questions, newQuestion]
+      questions: [...prev.questions, newQuestion],
     }));
   };
 
   const updateQuestion = (index: number, field: keyof Question, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       questions: prev.questions.map((q, i) => {
         if (i === index) {
           const updatedQuestion = { ...q, [field]: value };
-          
+
           // If changing to SHORT type, clear MCQ options
-          if (field === 'type' && value === 'SHORT') {
+          if (field === "type" && value === "SHORT") {
             updatedQuestion.mcq_answer_options = [];
           }
           // If changing to MCQ type, ensure 4 options
-          else if (field === 'type' && value === 'MCQ') {
-            updatedQuestion.mcq_answer_options = ['', '', '', ''];
+          else if (field === "type" && value === "MCQ") {
+            updatedQuestion.mcq_answer_options = ["", "", "", ""];
           }
-          
+
           return updatedQuestion;
         }
         return q;
-      })
+      }),
     }));
   };
 
-  const updateMCQOption = (questionIndex: number, optionIndex: number, value: string) => {
-    setFormData(prev => ({
+  const updateMCQOption = (
+    questionIndex: number,
+    optionIndex: number,
+    value: string
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       questions: prev.questions.map((q, i) => {
         if (i === questionIndex) {
@@ -213,23 +228,25 @@ export default function EditQuizFormPage() {
           return { ...q, mcq_answer_options: newOptions };
         }
         return q;
-      })
+      }),
     }));
   };
 
   const removeQuestion = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      questions: prev.questions.filter((_, i) => i !== index).map((q, newIndex) => ({
-        ...q,
-        question_number: String(newIndex + 1)
-      }))
+      questions: prev.questions
+        .filter((_, i) => i !== index)
+        .map((q, newIndex) => ({
+          ...q,
+          question_number: String(newIndex + 1),
+        })),
     }));
   };
 
   const calculateTotalMarks = () => {
     return formData.questions.reduce((total, q) => {
-      const marks = parseFloat(q.marks_allowed || '0');
+      const marks = parseFloat(q.marks_allowed || "0");
       return total + (isNaN(marks) ? 0 : marks);
     }, 0);
   };
@@ -237,24 +254,29 @@ export default function EditQuizFormPage() {
   const validateForm = () => {
     if (!formData.title.trim()) return "Title is required";
     if (!formData.password.trim()) return "Password is required";
-    if (formData.questions.length === 0) return "At least one question is required";
-    
+    if (formData.questions.length === 0)
+      return "At least one question is required";
+
     for (let i = 0; i < formData.questions.length; i++) {
       const q = formData.questions[i];
       if (!q.question.trim()) return `Question ${i + 1} text is required`;
-      
-      const marks = parseFloat(q.marks_allowed || '0');
-      if (isNaN(marks) || marks < 0) return `Question ${i + 1} must have valid marks (≥ 0)`;
-      
-      if (q.type === 'MCQ') {
-        const validOptions = q.mcq_answer_options.filter(opt => opt.trim());
-        if (validOptions.length < 2) return `Question ${i + 1} must have at least 2 options`;
-        if (!q.model_answer.trim()) return `Question ${i + 1} must have a correct answer selected`;
-      } else if (q.type === 'SHORT') {
-        if (!q.model_answer.trim()) return `Question ${i + 1} must have a model answer`;
+
+      const marks = parseFloat(q.marks_allowed || "0");
+      if (isNaN(marks) || marks < 0)
+        return `Question ${i + 1} must have valid marks (≥ 0)`;
+
+      if (q.type === "MCQ") {
+        const validOptions = q.mcq_answer_options.filter((opt) => opt.trim());
+        if (validOptions.length < 2)
+          return `Question ${i + 1} must have at least 2 options`;
+        if (!q.model_answer.trim())
+          return `Question ${i + 1} must have a correct answer selected`;
+      } else if (q.type === "SHORT") {
+        if (!q.model_answer.trim())
+          return `Question ${i + 1} must have a model answer`;
       }
     }
-    
+
     return null;
   };
 
@@ -279,12 +301,21 @@ export default function EditQuizFormPage() {
       const sanitizedQuestions = formData.questions.map((question) => ({
         questionType: question.type, // MCQ or SHORT
         questionText: question.question,
-        options: question.type === 'MCQ' ? question.mcq_answer_options.filter(opt => opt.trim()) : [],
-        correctAnswerIndex: question.type === 'MCQ' 
-          ? question.mcq_answer_options.findIndex(opt => opt.trim().toLowerCase() === question.model_answer.trim().toLowerCase())
-          : 0,
+        options:
+          question.type === "MCQ"
+            ? question.mcq_answer_options.filter((opt) => opt.trim())
+            : [],
+        correctAnswerIndex:
+          question.type === "MCQ"
+            ? question.mcq_answer_options.findIndex(
+                (opt) =>
+                  opt.trim().toLowerCase() ===
+                  question.model_answer.trim().toLowerCase()
+              )
+            : 0,
         marks: parseFloat(question.marks_allowed) || 0,
-        expectedAnswer: question.type === 'SHORT' ? question.model_answer : undefined
+        expectedAnswer:
+          question.type === "SHORT" ? question.model_answer : undefined,
       }));
 
       const quiz = {
@@ -294,7 +325,7 @@ export default function EditQuizFormPage() {
         title: formData.title.trim(),
         duration: formData.duration,
         description: formData.description.trim(),
-        instructions: formData.instructions.filter(inst => inst.trim()),
+        instructions: formData.instructions.filter((inst) => inst.trim()),
         deadline: assessment?.deadline || new Date().toISOString(), // Use existing deadline or current time
         questions: sanitizedQuestions,
         createdBy: educatorId,
@@ -314,14 +345,18 @@ export default function EditQuizFormPage() {
       if (result.success) {
         setSaveMessage("Quiz saved successfully!");
         setTimeout(() => {
-          router.push(`/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`);
+          router.push(
+            `/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
+          );
         }, 1500);
       } else {
         setError(`Failed to save quiz: ${result.message}`);
       }
     } catch (err) {
       console.error("Error saving quiz:", err);
-      setError("Something went wrong. Please check your connection and try again.");
+      setError(
+        "Something went wrong. Please check your connection and try again."
+      );
     } finally {
       setSaving(false);
     }
@@ -332,7 +367,9 @@ export default function EditQuizFormPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-xl shadow-lg border border-slate-200">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600 font-medium">Loading quiz data...</p>
+          <p className="mt-4 text-slate-600 font-medium">
+            Loading quiz data...
+          </p>
         </div>
       </div>
     );
@@ -346,7 +383,10 @@ export default function EditQuizFormPage() {
             <AlertCircle className="w-12 h-12 mx-auto mb-4" />
             <h2 className="text-lg font-semibold mb-2">Error</h2>
             <p className="text-slate-600 mb-6">{error}</p>
-            <Button onClick={handleGoBack} className="bg-blue-600 hover:bg-blue-700">
+            <Button
+              onClick={handleGoBack}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               Go Back
             </Button>
           </div>
@@ -376,7 +416,9 @@ export default function EditQuizFormPage() {
                   {assessment?.module.module_code}
                 </span>
                 <span className="text-slate-600">•</span>
-                <span className="text-slate-600 font-medium">{assessment?.module.module_name}</span>
+                <span className="text-slate-600 font-medium">
+                  {assessment?.module.module_name}
+                </span>
               </div>
             </div>
           </div>
@@ -405,7 +447,7 @@ export default function EditQuizFormPage() {
             </div>
             <h2 className="text-xl font-bold text-slate-900">Quiz Details</h2>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-slate-700 mb-3">
@@ -414,7 +456,9 @@ export default function EditQuizFormPage() {
               <input
                 type="text"
                 value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, title: e.target.value }))
+                }
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-900 placeholder-slate-400"
                 placeholder="Enter quiz title"
               />
@@ -426,7 +470,12 @@ export default function EditQuizFormPage() {
               </label>
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 rows={4}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-900 placeholder-slate-400 resize-none"
                 placeholder="Enter quiz description (optional)"
@@ -441,7 +490,12 @@ export default function EditQuizFormPage() {
               <input
                 type="number"
                 value={formData.duration}
-                onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    duration: parseInt(e.target.value) || 0,
+                  }))
+                }
                 min="1"
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-900"
               />
@@ -453,8 +507,10 @@ export default function EditQuizFormPage() {
                 Total Marks
               </label>
               <div className="px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg">
-                <span className="text-slate-900 font-bold text-lg">{calculateTotalMarks().toFixed(1)}</span>
-                <span className="text-slate-500 ml-1">marks</span>
+                <span className="text-slate-900 text-sm">
+                  {calculateTotalMarks().toFixed(1)}
+                </span>
+                <span className="text-slate-900 text-sm ml-1">marks</span>
               </div>
             </div>
 
@@ -463,7 +519,9 @@ export default function EditQuizFormPage() {
               <PasswordInput
                 label="Quiz Access Password"
                 value={formData.password}
-                onChange={(value) => setFormData(prev => ({ ...prev, password: value }))}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, password: value }))
+                }
                 placeholder="Enter or generate a password for quiz access"
                 required={true}
                 helperText="Students will need this password to access the quiz. You can generate a secure password or create your own."
@@ -528,7 +586,10 @@ export default function EditQuizFormPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Questions</h2>
-                <p className="text-slate-500 text-sm">{formData.questions.length} question{formData.questions.length !== 1 ? 's' : ''} added</p>
+                <p className="text-slate-500 text-sm">
+                  {formData.questions.length} question
+                  {formData.questions.length !== 1 ? "s" : ""} added
+                </p>
               </div>
             </div>
             <Button
@@ -542,7 +603,10 @@ export default function EditQuizFormPage() {
 
           <div className="space-y-6">
             {formData.questions.map((question, questionIndex) => (
-              <div key={question.question_id} className="border border-slate-200 rounded-xl p-6 bg-slate-50/50">
+              <div
+                key={question.question_id}
+                className="border border-slate-200 rounded-xl p-6 bg-slate-50/50"
+              >
                 {/* Question Header */}
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-4">
@@ -551,11 +615,16 @@ export default function EditQuizFormPage() {
                     </div>
                     <div className="w-48">
                       <Dropdown
-                        options={['Multiple Choice', 'Short Answer']}
-                        selectedOption={question.type === 'MCQ' ? 'Multiple Choice' : 'Short Answer'}
+                        options={["Multiple Choice", "Short Answer"]}
+                        selectedOption={
+                          question.type === "MCQ"
+                            ? "Multiple Choice"
+                            : "Short Answer"
+                        }
                         onSelect={(option) => {
-                          const type = option === 'Multiple Choice' ? 'MCQ' : 'SHORT';
-                          updateQuestion(questionIndex, 'type', type);
+                          const type =
+                            option === "Multiple Choice" ? "MCQ" : "SHORT";
+                          updateQuestion(questionIndex, "type", type);
                         }}
                         className="text-sm"
                       />
@@ -563,11 +632,19 @@ export default function EditQuizFormPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium text-slate-600">Marks:</label>
+                      <label className="text-sm font-medium text-slate-600">
+                        Marks:
+                      </label>
                       <input
                         type="number"
                         value={question.marks_allowed}
-                        onChange={(e) => updateQuestion(questionIndex, 'marks_allowed', e.target.value)}
+                        onChange={(e) =>
+                          updateQuestion(
+                            questionIndex,
+                            "marks_allowed",
+                            e.target.value
+                          )
+                        }
                         min="0"
                         step="0.1"
                         className="w-20 px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
@@ -591,7 +668,9 @@ export default function EditQuizFormPage() {
                   </label>
                   <textarea
                     value={question.question}
-                    onChange={(e) => updateQuestion(questionIndex, 'question', e.target.value)}
+                    onChange={(e) =>
+                      updateQuestion(questionIndex, "question", e.target.value)
+                    }
                     rows={3}
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-900 placeholder-slate-400 resize-none"
                     placeholder="Enter your question here"
@@ -599,34 +678,56 @@ export default function EditQuizFormPage() {
                 </div>
 
                 {/* MCQ Options */}
-                {question.type === 'MCQ' && (
+                {question.type === "MCQ" && (
                   <div className="mb-6">
                     <label className="block text-sm font-semibold text-slate-700 mb-4">
                       Answer Options <span className="text-red-500">*</span>
                     </label>
                     <div className="space-y-3">
-                      {question.mcq_answer_options.map((option, optionIndex) => (
-                        <div key={optionIndex} className="flex items-center gap-4 p-3 bg-white rounded-lg border border-slate-200">
-                          <input
-                            type="radio"
-                            name={`correct_answer_${questionIndex}`}
-                            checked={question.model_answer === option && option.trim() !== ''}
-                            onChange={() => updateQuestion(questionIndex, 'model_answer', option)}
-                            className="text-blue-600 focus:ring-blue-500 w-4 h-4"
-                            disabled={option.trim() === ''}
-                          />
-                          <div className="flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-700 rounded-full font-semibold text-sm">
-                            {String.fromCharCode(65 + optionIndex)}
+                      {question.mcq_answer_options.map(
+                        (option, optionIndex) => (
+                          <div
+                            key={optionIndex}
+                            className="flex items-center gap-4 p-3 bg-white rounded-lg border border-slate-200"
+                          >
+                            <input
+                              type="radio"
+                              name={`correct_answer_${questionIndex}`}
+                              checked={
+                                question.model_answer === option &&
+                                option.trim() !== ""
+                              }
+                              onChange={() =>
+                                updateQuestion(
+                                  questionIndex,
+                                  "model_answer",
+                                  option
+                                )
+                              }
+                              className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+                              disabled={option.trim() === ""}
+                            />
+                            <div className="flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-700 rounded-full font-semibold text-sm">
+                              {String.fromCharCode(65 + optionIndex)}
+                            </div>
+                            <input
+                              type="text"
+                              value={option}
+                              onChange={(e) =>
+                                updateMCQOption(
+                                  questionIndex,
+                                  optionIndex,
+                                  e.target.value
+                                )
+                              }
+                              className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-900 placeholder-slate-400"
+                              placeholder={`Option ${String.fromCharCode(
+                                65 + optionIndex
+                              )}`}
+                            />
                           </div>
-                          <input
-                            type="text"
-                            value={option}
-                            onChange={(e) => updateMCQOption(questionIndex, optionIndex, e.target.value)}
-                            className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-900 placeholder-slate-400"
-                            placeholder={`Option ${String.fromCharCode(65 + optionIndex)}`}
-                          />
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                     <div className="text-xs text-slate-500 mt-3 flex items-center gap-1">
                       <div className="w-3 h-3 border-2 border-blue-500 rounded-full flex-shrink-0"></div>
@@ -636,14 +737,20 @@ export default function EditQuizFormPage() {
                 )}
 
                 {/* Short Answer Model Answer */}
-                {question.type === 'SHORT' && (
+                {question.type === "SHORT" && (
                   <div className="mb-4">
                     <label className="block text-sm font-semibold text-slate-700 mb-3">
                       Model Answer <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       value={question.model_answer}
-                      onChange={(e) => updateQuestion(questionIndex, 'model_answer', e.target.value)}
+                      onChange={(e) =>
+                        updateQuestion(
+                          questionIndex,
+                          "model_answer",
+                          e.target.value
+                        )
+                      }
                       rows={3}
                       className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-900 placeholder-slate-400 resize-none"
                       placeholder="Enter the expected answer"
@@ -656,9 +763,11 @@ export default function EditQuizFormPage() {
             {formData.questions.length === 0 && (
               <div className="text-center py-16 border-2 border-dashed border-slate-300 rounded-xl">
                 <HelpCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-500 text-lg mb-6">No questions added yet</p>
-                <Button 
-                  onClick={addQuestion} 
+                <p className="text-slate-500 text-lg mb-6">
+                  No questions added yet
+                </p>
+                <Button
+                  onClick={addQuestion}
                   className="flex items-center gap-2 mx-auto bg-blue-600 hover:bg-blue-700 shadow-lg"
                 >
                   <Plus className="w-4 h-4" />

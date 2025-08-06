@@ -56,6 +56,7 @@ export async function GET(
         title: assessment.title,
         description: assessment.description,
         deadline: assessment.deadline,
+        instructions:assessment.instructions,
       },
       question_paper: assessment.question_paper
         ? {

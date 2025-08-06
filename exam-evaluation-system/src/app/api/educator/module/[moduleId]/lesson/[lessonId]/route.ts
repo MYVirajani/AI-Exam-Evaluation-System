@@ -6,11 +6,14 @@ export async function DELETE(
   { params }: { params: { lessonId: string } }
 ) {
   const { lessonId } = params;
+  console.log('[DELETE] Incoming request to delete lesson:', lessonId);
 
   // Simulated user_id of currently logged-in educator (replace this with real logic)
-  const currentUserId = req.headers.get('x-user-id'); // e.g., from middleware or auth
+  const currentUserId = req.headers.get('userId'); // e.g., from middleware or auth
+  console.log('[DELETE] Extracted currentUserId from headers:', currentUserId);
 
   if (!currentUserId) {
+    console.warn('[DELETE] Unauthorized: Missing userId in headers');
     return NextResponse.json(
       { success: false, error: 'Unauthorized access: educator not identified' },
       { status: 401 }
@@ -26,38 +29,49 @@ export async function DELETE(
     });
 
     if (!lesson) {
+      console.warn('[DELETE] Lesson not found for lessonId:', lessonId);
       return NextResponse.json(
         { success: false, error: 'Lesson not found' },
         { status: 404 }
       );
     }
-    console.log('currentUserId :' , currentUserId);
+
+    console.log('[DELETE] Fetched lesson and module details:', {
+      lessonId: lesson.lesson_id,
+      moduleId: lesson.module.module_id,
+      createdBy: lesson.module.created_by,
+    });
 
     if (lesson.module.created_by !== currentUserId) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: 'Unauthorized to delete this lesson',
-      currentUserId: currentUserId,
-      createdBy: lesson.module.created_by,
-    },
-    { status: 403 }
-  );
-}
+      console.warn('[DELETE] Unauthorized delete attempt:', {
+        currentUserId,
+        createdBy: lesson.module.created_by,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unauthorized to delete this lesson',
+          currentUserId,
+          createdBy: lesson.module.created_by,
+        },
+        { status: 403 }
+      );
+    }
 
-    // Delete associated materials
+    console.log('[DELETE] Deleting associated lecture materials...');
     await prisma.lectureMaterial.deleteMany({
       where: { lesson_id: lessonId },
     });
 
-    // Delete the lesson itself
+    console.log('[DELETE] Deleting lesson...');
     await prisma.lesson.delete({
       where: { lesson_id: lessonId },
     });
 
+    console.log('[DELETE] Lesson deleted successfully:', lessonId);
     return NextResponse.json({ success: true, message: 'Lesson deleted successfully' });
   } catch (error) {
-    console.error('Error deleting lesson:', error);
+    console.error('[DELETE] Error deleting lesson:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

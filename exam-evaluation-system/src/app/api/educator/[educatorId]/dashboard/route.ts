@@ -22,7 +22,7 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get modules and include number of enrollments
+    // Get modules with enrollment count
     const modules = await prisma.module.findMany({
       where: { created_by: educatorId },
       select: {
@@ -43,7 +43,7 @@ export async function GET(
       },
     });
 
-    // Get assessments and include number of submissions
+    // Get assessments with submission count and module_id
     const assessments = await prisma.assessment.findMany({
       where: { created_by: educatorId },
       select: {
@@ -52,7 +52,7 @@ export async function GET(
         title: true,
         description: true,
         deadline: true,
-        module_id: true,
+        module_id: true, 
         _count: {
           select: {
             submissions: true,
@@ -62,14 +62,20 @@ export async function GET(
       orderBy: { deadline: 'asc' },
     });
 
-    // Format results with counts
+    // Format modules
     const formattedModules = modules.map(mod => ({
       ...mod,
       number_of_enrollments: mod._count.enrollments,
     }));
 
+    // Format assessments with module_id
     const formattedAssessments = assessments.map(asm => ({
-      ...asm,
+      assessment_id: asm.assessment_id,
+      type: asm.type,
+      title: asm.title,
+      description: asm.description,
+      deadline: asm.deadline,
+      module_id: asm.module_id, 
       number_of_submissions: asm._count.submissions,
     }));
 

@@ -25,16 +25,14 @@ export async function GET(
   try {
     // Fetch module details
     const moduleData = await prisma.module.findUnique({
-      where: {
-        module_id: moduleId,
-      },
+      where: { module_id: moduleId },
       select: {
         module_code: true,
         module_name: true,
       },
     });
 
-    if (!module) {
+    if (!moduleData) {
       return NextResponse.json(
         { success: false, message: "Module not found" },
         { status: 404 }
@@ -43,12 +41,10 @@ export async function GET(
 
     // Count enrollments
     const enrollmentCount = await prisma.enrollment.count({
-      where: {
-        module_id: moduleId,
-      },
+      where: { module_id: moduleId },
     });
 
-    // Fetch assessment by ID, module, and educator
+    // Fetch assessment with related questions and submissions
     const assessment = await prisma.assessment.findFirst({
       where: {
         assessment_id: assessmentId,
@@ -57,14 +53,13 @@ export async function GET(
       },
       include: {
         model_answer_paper: {
-          select: {
-            file_url: true,
-          },
+          select: { file_url: true },
         },
         question_paper: {
-          select: {
-            file_url: true,
-          },
+          select: { file_url: true },
+        },
+        questions: {
+          orderBy: { question_number: 'asc' },
         },
         submissions: {
           include: {
@@ -93,6 +88,19 @@ export async function GET(
       );
     }
 
+    // Debug log all fetched questions in detail
+    console.log("Fetched Questions:");
+    assessment.questions.forEach((q, index) => {
+      console.log(`  Q${index + 1}:`);
+      console.log(`    ID: ${q.question_id}`);
+      console.log(`    Type: ${q.type}`);
+      console.log(`    Question Number: ${q.question_number}`);
+      console.log(`    Question Text: ${q.question}`);
+      console.log(`    Marks Allowed: ${q.marks_allowed}`);
+      console.log(`    Model Answer: ${q.model_answer}`);
+      console.log(`    MCQ Options: ${JSON.stringify(q.mcq_answer_options)}`);
+    });
+
     // Build response
     const responseData = {
       moduleData,
@@ -103,9 +111,13 @@ export async function GET(
           type: assessment.type,
           title: assessment.title,
           description: assessment.description,
+          instructions: assessment.instructions,
+          duration: assessment.duration,
           deadline: assessment.deadline,
+          total_marks: assessment.total_marks, // Added total_marks here
           model_answer_paper: assessment.model_answer_paper || null,
           question_paper: assessment.question_paper || null,
+          questions: assessment.questions,
           submissions: assessment.submissions.map((sub) => ({
             submission_id: sub.submission_id,
             student: {
@@ -120,7 +132,8 @@ export async function GET(
         },
       ],
     };
-    console.log("Assessment response data:", JSON.stringify(responseData, null, 2));
+
+    console.log("Assessment response data (full):", JSON.stringify(responseData, null, 2));
 
     return NextResponse.json(responseData);
   } catch (err) {
@@ -131,4 +144,3 @@ export async function GET(
     );
   }
 }
-

@@ -15,7 +15,7 @@ export interface EventFormData {
   deadline: string;
   questionPaper?: FileList;
   modelAnswerPaper?: FileList;
-  markingScheme?: FileList;
+  // markingScheme?: FileList;
 }
 
 interface EventCreationFormProps {

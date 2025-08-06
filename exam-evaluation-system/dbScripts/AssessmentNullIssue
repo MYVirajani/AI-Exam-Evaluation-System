@@ -1,0 +1,21 @@
+-- Update "Assessment" with random durations (between 30 and 180 minutes)
+-- and random instructions from a predefined list
+
+UPDATE "Assessment"
+SET 
+    duration = (FLOOR(RANDOM() * 151) + 30)::int,  -- Random int between 30 and 180
+    instructions = instr.sample_instruction
+FROM (
+    SELECT 
+        assessment_id,
+        (ARRAY[
+            'Answer all questions.',
+            'No use of external materials allowed.',
+            'Time your responses carefully.',
+            'Each question is mandatory.',
+            'You may submit only once.',
+            'Follow academic integrity guidelines.'
+        ])[FLOOR(RANDOM() * 6 + 1)] AS sample_instruction
+    FROM "Assessment"
+) AS instr
+WHERE "Assessment".assessment_id = instr.assessment_id;

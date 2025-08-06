@@ -14,7 +14,7 @@ interface User {
 interface Question {
   question_id: string;
   assessment_id: string;
-  type: 'MCQ' | 'SHORT';
+  type: "MCQ" | "SHORT";
   question_number: string;
   question: string;
   model_answer: string;
@@ -106,31 +106,43 @@ export default function QuizAssessmentPage() {
   }, [moduleId, assessmentId, educatorId]);
 
   const handleCreateQuiz = () => {
-    router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?educatorId=${educatorId}`);
+    router.push(
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?educatorId=${educatorId}`
+    );
   };
 
   const handleEditQuiz = () => {
-    router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form/edit?educatorId=${educatorId}`);
+    router.push(
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form/edit?educatorId=${educatorId}`
+    );
   };
 
   const calculateTotalMarks = () => {
-  return assessment?.total_marks ?? 
-    (assessment?.questions?.reduce((total, q) => total + parseInt(q.marks_allowed || '0'), 0) ?? 0);
-};
+    return (
+      assessment?.total_marks ??
+      assessment?.questions?.reduce(
+        (total, q) => total + parseInt(q.marks_allowed || "0"),
+        0
+      ) ??
+      0
+    );
+  };
   const getMCQCount = () => {
     if (!assessment?.questions) return 0;
-    return assessment.questions.filter(q => q.type === 'MCQ').length;
+    return assessment.questions.filter((q) => q.type === "MCQ").length;
   };
 
   const getShortAnswerCount = () => {
     if (!assessment?.questions) return 0;
-    return assessment.questions.filter(q => q.type === 'SHORT').length;
+    return assessment.questions.filter((q) => q.type === "SHORT").length;
   };
 
   const getCorrectAnswerIndex = (question: Question) => {
-    if (question.type === 'MCQ' && question.mcq_answer_options.length > 0) {
-      return question.mcq_answer_options.findIndex(option => 
-        option.trim().toLowerCase() === question.model_answer.trim().toLowerCase()
+    if (question.type === "MCQ" && question.mcq_answer_options.length > 0) {
+      return question.mcq_answer_options.findIndex(
+        (option) =>
+          option.trim().toLowerCase() ===
+          question.model_answer.trim().toLowerCase()
       );
     }
     return -1;
@@ -140,7 +152,7 @@ export default function QuizAssessmentPage() {
     if (!instructions) return null;
     return instructions.map((instruction, index) => (
       <li key={index} className="text-gray-700 text-sm">
-        {instruction.replace(/^\d+\.\s*/, '')}
+        {instruction.replace(/^\d+\.\s*/, "")}
       </li>
     ));
   };
@@ -199,7 +211,9 @@ export default function QuizAssessmentPage() {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="text-sm text-gray-600">
-                <span className="font-medium">{assessment.module.module_code}</span>
+                <span className="font-medium">
+                  {assessment.module.module_code}
+                </span>
                 <span className="mx-2">•</span>
                 <span>{assessment.module.module_name}</span>
               </div>
@@ -213,9 +227,11 @@ export default function QuizAssessmentPage() {
               </div>
             </div>
           </div>
-          
+
           {assessment.description && (
-            <p className="text-gray-700 leading-relaxed mb-4">{assessment.description}</p>
+            <p className="text-gray-700 leading-relaxed mb-4">
+              {assessment.description}
+            </p>
           )}
 
           {/* Quiz Details */}
@@ -223,16 +239,22 @@ export default function QuizAssessmentPage() {
             {assessment.duration && (
               <div>
                 <span className="font-medium text-gray-700">Duration:</span>
-                <span className="ml-2 text-gray-600">{assessment.duration} minutes</span>
+                <span className="ml-2 text-gray-600">
+                  {assessment.duration} minutes
+                </span>
               </div>
             )}
             <div>
               <span className="font-medium text-gray-700">Total Marks:</span>
-              <span className="ml-2 text-gray-600 font-semibold text-blue-600">{totalMarks}</span>
+              <span className="ml-2 text-gray-600 font-semibold text-blue-600">
+                {totalMarks}
+              </span>
             </div>
             <div>
               <span className="font-medium text-gray-700">Questions:</span>
-              <span className="ml-2 text-gray-600">{assessment.questions?.length || 0}</span>
+              <span className="ml-2 text-gray-600">
+                {assessment.questions?.length || 0}
+              </span>
             </div>
           </div>
         </div>
@@ -240,7 +262,9 @@ export default function QuizAssessmentPage() {
         {/* Quiz Content Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Quiz Questions</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Quiz Questions
+            </h2>
             <div className="flex gap-3">
               {assessment.questions && assessment.questions.length > 0 ? (
                 <Button
@@ -269,48 +293,75 @@ export default function QuizAssessmentPage() {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{assessment.questions.length}</div>
-                    <div className="text-gray-600 font-medium">Total Questions</div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {assessment.questions.length}
+                    </div>
+                    <div className="text-gray-600 font-medium">
+                      Total Questions
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{mcqCount}</div>
-                    <div className="text-gray-600 font-medium">MCQ Questions</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {mcqCount}
+                    </div>
+                    <div className="text-gray-600 font-medium">
+                      MCQ Questions
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">{shortAnswerCount}</div>
-                    <div className="text-gray-600 font-medium">Short Answer</div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {shortAnswerCount}
+                    </div>
+                    <div className="text-gray-600 font-medium">
+                      Short Answer
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">{totalMarks}</div>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {totalMarks}
+                    </div>
                     <div className="text-gray-600 font-medium">Total Marks</div>
                   </div>
                 </div>
               </div>
 
               {/* Instructions */}
-              {assessment.instructions && assessment.instructions.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-amber-800 mb-3 flex items-center">
-                    <span className="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs mr-2">!</span>
-                    Instructions
-                  </h3>
-                  <ul className="space-y-1 list-decimal list-inside">
-                    {formatInstructions(assessment.instructions)}
-                  </ul>
-                </div>
-              )}
+              {assessment.instructions &&
+                assessment.instructions.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-blue-800 mb-3 flex items-center">
+                      <span className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs mr-2">
+                        !
+                      </span>
+                      Instructions
+                    </h3>
+                    <ul className="space-y-1 list-decimal list-inside">
+                      {formatInstructions(assessment.instructions)}
+                    </ul>
+                  </div>
+                )}
 
               {/* Questions Preview */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4 text-lg">Questions Preview</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 text-lg">
+                  Questions Preview
+                </h3>
                 <div className="space-y-6">
                   {assessment.questions
-                    .sort((a, b) => parseInt(a.question_number) - parseInt(b.question_number))
+                    .sort(
+                      (a, b) =>
+                        parseInt(a.question_number) -
+                        parseInt(b.question_number)
+                    )
                     .map((question, index) => {
-                      const correctAnswerIndex = getCorrectAnswerIndex(question);
-                      
+                      const correctAnswerIndex =
+                        getCorrectAnswerIndex(question);
+
                       return (
-                        <div key={question.question_id} className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div
+                          key={question.question_id}
+                          className="border border-gray-200 rounded-lg overflow-hidden"
+                        >
                           {/* Question Header */}
                           <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
                             <div className="flex items-center justify-between">
@@ -318,83 +369,123 @@ export default function QuizAssessmentPage() {
                                 <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
                                   Q{question.question_number}
                                 </span>
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                  question.type === 'MCQ' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-purple-100 text-purple-800'
-                                }`}>
-                                  {question.type === 'MCQ' ? 'Multiple Choice' : 'Short Answer'}
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    question.type === "MCQ"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-purple-100 text-purple-800"
+                                  }`}
+                                >
+                                  {question.type === "MCQ"
+                                    ? "Multiple Choice"
+                                    : "Short Answer"}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-600">Marks:</span>
+                                <span className="text-sm text-gray-600">
+                                  Marks:
+                                </span>
                                 <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm font-semibold">
                                   {question.marks_allowed}
                                 </span>
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Question Content */}
                           <div className="p-6">
                             <p className="text-gray-900 text-lg mb-4 leading-relaxed">
                               {question.question}
                             </p>
-                            
-                            {question.type === 'MCQ' && question.mcq_answer_options.length > 0 && (
-                              <div className="space-y-3">
-                                <h4 className="font-medium text-gray-700 mb-3">Answer Options:</h4>
-                                <div className="grid gap-2">
-                                  {question.mcq_answer_options.map((option, optIndex) => {
-                                    const isCorrect = optIndex === correctAnswerIndex;
-                                    return option.trim() && (
-                                      <div 
-                                        key={`option-${question.question_id}-${optIndex}`} 
-                                        className={`flex items-center p-3 rounded-lg border transition-colors ${
-                                          isCorrect 
-                                            ? 'bg-green-50 border-green-200 shadow-sm' 
-                                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                                        }`}
-                                      >
-                                        <span className={`font-semibold mr-3 w-6 h-6 rounded-full flex items-center justify-center text-sm ${
-                                          isCorrect 
-                                            ? 'bg-green-500 text-white' 
-                                            : 'bg-gray-300 text-gray-700'
-                                        }`}>
-                                          {String.fromCharCode(65 + optIndex)}
-                                        </span>
-                                        <span className={`flex-1 ${
-                                          isCorrect 
-                                            ? 'text-green-800 font-medium' 
-                                            : 'text-gray-700'
-                                        }`}>
-                                          {option.trim()}
-                                        </span>
-                                        {isCorrect && (
-                                          <span className="flex items-center gap-1 text-green-600 text-sm font-medium">
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                            </svg>
-                                            Correct Answer
-                                          </span>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
 
-                            {question.type === 'SHORT' && (
+                            {question.type === "MCQ" &&
+                              question.mcq_answer_options.length > 0 && (
+                                <div className="space-y-3">
+                                  <h4 className="font-medium text-gray-700 mb-3">
+                                    Answer Options:
+                                  </h4>
+                                  <div className="grid gap-2">
+                                    {question.mcq_answer_options.map(
+                                      (option, optIndex) => {
+                                        const isCorrect =
+                                          optIndex === correctAnswerIndex;
+                                        return (
+                                          option.trim() && (
+                                            <div
+                                              key={`option-${question.question_id}-${optIndex}`}
+                                              className={`flex items-center p-3 rounded-lg border transition-colors ${
+                                                isCorrect
+                                                  ? "bg-green-50 border-green-200 shadow-sm"
+                                                  : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                                              }`}
+                                            >
+                                              <span
+                                                className={`font-semibold mr-3 w-6 h-6 rounded-full flex items-center justify-center text-sm ${
+                                                  isCorrect
+                                                    ? "bg-green-500 text-white"
+                                                    : "bg-gray-300 text-gray-700"
+                                                }`}
+                                              >
+                                                {String.fromCharCode(
+                                                  65 + optIndex
+                                                )}
+                                              </span>
+                                              <span
+                                                className={`flex-1 ${
+                                                  isCorrect
+                                                    ? "text-green-800 font-medium"
+                                                    : "text-gray-700"
+                                                }`}
+                                              >
+                                                {option.trim()}
+                                              </span>
+                                              {isCorrect && (
+                                                <span className="flex items-center gap-1 text-green-600 text-sm font-medium">
+                                                  <svg
+                                                    className="w-4 h-4"
+                                                    fill="currentColor"
+                                                    viewBox="0 0 20 20"
+                                                  >
+                                                    <path
+                                                      fillRule="evenodd"
+                                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                      clipRule="evenodd"
+                                                    />
+                                                  </svg>
+                                                  Correct Answer
+                                                </span>
+                                              )}
+                                            </div>
+                                          )
+                                        );
+                                      }
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                            {question.type === "SHORT" && (
                               <div className="mt-4">
                                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                   <div className="flex items-start gap-2">
-                                    <svg className="w-5 h-5 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    <svg
+                                      className="w-5 h-5 text-green-600 mt-0.5"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                        clipRule="evenodd"
+                                      />
                                     </svg>
                                     <div>
-                                      <span className="text-sm font-semibold text-green-800">Correct Answer:</span>
-                                      <p className="text-sm text-green-700 mt-1 font-medium">{question.model_answer}</p>
+                                      <span className="text-sm font-semibold text-green-800">
+                                        Correct Answer:
+                                      </span>
+                                      <p className="text-sm text-green-700 mt-1 font-medium">
+                                        {question.model_answer}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
@@ -412,9 +503,12 @@ export default function QuizAssessmentPage() {
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 <FileIcon className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Quiz Created Yet</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No Quiz Created Yet
+              </h3>
               <p className="text-gray-600 mb-6">
-                Create your quiz with MCQ and short answer questions to get started.
+                Create your quiz with MCQ and short answer questions to get
+                started.
               </p>
               <Button
                 onClick={handleCreateQuiz}

@@ -354,7 +354,7 @@ export default function ModulePage({ params }: ModulePageProps) {
               onClick={() => setIsLessonModalOpen(true)}
               disabled={creatingEvent}
             >
-              + Lecture Material
+              + Learning Material
             </Button>
           </div>
           {lessons.length === 0 ? (

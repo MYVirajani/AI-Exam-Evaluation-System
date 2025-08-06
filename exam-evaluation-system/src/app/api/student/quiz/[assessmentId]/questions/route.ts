@@ -34,10 +34,10 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
     }
 
     // Fetch quiz submission for this student attempt
-    const submission = await prisma.quiz_Submission.findUnique({
-      where: { id: submissionId },
+    const submission = await prisma.submission.findUnique({
+      where: { submission_id: submissionId },
       select: {
-        started_at: true,
+        submission_start_time: true,
       },
     });
 
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       duration: assessment.duration,
       module_code: assessment.module.module_code,
       module_name: assessment.module.module_name,
-      started_at: submission.started_at,
+      started_at: submission.submission_start_time,
       questions: finalQuestions,
     };
 

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     // Check max attempts if applicable
     if (assessment.max_attempts !== null) {
-      const existingAttempts = await prisma.quiz_Submission.count({
+      const existingAttempts = await prisma.submission.count({
         where: {
           assessment_id: assessmentId,
           student_id: studentId,
@@ -71,11 +71,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new submission
-    const newSubmission = await prisma.quiz_Submission.create({
+    const newSubmission = await prisma.submission.create({
       data: {
+        submission_id:'1234',
         assessment_id: assessmentId,
         student_id: studentId,
-        started_at: new Date(),
+        submission_start_time: new Date(),
+        type:'ONLINE',
         is_graded: false,
       },
     });
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
       message: "Password verified and submission started",
       assessmentId: assessment.assessment_id,
       moduleId: assessment.module_id,
-      submissionId: newSubmission.id,
+      submissionId: newSubmission.submission_id,
     };
 
     // Log the response object

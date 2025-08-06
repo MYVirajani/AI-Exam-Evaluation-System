@@ -1,3 +1,4 @@
+// src/app/api/educator/module/[moduleId]/assessment/[assessmentId]/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -69,13 +70,13 @@ export async function GET(
                 user_id: true,
               },
             },
-            assessment_grade: {
+            grade: {  
               select: {
                 marks_awarded: true,
                 total_marks: true,
               },
             },
-            question_grades: true,
+            q_grades: true,
           },
         },
       },
@@ -101,7 +102,7 @@ export async function GET(
       console.log(`    MCQ Options: ${JSON.stringify(q.mcq_answer_options)}`);
     });
 
-    // Build response
+    // Build response (unchanged format)
     const responseData = {
       moduleData,
       enrollmentCount,
@@ -114,7 +115,7 @@ export async function GET(
           instructions: assessment.instructions,
           duration: assessment.duration,
           deadline: assessment.deadline,
-          total_marks: assessment.total_marks, // Added total_marks here
+          total_marks: assessment.total_marks,
           model_answer_paper: assessment.model_answer_paper || null,
           question_paper: assessment.question_paper || null,
           questions: assessment.questions,
@@ -125,9 +126,9 @@ export async function GET(
               registration_number: sub.student.registration_number,
             },
             file_url: sub.file_url,
-            submission_time: sub.submission_time,
-            assessment_grade: sub.assessment_grade || null,
-            question_grades: sub.question_grades,
+            submission_time: sub.submission_start_time, 
+            assessment_grade: sub.grade || null, 
+            question_grades: sub.q_grades,      
           })),
         },
       ],

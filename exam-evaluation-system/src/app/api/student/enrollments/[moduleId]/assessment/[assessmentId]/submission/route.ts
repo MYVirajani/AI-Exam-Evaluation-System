@@ -95,7 +95,8 @@ export async function POST(
         assessment_id: assessmentId,
         student_id: studentId,
         file_url: relativeFilePath,
-        submission_time: new Date(),
+        submission_start_time: new Date(),
+        type:'DOCUMENT'
       },
     });
 

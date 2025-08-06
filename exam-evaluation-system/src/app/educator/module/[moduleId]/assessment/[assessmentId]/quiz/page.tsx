@@ -110,7 +110,7 @@ export default function QuizAssessmentPage() {
   };
 
   const handleEditQuiz = () => {
-    router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?educatorId=${educatorId}`);
+    router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form/edit?educatorId=${educatorId}`);
   };
 
   const calculateTotalMarks = () => {

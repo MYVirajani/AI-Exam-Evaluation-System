@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { Clock, BookOpen, User, Calendar, FileText, Play } from "lucide-react";
+import { Clock, BookOpen,  Calendar, FileText, Play } from "lucide-react";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import Button from "@/components/Button";
 import toast from "react-hot-toast";

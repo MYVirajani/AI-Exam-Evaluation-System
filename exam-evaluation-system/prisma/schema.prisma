@@ -111,11 +111,11 @@ model Assessment {
   title             String
   description       String
   instructions      String[]
-  duration          Int
+  duration          Int?
   deadline          DateTime
   module_id         String
   created_by        String
-  total_marks       Decimal        @db.Decimal(4, 1)
+  total_marks       Decimal?       @db.Decimal(4, 1)
   password          String? // For quiz access
   question_count    Int? // Number of questions to show (for quizzes)
   shuffle_questions Boolean        @default(false) // Whether to shuffle questions

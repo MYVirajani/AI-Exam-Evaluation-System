@@ -720,7 +720,6 @@ export default function EducatorHomePage() {
             date: formattedDate,
             label,
             moduleId: mod?.module_id || "",
-            assessmentType: a.type
           };
         });
 

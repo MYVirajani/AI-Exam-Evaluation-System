@@ -25,7 +25,7 @@ interface SiteConfig {
 // Default configuration
 export const defaultConfig: SiteConfig = {
   title: "AutoEval360",
-  description: "Exam evaluation web application",
+  description: "Smart Learning Management System ",
   theme: {
     colors: {
       primary: "#2563eb", // blue-600
@@ -62,4 +62,10 @@ const envConfig: Partial<SiteConfig> = {
 export const siteConfig: SiteConfig = {
   ...defaultConfig,
   ...envConfig,
+};
+
+export const institutionConfig = {
+  systemName: "AutoEval360",
+  name: "Faculty of Engineering, University of Ruhuna",
+  department: "Department of Computer Engineering"
 };

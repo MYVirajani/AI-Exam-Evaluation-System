@@ -64,8 +64,3 @@ export const siteConfig: SiteConfig = {
   ...envConfig,
 };
 
-export const institutionConfig = {
-  systemName: "AutoEval360",
-  name: "Faculty of Engineering, University of Ruhuna",
-  department: "Department of Computer Engineering"
-};

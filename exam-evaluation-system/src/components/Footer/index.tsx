@@ -1,7 +1,7 @@
 'use client';
 
 import { Brain } from 'lucide-react';
-import { institutionConfig, siteConfig } from '@/config/site';
+import { siteConfig } from '@/config/site';
 
 const Footer = () => {
   return (

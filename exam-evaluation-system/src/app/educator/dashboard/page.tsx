@@ -888,7 +888,7 @@ export default function EducatorHomePage() {
               </div>
             </div>
           </div>
-          
+{/*           
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
@@ -900,7 +900,7 @@ export default function EducatorHomePage() {
               </div>
             </div>
           </div>
-          
+           */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
@@ -913,7 +913,7 @@ export default function EducatorHomePage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          {/* <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Capacity Used</p>
@@ -925,7 +925,7 @@ export default function EducatorHomePage() {
                 <FiTrendingUp className="h-6 w-6 text-purple-600" />
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Quick Actions */}

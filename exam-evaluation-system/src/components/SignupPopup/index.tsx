@@ -125,7 +125,7 @@ export default function SignupPopup({ isOpen, onClose,onSwitchToSignIn }: Signup
           
           {/* Left Section */}
           <div className="bg-blue-900 text-white w-1/3 p-8 hidden md:block">
-            <h2 className="text-3xl font-bold mb-4">WELCOME TO AUTOEVAL360</h2>
+            <h2 className="text-3xl font-bold mb-4">WELCOME TO AUTOEVAL360°</h2>
             <p className="text-sm">Your Smart Exam Partner</p>
             <p className="mt-4 text-sm opacity-90">
               Join {siteConfig.title} to streamline your exam creation,

@@ -119,7 +119,7 @@ const StudentModulePage = () => {
 
   // Navigate to assessment detail page on event card click - Updated with type-based routing
   const handleEventCardClick = (moduleId: string, assessmentId: string, assessmentType: string) => {
-    if (assessmentType.toLowerCase() === 'quiz') {
+    if (assessmentType === 'quiz') {
       router.push(
         `/student/quiz/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`
       );

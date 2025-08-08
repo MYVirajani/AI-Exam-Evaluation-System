@@ -102,25 +102,25 @@ export default function SignInPopup({ isOpen, onClose, onSwitchToSignUp }: SignI
             
             {/* Floating AI Icons Animation */}
             <div className="absolute inset-0">
-              <FaRobot className="absolute top-16 right-20 w-6 h-6 text-purple-300/30 animate-float-slow" />
-              <FaBrain className="absolute top-32 left-16 w-5 h-5 text-blue-300/40 animate-float-medium" />
-              <FaChartLine className="absolute bottom-24 left-20 w-4 h-4 text-indigo-300/30 animate-float-fast" />
+              <FaRobot className="absolute top-16 right-20 w-6 h-6 text-purple-300/30 animate-bounce" />
+              <FaBrain className="absolute top-32 left-16 w-5 h-5 text-blue-300/40 animate-pulse" />
+              <FaChartLine className="absolute bottom-24 left-20 w-4 h-4 text-indigo-300/30 animate-ping" />
             </div>
             
             <div className="relative z-10">
               <div className="mb-8">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500/30 to-blue-500/30 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm border border-purple-400/20 animate-pulse-slow">
-                  <FaRobot className="w-8 h-8 text-purple-200 animate-bounce-subtle" />
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500/30 to-blue-500/30 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm border border-purple-400/20 animate-pulse">
+                  <FaRobot className="w-8 h-8 text-purple-200 animate-bounce" />
                 </div>
-                <h2 className="text-4xl font-bold mb-4 leading-tight animate-slide-in-left">
+                <h2 className="text-4xl font-bold mb-4 leading-tight transform transition-all duration-1000 translate-x-0 opacity-100">
                   Welcome Back
                 </h2>
-                <p className="text-purple-100 text-lg font-medium animate-fade-in">
+                <p className="text-purple-100 text-lg font-medium transform transition-all duration-1000 delay-300 translate-y-0 opacity-100">
                   Access your AI-powered learning hub
                 </p>
               </div>
               
-              <div className="space-y-4 animate-slide-in-up">
+              <div className="space-y-4 transform transition-all duration-1000 delay-500 translate-y-0 opacity-100">
                 <p className="text-purple-100/90 leading-relaxed">
                   Experience smart exam evaluation with AI-driven analytics and instant results.
                 </p>
@@ -245,81 +245,6 @@ export default function SignInPopup({ isOpen, onClose, onSwitchToSignUp }: SignI
           </div>
         </DialogPanel>
       </div>
-
-      {/* Custom CSS for animations */}
-      <style jsx>{`
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(180deg); }
-        }
-        
-        @keyframes float-medium {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-15px) rotate(-90deg); }
-        }
-        
-        @keyframes float-fast {
-          0%, 100% { transform: translateY(0px) scale(1); }
-          50% { transform: translateY(-10px) scale(1.1); }
-        }
-        
-        @keyframes slide-in-left {
-          0% { transform: translateX(-50px); opacity: 0; }
-          100% { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes slide-in-up {
-          0% { transform: translateY(30px); opacity: 0; }
-          100% { transform: translateY(0); opacity: 1; }
-        }
-        
-        @keyframes fade-in {
-          0% { opacity: 0; }
-          100% { opacity: 1; }
-        }
-        
-        @keyframes bounce-subtle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-5px); }
-        }
-        
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.6; }
-        }
-        
-        .animate-float-slow {
-          animation: float-slow 6s ease-in-out infinite;
-        }
-        
-        .animate-float-medium {
-          animation: float-medium 4s ease-in-out infinite;
-        }
-        
-        .animate-float-fast {
-          animation: float-fast 3s ease-in-out infinite;
-        }
-        
-        .animate-slide-in-left {
-          animation: slide-in-left 0.8s ease-out;
-        }
-        
-        .animate-slide-in-up {
-          animation: slide-in-up 0.8s ease-out 0.2s both;
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out 0.4s both;
-        }
-        
-        .animate-bounce-subtle {
-          animation: bounce-subtle 2s ease-in-out infinite;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse-slow 3s ease-in-out infinite;
-        }
-      `}</style>
     </Dialog>
   );
 }

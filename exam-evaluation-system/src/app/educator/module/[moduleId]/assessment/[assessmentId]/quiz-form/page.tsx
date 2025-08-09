@@ -2,30 +2,31 @@
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { 
-  Save, 
-  ArrowLeft, 
-  Plus, 
-  Trash2, 
+import {
+  Save,
+  ArrowLeft,
+  Plus,
+  Trash2,
   AlertCircle,
   CheckCircle,
   Clock,
   FileText,
   BookOpen,
-  Award
+  Award,
+  Settings,
+  Shuffle,
+  Calendar,
+  Users,
+  Target,
+  Lock,
 } from "lucide-react";
 import Button from "@/components/Button";
-
-interface User {
-  first_name: string;
-  last_name: string;
-  email: string;
-}
+import PasswordInput from "@/components/PasswordInput";
 
 interface Question {
   question_id: string;
   assessment_id: string;
-  type: 'MCQ' | 'SHORT';
+  type: "MCQ" | "SHORT";
   question_number: string;
   question: string;
   model_answer: string;
@@ -41,6 +42,7 @@ interface Assessment {
   deadline: string;
   duration?: number;
   total_marks?: number;
+  max_marks?: number;
   instructions?: string[];
   questions?: Question[];
   submissions: any[];
@@ -49,6 +51,12 @@ interface Assessment {
     module_name: string;
   };
   enrollmentCount: number;
+  shuffle_questions?: boolean;
+  password?: string;
+  max_attempts?: number;
+  open_at?: string;
+  close_at?: string;
+  question_count?: number;
 }
 
 interface QuizFormData {
@@ -57,9 +65,17 @@ interface QuizFormData {
   duration: number;
   instructions: string[];
   questions: Question[];
+  maxMarks: number | null;
+  maxQuestions: number | null;
+  shuffleQuestions: boolean;
+  autoGrade: boolean;
+  password?: string;
+  openAt: string;
+  closeAt: string;
+  maxAttempts: number;
 }
 
-export default function EditQuizFormPage() {
+export default function CreateQuizFormPage() {
   const searchParams = useSearchParams();
   const params = useParams();
   const router = useRouter();
@@ -67,6 +83,7 @@ export default function EditQuizFormPage() {
   const moduleId = params.moduleId as string;
   const assessmentId = params.assessmentId as string;
   const educatorId = searchParams.get("educatorId");
+  const isEdit = searchParams.get("edit");
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,12 +92,31 @@ export default function EditQuizFormPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<QuizFormData>({
-    title: '',
-    description: '',
+    title: "",
+    description: "",
     duration: 60,
-    instructions: [''],
-    questions: []
+    instructions: [""],
+    questions: [],
+    maxMarks: null,
+    maxQuestions: null,
+    shuffleQuestions: true,
+    autoGrade: false,
+    password: "",
+    openAt: "",
+    closeAt: "",
+    maxAttempts: 1,
   });
+
+  // Helper function to format datetime for input
+  const formatDateTimeForInput = (dateString: string | null | undefined) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+    } catch {
+      return "";
+    }
+  };
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {
@@ -108,20 +144,37 @@ export default function EditQuizFormPage() {
         };
 
         setAssessment(enrichedAssessment);
-        
+
         // Populate form data
         setFormData({
-          title: enrichedAssessment.title || '',
-          description: enrichedAssessment.description || '',
+          title: enrichedAssessment.title || "",
+          description: enrichedAssessment.description || "",
           duration: enrichedAssessment.duration || 60,
-          instructions: enrichedAssessment.instructions?.length ? enrichedAssessment.instructions : [''],
-          questions: enrichedAssessment.questions?.map(q => ({
-            ...q,
-            mcq_answer_options: q.mcq_answer_options?.length ? q.mcq_answer_options : ['', '', '', '']
-          })) || []
+          instructions: enrichedAssessment.instructions?.length
+            ? enrichedAssessment.instructions
+            : [""],
+          questions:
+            enrichedAssessment.questions?.map((q) => ({
+              ...q,
+              mcq_answer_options: q.mcq_answer_options?.length
+                ? q.mcq_answer_options
+                : ["", "", "", ""],
+            })) || [],
+          maxMarks: enrichedAssessment.max_marks
+            ? Number(enrichedAssessment.max_marks)
+            : null,
+          maxQuestions: enrichedAssessment.question_count || null,
+          autoGrade: enrichedAssessment.auto_grade ?? false,
+          shuffleQuestions: enrichedAssessment.shuffle_questions ?? true,
+          password: enrichedAssessment.password || "",
+          openAt: formatDateTimeForInput(enrichedAssessment.open_at),
+          closeAt: formatDateTimeForInput(enrichedAssessment.close_at),
+          maxAttempts: enrichedAssessment.max_attempts || 1,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch assessment");
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch assessment"
+        );
       } finally {
         setLoading(false);
       }
@@ -131,28 +184,32 @@ export default function EditQuizFormPage() {
   }, [moduleId, assessmentId, educatorId]);
 
   const handleGoBack = () => {
-    router.push(`/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`);
+    router.push(
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
+    );
   };
 
   const addInstruction = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      instructions: [...prev.instructions, '']
+      instructions: [...prev.instructions, ""],
     }));
   };
 
   const updateInstruction = (index: number, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      instructions: prev.instructions.map((inst, i) => i === index ? value : inst)
+      instructions: prev.instructions.map((inst, i) =>
+        i === index ? value : inst
+      ),
     }));
   };
 
   const removeInstruction = (index: number) => {
     if (formData.instructions.length > 1) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        instructions: prev.instructions.filter((_, i) => i !== index)
+        instructions: prev.instructions.filter((_, i) => i !== index),
       }));
     }
   };
@@ -161,45 +218,49 @@ export default function EditQuizFormPage() {
     const newQuestion: Question = {
       question_id: `temp_${Date.now()}`,
       assessment_id: assessmentId,
-      type: 'MCQ',
+      type: "MCQ",
       question_number: String(formData.questions.length + 1),
-      question: '',
-      model_answer: '',
-      mcq_answer_options: ['', '', '', ''],
-      marks_allowed: '1'
+      question: "",
+      model_answer: "",
+      mcq_answer_options: ["", "", "", ""],
+      marks_allowed: "1",
     };
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      questions: [...prev.questions, newQuestion]
+      questions: [...prev.questions, newQuestion],
     }));
   };
 
   const updateQuestion = (index: number, field: keyof Question, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       questions: prev.questions.map((q, i) => {
         if (i === index) {
           const updatedQuestion = { ...q, [field]: value };
-          
+
           // If changing to SHORT type, clear MCQ options
-          if (field === 'type' && value === 'SHORT') {
+          if (field === "type" && value === "SHORT") {
             updatedQuestion.mcq_answer_options = [];
           }
           // If changing to MCQ type, ensure 4 options
-          else if (field === 'type' && value === 'MCQ') {
-            updatedQuestion.mcq_answer_options = ['', '', '', ''];
+          else if (field === "type" && value === "MCQ") {
+            updatedQuestion.mcq_answer_options = ["", "", "", ""];
           }
-          
+
           return updatedQuestion;
         }
         return q;
-      })
+      }),
     }));
   };
 
-  const updateMCQOption = (questionIndex: number, optionIndex: number, value: string) => {
-    setFormData(prev => ({
+  const updateMCQOption = (
+    questionIndex: number,
+    optionIndex: number,
+    value: string
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       questions: prev.questions.map((q, i) => {
         if (i === questionIndex) {
@@ -208,42 +269,86 @@ export default function EditQuizFormPage() {
           return { ...q, mcq_answer_options: newOptions };
         }
         return q;
-      })
+      }),
     }));
   };
 
   const removeQuestion = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      questions: prev.questions.filter((_, i) => i !== index).map((q, newIndex) => ({
-        ...q,
-        question_number: String(newIndex + 1)
-      }))
+      questions: prev.questions
+        .filter((_, i) => i !== index)
+        .map((q, newIndex) => ({
+          ...q,
+          question_number: String(newIndex + 1),
+        })),
     }));
   };
 
   const calculateTotalMarks = () => {
-    return formData.questions.reduce((total, q) => total + parseInt(q.marks_allowed || '0'), 0);
+    const total = formData.questions.reduce(
+      (total, q) => total + parseFloat(q.marks_allowed || "0"),
+      0
+    );
+    return parseFloat(total.toFixed(2));
   };
 
   const validateForm = () => {
     if (!formData.title.trim()) return "Quiz title is required";
-    if (formData.questions.length === 0) return "At least one question is required";
-    
+    if (formData.questions.length === 0)
+      return "At least one question is required";
+
+    // Validate max marks
+    if (formData.maxMarks && formData.maxMarks <= 0) {
+      return "Max marks must be greater than 0";
+    }
+
+    if (formData.maxMarks && formData.maxMarks > calculateTotalMarks()) {
+      return "Max marks cannot exceed total marks from all questions";
+    }
+
+    // Validate max questions
+    if (formData.maxQuestions && formData.maxQuestions <= 0) {
+      return "Max questions must be greater than 0";
+    }
+    if (formData.password && formData.password.length < 6) {
+      return "If a password is set, it must be at least 6 characters";
+    }
+
+    if (
+      formData.maxQuestions &&
+      formData.maxQuestions > formData.questions.length
+    ) {
+      return "Max questions cannot exceed total created questions";
+    }
+
+    // Validate dates
+    if (formData.openAt && formData.closeAt) {
+      const openDate = new Date(formData.openAt);
+      const closeDate = new Date(formData.closeAt);
+      if (openDate >= closeDate) {
+        return "Open time must be before close time";
+      }
+    }
+
     for (let i = 0; i < formData.questions.length; i++) {
       const q = formData.questions[i];
       if (!q.question.trim()) return `Question ${i + 1} text is required`;
-      if (!q.marks_allowed || parseInt(q.marks_allowed) <= 0) return `Question ${i + 1} must have valid marks`;
-      
-      if (q.type === 'MCQ') {
-        const validOptions = q.mcq_answer_options.filter(opt => opt.trim());
-        if (validOptions.length < 2) return `Question ${i + 1} must have at least 2 answer options`;
-        if (!q.model_answer.trim()) return `Question ${i + 1} must have a correct answer selected`;
-      } else if (q.type === 'SHORT') {
-        if (!q.model_answer.trim()) return `Question ${i + 1} must have a model answer`;
+      if (!q.marks_allowed || parseInt(q.marks_allowed) <= 0)
+        return `Question ${i + 1} must have valid marks`;
+
+      if (q.type === "MCQ") {
+        const validOptions = q.mcq_answer_options.filter((opt) => opt.trim());
+        if (validOptions.length < 2)
+          return `Question ${i + 1} must have at least 2 answer options`;
+        if (!q.model_answer.trim())
+          return `Question ${i + 1} must have a correct answer selected`;
+      } else if (q.type === "SHORT") {
+        if (!q.model_answer.trim())
+          return `Question ${i + 1} must have a model answer`;
       }
     }
-    
+
     return null;
   };
 
@@ -268,12 +373,21 @@ export default function EditQuizFormPage() {
       const sanitizedQuestions = formData.questions.map((question) => ({
         questionType: question.type, // MCQ or SHORT
         questionText: question.question,
-        options: question.type === 'MCQ' ? question.mcq_answer_options.filter(opt => opt.trim()) : [],
-        correctAnswerIndex: question.type === 'MCQ' 
-          ? question.mcq_answer_options.findIndex(opt => opt.trim().toLowerCase() === question.model_answer.trim().toLowerCase())
-          : 0,
+        options:
+          question.type === "MCQ"
+            ? question.mcq_answer_options.filter((opt) => opt.trim())
+            : [],
+        correctAnswerIndex:
+          question.type === "MCQ"
+            ? question.mcq_answer_options.findIndex(
+                (opt) =>
+                  opt.trim().toLowerCase() ===
+                  question.model_answer.trim().toLowerCase()
+              )
+            : 0,
         marks: parseFloat(question.marks_allowed) || 0,
-        expectedAnswer: question.type === 'SHORT' ? question.model_answer : undefined
+        expectedAnswer:
+          question.type === "SHORT" ? question.model_answer : undefined,
       }));
 
       const quiz = {
@@ -283,13 +397,24 @@ export default function EditQuizFormPage() {
         title: formData.title.trim(),
         duration: formData.duration,
         description: formData.description.trim(),
-        instructions: formData.instructions.filter(inst => inst.trim()),
-        deadline: assessment?.deadline || new Date().toISOString(), // Use existing deadline or current time
+        instructions: formData.instructions.filter((inst) => inst.trim()),
+        deadline: assessment?.deadline || new Date().toISOString(),
         questions: sanitizedQuestions,
         createdBy: educatorId,
         totalQuestions: formData.questions.length,
-        password: assessment?.password || "default", // Use existing password or default
-        shuffleQuestions: assessment?.shuffle_questions ?? true, // Use existing shuffle setting or default
+        password: formData.password?.trim() ? formData.password.trim() : null,
+        autoGrade: formData.autoGrade,
+        shuffleQuestions: formData.shuffleQuestions,
+        maxMarks: formData.maxMarks,
+        maxAttempts: formData.maxAttempts,
+        questionCount: formData.maxQuestions,
+        openAt: formData.openAt
+          ? new Date(formData.openAt).toISOString()
+          : null,
+        closeAt: formData.closeAt
+          ? new Date(formData.closeAt).toISOString()
+          : null,
+        totalMarks: calculateTotalMarks(),
       };
 
       const res = await fetch("/api/educator/assessment/quiz", {
@@ -303,14 +428,18 @@ export default function EditQuizFormPage() {
       if (result.success) {
         setSaveMessage("Quiz updated successfully!");
         setTimeout(() => {
-          router.push(`/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`);
+          router.push(
+            `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
+          );
         }, 1500);
       } else {
         setError(`Failed to save quiz: ${result.message}`);
       }
     } catch (err) {
       console.error("Error saving quiz:", err);
-      setError("Something went wrong. Please check your connection and try again.");
+      setError(
+        "Something went wrong. Please check your connection and try again."
+      );
     } finally {
       setSaving(false);
     }
@@ -322,8 +451,12 @@ export default function EditQuizFormPage() {
         <div className="bg-white p-10 rounded-2xl shadow-xl border border-blue-100">
           <div className="flex flex-col items-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-            <p className="text-lg font-medium text-gray-700">Loading quiz data...</p>
-            <p className="text-sm text-gray-500">Please wait while we fetch your assessment</p>
+            <p className="text-lg font-medium text-gray-700">
+              Loading quiz data...
+            </p>
+            <p className="text-sm text-gray-500">
+              Please wait while we fetch your assessment
+            </p>
           </div>
         </div>
       </div>
@@ -338,7 +471,9 @@ export default function EditQuizFormPage() {
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load Quiz</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Unable to Load Quiz
+            </h2>
             <p className="text-gray-600 mb-6">{error}</p>
             <Button onClick={handleGoBack} className="w-full">
               Return to Assessment
@@ -370,9 +505,15 @@ export default function EditQuizFormPage() {
                     <FileText className="w-6 h-6" />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Edit Quiz Assessment</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {isEdit
+                        ? "Edit Your Quiz Assessment"
+                        : "Build Your Quiz Assessment"}
+                    </h1>
                     <p className="text-sm text-gray-600 mt-1">
-                      <span className="font-medium">{assessment?.module.module_code}</span>
+                      <span className="font-medium">
+                        {assessment?.module.module_code}
+                      </span>
                       <span className="mx-2">•</span>
                       <span>{assessment?.module.module_name}</span>
                     </p>
@@ -380,7 +521,7 @@ export default function EditQuizFormPage() {
                 </div>
               </div>
             </div>
-            
+
             {/* Quick Stats */}
             <div className="hidden md:flex items-center space-x-6 text-sm">
               <div className="flex items-center space-x-2 text-gray-600">
@@ -429,9 +570,11 @@ export default function EditQuizFormPage() {
               <FileText className="w-5 h-5 text-blue-600" />
               Quiz Information
             </h2>
-            <p className="text-gray-600 text-sm mt-1">Configure basic quiz settings and metadata</p>
+            <p className="text-gray-600 text-sm mt-1">
+              Configure basic quiz settings and metadata
+            </p>
           </div>
-          
+
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="lg:col-span-2">
@@ -441,7 +584,9 @@ export default function EditQuizFormPage() {
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, title: e.target.value }))
+                  }
                   className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
                   placeholder="Enter a descriptive title for your quiz"
                 />
@@ -453,7 +598,12 @@ export default function EditQuizFormPage() {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   rows={4}
                   className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
                   placeholder="Provide a brief description of what this quiz covers (optional)"
@@ -468,13 +618,20 @@ export default function EditQuizFormPage() {
                 <input
                   type="number"
                   value={formData.duration}
-                  onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      duration: parseInt(e.target.value) || 0,
+                    }))
+                  }
                   min="1"
                   max="300"
                   className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
                   placeholder="60"
                 />
-                <p className="text-xs text-gray-500 mt-2">Recommended: 1-2 minutes per question</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Recommended: 1-2 minutes per question
+                </p>
               </div>
 
               <div>
@@ -485,54 +642,321 @@ export default function EditQuizFormPage() {
                 <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl text-blue-800 font-bold text-lg">
                   {calculateTotalMarks()} marks
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Automatically calculated from questions</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Automatically calculated from questions
+                </p>
               </div>
             </div>
 
             {/* Instructions Section */}
             <div className="mt-8">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-800">
                     Quiz Instructions
                   </label>
-                  <p className="text-xs text-gray-500 mt-1">Add instructions to guide students during the quiz</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Add instructions to guide students during the quiz
+                  </p>
                 </div>
-                <Button
-                  onClick={addInstruction}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Instruction
-                </Button>
               </div>
-              <div className="space-y-3">
-                {formData.instructions.map((instruction, index) => (
-                  <div key={index} className="flex items-start gap-3 group">
-                    <div className="flex-shrink-0 w-8 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-sm font-medium text-gray-600 mt-1">
-                      {index + 1}
+              <div className="relative">
+                <div className="space-y-3">
+                  {formData.instructions.map((instruction, index) => (
+                    <div key={index} className="flex items-start gap-3 group">
+                      <div className="flex-shrink-0 w-8 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-sm font-medium text-gray-600 mt-1">
+                        {index + 1}
+                      </div>
+                      <input
+                        type="text"
+                        value={instruction}
+                        onChange={(e) =>
+                          updateInstruction(index, e.target.value)
+                        }
+                        className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                        placeholder="Enter an instruction for students..."
+                      />
+                      {formData.instructions.length > 1 && (
+                        <Button
+                          onClick={() => removeInstruction(index)}
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-300 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity mt-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
-                    <input
-                      type="text"
-                      value={instruction}
-                      onChange={(e) => updateInstruction(index, e.target.value)}
-                      className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                      placeholder="Enter an instruction for students..."
-                    />
-                    {formData.instructions.length > 1 && (
-                      <Button
-                        onClick={() => removeInstruction(index)}
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-300 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity mt-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                  ))}
+                </div>
+
+                {/* Plus button positioned at bottom right */}
+                <div className="flex justify-end mt-4">
+                  <Button
+                    onClick={addInstruction}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 text-blue-600 border-blue-300 bg-indigo-50 hover:bg-indigo-100"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Advanced Settings Section */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-8">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Settings className="w-5 h-5 text-purple-600" />
+              Advanced Quiz Settings
+            </h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Configure advanced options for quiz behavior and availability
+            </p>
+          </div>
+
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Auto Grading and Shuffle Questions Toggles */}
+              <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Auto Grading Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">
+                        Auto Grading
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Automatically grade and show results after quiz
+                      </p>
+                    </div>
                   </div>
-                ))}
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.autoGrade || false}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          autoGrade: e.target.checked,
+                        }))
+                      }
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                  </label>
+                </div>
+
+                {/* Shuffle Questions Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Shuffle className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">
+                        Shuffle Questions
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Randomize the order of questions for each student
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.shuffleQuestions}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          shuffleQuestions: e.target.checked,
+                        }))
+                      }
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Max Marks */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <Target className="w-4 h-4 inline mr-2 text-gray-600" />
+                  Max Marks (Optional)
+                </label>
+                <input
+                  type="number"
+                  value={formData.maxMarks || ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      maxMarks: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
+                    }))
+                  }
+                  min="1"
+                  max={calculateTotalMarks()}
+                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                  placeholder={`Max ${calculateTotalMarks()}`}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Leave empty to use all marks. Maximum: {calculateTotalMarks()}{" "}
+                  marks
+                </p>
+              </div>
+
+              {/* Max Questions */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <BookOpen className="w-4 h-4 inline mr-2 text-gray-600" />
+                  Max Questions (Optional)
+                </label>
+                <input
+                  type="number"
+                  value={formData.maxQuestions || ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      maxQuestions: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
+                    }))
+                  }
+                  min="1"
+                  max={formData.questions.length}
+                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                  placeholder={`Max ${formData.questions.length}`}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Leave empty to show all questions. System will randomly select
+                  questions.
+                </p>
+              </div>
+
+              {/* Max Attempts */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <Users className="w-4 h-4 inline mr-2 text-gray-600" />
+                  Max Attempts
+                </label>
+                <input
+                  type="number"
+                  value={formData.maxAttempts}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      maxAttempts: parseInt(e.target.value) || 1,
+                    }))
+                  }
+                  min="1"
+                  max="10"
+                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                  placeholder="1"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Number of attempts allowed per student
+                </p>
+              </div>
+
+              {/* Password (Optional) */}
+              <div>
+                <PasswordInput
+                  label=" Quiz Password (Optional)"
+                  value={formData.password ?? ""}
+                  onChange={(value) =>
+                    setFormData((prev) => ({ ...prev, password: value }))
+                  }
+                  placeholder="Leave empty to allow access without a password"
+                  required={false}
+                  helperText="If set, students must enter this password to start the quiz. You can add or change it anytime."
+                  className=""
+                  id="quiz-password"
+                />
+              </div>
+
+              {/* Open At */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <Calendar className="w-4 h-4 inline mr-2 text-gray-600" />
+                  Quiz Opens At (Optional)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.openAt}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, openAt: e.target.value }))
+                  }
+                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  When students can start taking the quiz
+                </p>
+              </div>
+
+              {/* Close At */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <Calendar className="w-4 h-4 inline mr-2 text-gray-600" />
+                  Quiz Closes At (Optional)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.closeAt}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      closeAt: e.target.value,
+                    }))
+                  }
+                  min={formData.openAt || undefined}
+                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  After this time, students cannot access the quiz
+                </p>
+              </div>
+            </div>
+
+            {/* Advanced Settings Info Panel */}
+            <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-amber-800 mb-2">
+                    Advanced Settings Information
+                  </h4>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    <li>
+                      • <strong>Auto Grading:</strong> Quiz is automatically
+                      graded and students see results immediately after
+                      completion
+                    </li>
+                    <li>
+                      • <strong>Max Marks:</strong> System will randomly select
+                      questions up to this mark limit
+                    </li>
+                    <li>
+                      • <strong>Max Questions:</strong> System will show only
+                      this many questions per student
+                    </li>
+                    <li>
+                      • <strong>Shuffle Questions:</strong> Each student will
+                      see questions in different order
+                    </li>
+                    <li>
+                      • <strong>Open/Close Times:</strong> Control when students
+                      can access the quiz
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -547,22 +971,20 @@ export default function EditQuizFormPage() {
                   <BookOpen className="w-5 h-5 text-indigo-600" />
                   Quiz Questions ({formData.questions.length})
                 </h2>
-                <p className="text-gray-600 text-sm mt-1">Create and manage your quiz questions</p>
+                <p className="text-gray-600 text-sm mt-1">
+                  Create and manage your quiz questions
+                </p>
               </div>
-              <Button
-                onClick={addQuestion}
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-              >
-                <Plus className="w-4 h-4" />
-                Add Question
-              </Button>
             </div>
           </div>
 
           <div className="p-6">
             <div className="space-y-8">
               {formData.questions.map((question, questionIndex) => (
-                <div key={question.question_id} className="border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-blue-300 transition-colors">
+                <div
+                  key={question.question_id}
+                  className="border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-blue-300 transition-colors"
+                >
                   {/* Question Header */}
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
@@ -573,23 +995,41 @@ export default function EditQuizFormPage() {
                         <div>
                           <select
                             value={question.type}
-                            onChange={(e) => updateQuestion(questionIndex, 'type', e.target.value)}
+                            onChange={(e) =>
+                              updateQuestion(
+                                questionIndex,
+                                "type",
+                                e.target.value
+                              )
+                            }
                             className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                           >
-                            <option value="MCQ">Multiple Choice Question</option>
+                            <option value="MCQ">
+                              Multiple Choice Question
+                            </option>
                             <option value="SHORT">Short Answer Question</option>
                           </select>
-                          <p className="text-xs text-gray-500 mt-1">Choose the question type</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Choose the question type
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Marks</label>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Marks
+                          </label>
                           <input
                             type="number"
                             value={question.marks_allowed}
-                            onChange={(e) => updateQuestion(questionIndex, 'marks_allowed', e.target.value)}
-                            min="0.5"
+                            onChange={(e) =>
+                              updateQuestion(
+                                questionIndex,
+                                "marks_allowed",
+                                e.target.value
+                              )
+                            }
+                            min="0.00"
                             step="0.5"
                             className="w-20 px-3 py-2 text-center bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                           />
@@ -614,7 +1054,13 @@ export default function EditQuizFormPage() {
                       </label>
                       <textarea
                         value={question.question}
-                        onChange={(e) => updateQuestion(questionIndex, 'question', e.target.value)}
+                        onChange={(e) =>
+                          updateQuestion(
+                            questionIndex,
+                            "question",
+                            e.target.value
+                          )
+                        }
                         rows={3}
                         className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
                         placeholder="Enter your question here. Be clear and specific..."
@@ -622,61 +1068,91 @@ export default function EditQuizFormPage() {
                     </div>
 
                     {/* MCQ Options */}
-                    {question.type === 'MCQ' && (
+                    {question.type === "MCQ" && (
                       <div className="mb-6">
                         <label className="block text-sm font-semibold text-gray-800 mb-4">
                           Answer Options <span className="text-red-500">*</span>
                         </label>
                         <div className="space-y-4">
-                          {question.mcq_answer_options.map((option, optionIndex) => (
-                            <div key={optionIndex} className="flex items-center gap-4 group">
-                              <div className="flex items-center">
+                          {question.mcq_answer_options.map(
+                            (option, optionIndex) => (
+                              <div
+                                key={optionIndex}
+                                className="flex items-center gap-4 group"
+                              >
+                                <div className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={`correct_answer_${questionIndex}`}
+                                    checked={
+                                      question.model_answer === option &&
+                                      option.trim() !== ""
+                                    }
+                                    onChange={() =>
+                                      updateQuestion(
+                                        questionIndex,
+                                        "model_answer",
+                                        option
+                                      )
+                                    }
+                                    className="w-5 h-5 text-green-600 focus:ring-green-500 focus:ring-2"
+                                    disabled={option.trim() === ""}
+                                  />
+                                  <span className="ml-3 w-8 h-8 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center font-bold text-sm">
+                                    {String.fromCharCode(65 + optionIndex)}
+                                  </span>
+                                </div>
                                 <input
-                                  type="radio"
-                                  name={`correct_answer_${questionIndex}`}
-                                  checked={question.model_answer === option && option.trim() !== ''}
-                                  onChange={() => updateQuestion(questionIndex, 'model_answer', option)}
-                                  className="w-5 h-5 text-green-600 focus:ring-green-500 focus:ring-2"
-                                  disabled={option.trim() === ''}
+                                  type="text"
+                                  value={option}
+                                  onChange={(e) =>
+                                    updateMCQOption(
+                                      questionIndex,
+                                      optionIndex,
+                                      e.target.value
+                                    )
+                                  }
+                                  className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                                  placeholder={`Enter option ${String.fromCharCode(
+                                    65 + optionIndex
+                                  )}...`}
                                 />
-                                <span className="ml-3 w-8 h-8 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center font-bold text-sm">
-                                  {String.fromCharCode(65 + optionIndex)}
-                                </span>
                               </div>
-                              <input
-                                type="text"
-                                value={option}
-                                onChange={(e) => updateMCQOption(questionIndex, optionIndex, e.target.value)}
-                                className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                                placeholder={`Enter option ${String.fromCharCode(65 + optionIndex)}...`}
-                              />
-                            </div>
-                          ))}
+                            )
+                          )}
                         </div>
                         <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                           <p className="text-xs text-amber-800 flex items-center gap-2">
                             <AlertCircle className="w-4 h-4" />
-                            Select the radio button next to the correct answer. Students will see these options in random order.
+                            Select the radio button next to the correct answer.
+                            Students will see these options in random order.
                           </p>
                         </div>
                       </div>
                     )}
 
                     {/* Short Answer Model Answer */}
-                    {question.type === 'SHORT' && (
+                    {question.type === "SHORT" && (
                       <div className="mb-6">
                         <label className="block text-sm font-semibold text-gray-800 mb-3">
                           Model Answer <span className="text-red-500">*</span>
                         </label>
                         <textarea
                           value={question.model_answer}
-                          onChange={(e) => updateQuestion(questionIndex, 'model_answer', e.target.value)}
+                          onChange={(e) =>
+                            updateQuestion(
+                              questionIndex,
+                              "model_answer",
+                              e.target.value
+                            )
+                          }
                           rows={3}
                           className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
                           placeholder="Enter the expected answer or key points that should be included..."
                         />
                         <p className="text-xs text-gray-500 mt-2">
-                          This will be used as a reference for manual grading. Include key points or the exact answer expected.
+                          This will be used as a reference for manual grading.
+                          Include key points or the exact answer expected.
                         </p>
                       </div>
                     )}
@@ -689,12 +1165,15 @@ export default function EditQuizFormPage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <BookOpen className="w-10 h-10 text-blue-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Questions Added Yet</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    No Questions Added Yet
+                  </h3>
                   <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Start building your quiz by adding your first question. You can create multiple choice or short answer questions.
+                    Start building your quiz by adding your first question. You
+                    can create multiple choice or short answer questions.
                   </p>
-                  <Button 
-                    onClick={addQuestion} 
+                  <Button
+                    onClick={addQuestion}
                     className="flex items-center gap-2 mx-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                   >
                     <Plus className="w-5 h-5" />
@@ -703,6 +1182,19 @@ export default function EditQuizFormPage() {
                 </div>
               )}
             </div>
+
+            {/* Add Question Button - Bottom Right */}
+            {formData.questions.length > 0 && (
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={addQuestion}
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Question
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -716,8 +1208,12 @@ export default function EditQuizFormPage() {
                   <BookOpen className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Questions</p>
-                  <p className="text-2xl font-bold text-blue-600">{formData.questions.length}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Questions
+                  </p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formData.questions.length}
+                  </p>
                 </div>
               </div>
 
@@ -726,8 +1222,12 @@ export default function EditQuizFormPage() {
                   <Award className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Marks</p>
-                  <p className="text-2xl font-bold text-green-600">{calculateTotalMarks()}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    {formData.maxMarks ? "Max Marks" : "Total Marks"}
+                  </p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formData.maxMarks || calculateTotalMarks()}
+                  </p>
                 </div>
               </div>
 
@@ -737,9 +1237,27 @@ export default function EditQuizFormPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Duration</p>
-                  <p className="text-2xl font-bold text-purple-600">{formData.duration}min</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formData.duration}min
+                  </p>
                 </div>
               </div>
+
+              {formData.maxQuestions && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center">
+                    <Target className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Shown Questions
+                    </p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {formData.maxQuestions}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

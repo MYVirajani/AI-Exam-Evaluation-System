@@ -68,7 +68,7 @@ export async function GET(
         ? {
             submission_id: submission.submission_id,
             file_url: submission.file_url,
-            submission_time: submission.submission_start_time,
+            submission_time: submission.submission_start_at,
           }
         : null,
       graded: grade

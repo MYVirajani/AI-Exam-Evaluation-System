@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       where: { submission_id: submissionId },
       data: {
         is_graded: true,
-        submission_start_time: now,
+        submission_start_at: now,
       },
     });
     console.log("✅ Submission status updated as graded");

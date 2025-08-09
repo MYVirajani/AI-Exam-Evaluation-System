@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         submission_id:uuidv4(),
         assessment_id: assessmentId,
         student_id: studentId,
-        submission_start_time: new Date(),
+        submission_start_at: new Date(),
         type:'ONLINE',
         is_graded: false,
       },

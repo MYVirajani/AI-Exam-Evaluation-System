@@ -137,8 +137,8 @@ export default function ModulePage({ params }: ModulePageProps) {
         form.append("questionPaper", data.questionPaper[0]);
       if (data.modelAnswerPaper?.length)
         form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
-      if (data.markingScheme?.length)
-        form.append("markingScheme", data.markingScheme[0]);
+      // if (data.markingScheme?.length)
+      //   form.append("markingScheme", data.markingScheme[0]);
 
       const res = await fetch("/api/educator/assessment", {
         method: "POST",

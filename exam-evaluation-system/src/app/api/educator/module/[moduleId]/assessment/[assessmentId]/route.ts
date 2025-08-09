@@ -126,7 +126,7 @@ export async function GET(
               registration_number: sub.student.registration_number,
             },
             file_url: sub.file_url,
-            submission_time: sub.submission_start_time, 
+            submission_time: sub.submission_start_at, 
             assessment_grade: sub.grade || null, 
             question_grades: sub.q_grades,      
           })),

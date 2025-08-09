@@ -80,46 +80,25 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
   const { submissions: submissionCount, enrollments: totalEnrollments } = parseUploadsData();
   const progressPercentage = totalEnrollments > 0 ? Math.min((submissionCount / totalEnrollments) * 100, 100) : 0;
 
- const parseDate = (dateString: string) => {
-  try {
-    const clean = dateString.replace(/^\w+\s+/, ''); // Optional cleanup
-    const utcDate = new Date(clean);
-    
-    // Convert to SLT (UTC+5:30)
-    const offsetMillis = 5.5 * 60 * 60 * 1000;
-    return new Date(utcDate.getTime() + offsetMillis);
-  } catch {
-    return new Date(); // fallback
-  }
-};
+  const parseDate = (dateString: string) => {
+    const clean = dateString.replace(/^\w+\s+/, '');
+    return new Date(clean);
+  };
 
+  const getDeadlineInfo = () => {
+    try {
+      const deadline = parseDate(date);
+      const today = new Date();
+      const daysDiff = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
-const getDeadlineInfo = () => {
-  try {
-    const deadline = parseDate(date);
-    const now = new Date();
-
-    // Convert current time to SLT
-    const offsetMillis = 5.5 * 60 * 60 * 1000;
-    const todaySL = new Date(now.getTime() + offsetMillis);
-
-    const daysDiff = Math.ceil((deadline.getTime() - todaySL.getTime()) / (1000 * 3600 * 24));
-
-    if (daysDiff < 0) return { status: 'past', text: 'Deadline Passed', color: 'blue' };
-    if (daysDiff === 0) return { status: 'today', text: 'Due Today', color: 'amber' };
-    if (daysDiff <= 3) return { status: 'soon', text: 'Due Soon', color: 'orange' };
-    return { status: 'upcoming', text: 'Upcoming', color: 'green' };
-  } catch {
-    return { status: 'upcoming', text: 'Upcoming', color: 'green' };
-  }
-};
-const formatSLDate = (date: Date) => {
-  return date.toLocaleString('en-LK', {
-    timeZone: 'Asia/Colombo',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-};
+      if (daysDiff < 0) return { status: 'past', text: 'Deadline Passed', color: 'blue' };
+      if (daysDiff <= 1) return { status: 'today', text: 'Due Today', color: 'amber' };
+      if (daysDiff <= 3) return { status: 'soon', text: 'Due Soon', color: 'orange' };
+      return { status: 'upcoming', text: 'Upcoming', color: 'green' };
+    } catch {
+      return { status: 'upcoming', text: 'Upcoming', color: 'green' };
+    }
+  };
 
   const deadlineInfo = getDeadlineInfo();
 
@@ -211,7 +190,7 @@ const formatSLDate = (date: Date) => {
                 : deadlineInfo.color === 'orange' ? 'bg-orange-500'
                 : 'bg-green-500'
               }`} />
-              {formatSLDate(parseDate(date))}
+              {date}
             </div>
             <p className={`text-xs font-medium mt-1 ${
               deadlineInfo.color === 'blue' ? 'text-blue-600'

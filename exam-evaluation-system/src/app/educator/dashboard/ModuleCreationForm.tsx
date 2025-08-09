@@ -3,8 +3,23 @@ import React, { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import Image from "next/image";
-import { FaCode, FaGraduationCap, FaBuilding, FaUsers, FaKey, FaImage, FaTimes, FaBookOpen, FaEye, FaEyeSlash } from "react-icons/fa";
-import { FILE_CONFIG, getMaxSizeInBytes, getAcceptedExtensions, getMaxSizeLabel } from "@/lib/fileConfig";
+import {
+  FaCode,
+  FaGraduationCap,
+  FaBuilding,
+  FaUsers,
+  FaImage,
+  FaTimes,
+  FaBookOpen,
+} from "react-icons/fa";
+import {
+  FILE_CONFIG,
+  getMaxSizeInBytes,
+  getAcceptedExtensions,
+  getMaxSizeLabel,
+} from "@/lib/fileConfig";
+import { Controller } from "react-hook-form";
+import EnrollmentKeyInput from "@/components/EnrollementKeyInput";
 
 interface ModuleCreationFormProps {
   isOpen: boolean;
@@ -36,6 +51,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
     setValue,
     trigger,
     watch,
+    control,
   } = useForm<ModuleFormData>({
     mode: "onChange",
   });
@@ -52,21 +68,28 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
-      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      const fileExtension = "." + file.name.split(".").pop()?.toLowerCase();
       if (!FILE_CONFIG.IMAGE.types.includes(fileExtension)) {
-        toast.error(`Invalid file type. Please upload ${getAcceptedExtensions(FILE_CONFIG.IMAGE.types)} files only.`);
+        toast.error(
+          `Invalid file type. Please upload ${getAcceptedExtensions(
+            FILE_CONFIG.IMAGE.types
+          )} files only.`
+        );
         return;
       }
 
       // Validate file size
       if (file.size > getMaxSizeInBytes(FILE_CONFIG.IMAGE.maxSizeMB)) {
-        toast.error(`File size too large. Maximum size is ${getMaxSizeLabel(FILE_CONFIG.IMAGE.maxSizeMB)}.`);
+        toast.error(
+          `File size too large. Maximum size is ${getMaxSizeLabel(
+            FILE_CONFIG.IMAGE.maxSizeMB
+          )}.`
+        );
         return;
       }
 
@@ -114,8 +137,12 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                 <FaBookOpen className="text-white text-xl" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white">Create New Module</h2>
-                <p className="text-blue-100 text-sm">Set up a new learning module for your students</p>
+                <h2 className="text-2xl font-bold text-white">
+                  Create New Module
+                </h2>
+                <p className="text-blue-100 text-sm">
+                  Set up a new learning module for your students
+                </p>
               </div>
             </div>
             <button
@@ -144,8 +171,12 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
             {/* Basic Information Section */}
             <div className="space-y-6">
               <div className="border-l-4 border-purple-500 pl-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-1">Module Information</h3>
-                <p className="text-gray-600 text-sm">Configure the basic details for your module</p>
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                  Module Information
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Configure the basic details for your module
+                </p>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -169,11 +200,23 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                     />
                   </div>
                   {errors.moduleCode && (
-                    <p className={`text-sm flex items-center mt-1 ${
-                      errors.moduleCode.type === "required" ? "text-red-500" : "text-blue-600"
-                    }`}>
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <p
+                      className={`text-sm flex items-center mt-1 ${
+                        errors.moduleCode.type === "required"
+                          ? "text-red-500"
+                          : "text-blue-600"
+                      }`}
+                    >
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       {errors.moduleCode.message}
                     </p>
@@ -200,11 +243,23 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                     />
                   </div>
                   {errors.moduleName && (
-                    <p className={`text-sm flex items-center mt-1 ${
-                      errors.moduleName.type === "required" ? "text-red-500" : "text-blue-600"
-                    }`}>
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <p
+                      className={`text-sm flex items-center mt-1 ${
+                        errors.moduleName.type === "required"
+                          ? "text-red-500"
+                          : "text-blue-600"
+                      }`}
+                    >
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       {errors.moduleName.message}
                     </p>
@@ -240,8 +295,16 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                   </div>
                   {errors.educationInstitute && (
                     <p className="text-red-500 text-sm flex items-center mt-1">
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       {errors.educationInstitute.message}
                     </p>
@@ -263,7 +326,8 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                           message: "Please enter valid number",
                         },
                         validate: (value) =>
-                          Number.isInteger(value) || "Only whole numbers allowed",
+                          Number.isInteger(value) ||
+                          "Only whole numbers allowed",
                         valueAsNumber: true,
                       })}
                       defaultValue={0}
@@ -273,8 +337,16 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                   </div>
                   {errors.maxStudents && (
                     <p className="text-blue-600 text-sm flex items-center mt-1">
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       {errors.maxStudents.message}
                     </p>
@@ -283,38 +355,39 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
 
                 {/* Enrollment Key */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Enrollment Key
-                  </label>
-                  <div className="relative">
-                    <FaKey className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      {...register("enrollmentKey", {
-                        minLength: {
-                          value: 6,
-                          message: "At least 6 characters recommended",
-                        },
-                      })}
-                      placeholder="Leave blank to set later"
-                      className="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl text-gray-800 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                    >
-                      {showPassword ? <FaEyeSlash /> : <FaEye />}
-                    </button>
-                  </div>
-                  {errors.enrollmentKey && (
-                    <p className="text-blue-600 text-sm flex items-center mt-1">
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      {errors.enrollmentKey.message}
-                    </p>
-                  )}
+                  <Controller
+                    name="enrollmentKey"
+                    control={control} 
+                    rules={{
+                      minLength: {
+                        value: 6,
+                        message: "At least 6 characters recommended",
+                      },
+                    }}
+                    render={({ field, fieldState }) => (
+                      <>
+                        <EnrollmentKeyInput
+                          label="Enrollment Key"
+                          value={field.value ?? ""} 
+                          onChange={field.onChange}
+                          placeholder="Leave blank or generate"
+                          required={false}
+                          helperText="You can generate a shareable key like ABCD-12EF-34GH."
+                          groups={3}
+                          groupSize={4}
+                          allowLowercase={false}
+                          allowUppercase={true}
+                          allowNumbers={true}
+                        />
+                        {fieldState.error && (
+                          <p className="text-blue-600 text-sm mt-1 flex items-center">
+                            {/* ...icon... */}
+                            {fieldState.error.message}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  />
                 </div>
               </div>
             </div>
@@ -322,8 +395,12 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
             {/* Additional Information Section */}
             <div className="space-y-6">
               <div className="border-l-4 border-blue-500 pl-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-1">Additional Details</h3>
-                <p className="text-gray-600 text-sm">Optional information to enhance your module</p>
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                  Additional Details
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Optional information to enhance your module
+                </p>
               </div>
 
               <div className="space-y-6">
@@ -345,12 +422,12 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                   <label className="block text-sm font-semibold text-gray-700">
                     Module Image
                   </label>
-                  
+
                   {!imagePreview ? (
                     <div className="relative">
                       <input
                         type="file"
-                        accept={FILE_CONFIG.IMAGE.types.join(',')}
+                        accept={FILE_CONFIG.IMAGE.types.join(",")}
                         onChange={handleImageChange}
                         ref={fileInputRef}
                         className="hidden"
@@ -362,9 +439,12 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                       >
                         <div className="text-center">
                           <FaImage className="mx-auto text-3xl text-blue-500 mb-3" />
-                          <span className="block text-lg font-medium">Click to upload module image</span>
+                          <span className="block text-lg font-medium">
+                            Click to upload module image
+                          </span>
                           <span className="block text-sm text-gray-500 mt-1">
-                            {getAcceptedExtensions(FILE_CONFIG.IMAGE.types)} up to {getMaxSizeLabel(FILE_CONFIG.IMAGE.maxSizeMB)}
+                            {getAcceptedExtensions(FILE_CONFIG.IMAGE.types)} up
+                            to {getMaxSizeLabel(FILE_CONFIG.IMAGE.maxSizeMB)}
                           </span>
                         </div>
                       </label>
@@ -373,7 +453,9 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                     <div className="space-y-4">
                       {/* Module Card Preview */}
                       <div className="bg-gray-50 p-4 rounded-xl">
-                        <p className="text-sm font-medium text-gray-700 mb-3">Preview:</p>
+                        <p className="text-sm font-medium text-gray-700 mb-3">
+                          Preview:
+                        </p>
                         <div className="max-w-sm mx-auto bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                           {/* Image Preview matching EducatorModuleCard */}
                           <div className="relative w-full h-36 overflow-hidden">
@@ -393,26 +475,38 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                               <FaTimes className="w-3 h-3" />
                             </button>
                           </div>
-                          
+
                           {/* Card Content Preview */}
                           <div className="p-4">
                             <h3 className="text-sm font-semibold text-gray-800 leading-tight mb-2 line-clamp-2">
-                              {watch('moduleName') || 'Module Name'}
+                              {watch("moduleName") || "Module Name"}
                             </h3>
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-gray-500">Total enrolled</span>
-                              <span className="text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-md">0</span>
+                              <span className="text-gray-500">
+                                Total enrolled
+                              </span>
+                              <span className="text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-md">
+                                0
+                              </span>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
-                  
+
                   {errors.moduleImage && (
                     <p className="text-blue-600 text-sm flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       {errors.moduleImage.message}
                     </p>
@@ -436,8 +530,8 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                   type="submit"
                   className={`px-8 py-3 font-semibold rounded-xl focus:ring-4 focus:ring-purple-200 transition-all duration-200 flex items-center justify-center shadow-lg min-w-[160px] ${
                     isFormValid && !isSubmitting
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 cursor-pointer'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 cursor-pointer"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}
                   disabled={!isFormValid || isSubmitting}
                 >
@@ -469,13 +563,21 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                     "Create Module"
                   )}
                 </button>
-                
+
                 {/* Tooltip for disabled button */}
-                {(!isFormValid && !isSubmitting) && (
+                {!isFormValid && !isSubmitting && (
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
                     <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 mr-2"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       Fill the required fields
                     </div>

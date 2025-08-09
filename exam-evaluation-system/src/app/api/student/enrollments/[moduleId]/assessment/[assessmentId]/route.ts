@@ -74,10 +74,10 @@ export async function GET(
       graded: grade
         ? {
             grade_id: grade.grade_id,
-            total_marks: grade.total_marks,
+            total_marks: grade.max_marks,
             marks_awarded: grade.marks_awarded,
             feedback: grade.feedback,
-            grading_time: grade.grading_time,
+            grading_time: grade.grade_id,
             auto_graded: grade.auto_graded,
           }
         : null,

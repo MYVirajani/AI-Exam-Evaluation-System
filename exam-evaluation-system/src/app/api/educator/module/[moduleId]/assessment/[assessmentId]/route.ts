@@ -73,7 +73,7 @@ export async function GET(
             grade: {  
               select: {
                 marks_awarded: true,
-                total_marks: true,
+                max_marks: true,
               },
             },
             q_grades: true,
@@ -116,8 +116,8 @@ export async function GET(
           duration: assessment.duration,
           deadline: assessment.deadline,
           total_marks: assessment.total_marks,
-          model_answer_paper: assessment.model_answer_paper || null,
-          question_paper: assessment.question_paper || null,
+          // model_answer_paper: assessment.model_answer_paper || null,
+          // question_paper: assessment.question_paper || null,
           questions: assessment.questions,
           submissions: assessment.submissions.map((sub) => ({
             submission_id: sub.submission_id,

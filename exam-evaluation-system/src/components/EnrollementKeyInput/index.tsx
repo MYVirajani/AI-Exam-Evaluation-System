@@ -1,172 +1,174 @@
-"use client";
 import React, { useState } from "react";
-import { UseFormRegister, UseFormSetValue, UseFormTrigger, FieldErrors } from "react-hook-form";
-import { FaKey, FaEye, FaEyeSlash, FaRedo, FaCopy, FaCheck } from "react-icons/fa";
-import toast from "react-hot-toast";
+import {
+  FiKey,
+  FiEye,
+  FiEyeOff,
+  FiRefreshCw,
+  FiCopy,
+  FiCheck,
+} from "react-icons/fi";
+import generatePassword from "generate-password";
 
-interface EnrollmentKeyInputProps {
-  register: UseFormRegister<any>;
-  setValue: UseFormSetValue<any>;
-  trigger: UseFormTrigger<any>;
-  errors: FieldErrors<any>;
-  currentValue?: string;
+export interface EnrollmentInputProps {
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  helperText?: string;
+  className?: string;
+  id?: string;
+
+  /** generation options */
+  groups?: number;      // how many groups (e.g., 3 -> ABCD-1234-EFGH)
+  groupSize?: number;   // chars per group
+  allowLowercase?: boolean;
+  allowUppercase?: boolean;
+  allowNumbers?: boolean;
 }
 
-const EnrollmentKeyInput: React.FC<EnrollmentKeyInputProps> = ({
-  register,
-  setValue,
-  trigger,
-  errors,
-  currentValue
+const EnrollmentInput: React.FC<EnrollmentInputProps> = ({
+  label = "Enrollment Key",
+  value,
+  onChange,
+  placeholder = "Enter or generate an enrollment key",
+  required = false,
+  helperText = "Share this key with students to join the module.",
+  className = "",
+  id = "enrollmentKey",
+  groups = 3,
+  groupSize = 4,
+  allowLowercase = false,
+  allowUppercase = true,
+  allowNumbers = true,
 }) => {
-  const [showPassword, setShowPassword] = useState(false);
+  const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Generate a random enrollment key
-  const generateKey = () => {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const keyLength = 8;
-    let result = '';
-    
-    for (let i = 0; i < keyLength; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length));
+  const formatIntoGroups = (raw: string) => {
+    const clean = raw.replace(/[^A-Za-z0-9]/g, "");
+    const chunks: string[] = [];
+    for (let i = 0; i < groups * groupSize; i += groupSize) {
+      chunks.push(clean.slice(i, i + groupSize));
     }
-    
-    // Add a hyphen in the middle for better readability
-    const formattedKey = `${result.slice(0, 4)}-${result.slice(4)}`;
-    
-    setValue("enrollmentKey", formattedKey);
-    trigger("enrollmentKey");
-    toast.success("Enrollment key generated!");
-    
-    // Reset copied state if it was previously copied
-    if (copied) {
-      setCopied(false);
-    }
+    return chunks.filter(Boolean).join("-");
   };
 
-  // Copy key to clipboard
+  const generateKey = () => {
+    const length = groups * groupSize;
+
+    const raw = generatePassword.generate({
+      length,
+      numbers: allowNumbers,
+      symbols: false,
+      lowercase: allowLowercase,
+      uppercase: allowUppercase,
+      excludeSimilarCharacters: true, // avoid O/0, l/1, etc.
+      strict: true,
+    });
+
+    // Ensure casing based on options
+    const adjusted =
+      allowUppercase && !allowLowercase ? raw.toUpperCase() :
+      !allowUppercase && allowLowercase ? raw.toLowerCase() :
+      raw;
+
+    onChange(formatIntoGroups(adjusted));
+  };
+
   const copyToClipboard = async () => {
-    if (!currentValue) return;
-    
+    if (!value) return;
     try {
-      await navigator.clipboard.writeText(currentValue);
+      await navigator.clipboard.writeText(value);
       setCopied(true);
-      toast.success("Key copied to clipboard!");
-      
-      // Reset copied state after 2 seconds
-      setTimeout(() => {
-        setCopied(false);
-      }, 2000);
-    } catch (err) {
-      toast.error("Failed to copy key");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error("Failed to copy enrollment key:", e);
     }
   };
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-semibold text-gray-700">
-        Enrollment Key
+    <div className={className}>
+      <label
+        htmlFor={id}
+        className="block text-sm font-semibold text-gray-800 mb-2"
+      >
+        <div className="flex items-center space-x-2">
+          <FiKey className="h-4 w-4 text-gray-600" />
+          <span>
+            {label} {required && <span className="text-red-500">*</span>}
+          </span>
+        </div>
       </label>
-      
-      <div className="space-y-3">
-        {/* Input Field */}
-        <div className="relative">
-          <FaKey className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            {...register("enrollmentKey", {
-              minLength: {
-                value: 6,
-                message: "At least 6 characters recommended",
-              },
-              pattern: {
-                value: /^[A-Z0-9-]+$/,
-                message: "Only uppercase letters, numbers, and hyphens allowed",
-              },
-            })}
-            type={showPassword ? "text" : "password"}
-            placeholder="Leave blank to set later"
-            className="w-full pl-12 pr-24 py-3 border-2 border-gray-200 rounded-xl text-gray-800 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
-          />
-          
-          {/* Action buttons container */}
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-            {/* Copy button - only show if there's a value */}
-            {currentValue && (
-              <button
-                type="button"
-                onClick={copyToClipboard}
-                className="p-2 text-gray-400 hover:text-blue-600 transition-colors duration-200"
-                title="Copy to clipboard"
-              >
-                {copied ? (
-                  <FaCheck className="text-green-600" />
-                ) : (
-                  <FaCopy />
-                )}
-              </button>
-            )}
-            
-            {/* Show/hide password button */}
+
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          id={id}
+          value={value}
+          onChange={(e) => {
+            // Keep user edits in the same grouped style
+            const next = e.target.value.toUpperCase();
+            onChange(next);
+          }}
+          placeholder={placeholder}
+          className="w-full px-4 py-3 pr-32 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 bg-white tracking-widest"
+          required={required}
+          inputMode="latin"
+          autoComplete="off"
+          spellCheck={false}
+        />
+
+        {/* Actions */}
+        <div className="absolute inset-y-0 right-0 flex items-center space-x-1 pr-3">
+          {/* Copy */}
+          {value && (
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-              title={showPassword ? "Hide key" : "Show key"}
+              onClick={copyToClipboard}
+              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-100"
+              title="Copy key"
             >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
+              {copied ? (
+                <FiCheck className="h-4 w-4 text-green-500" />
+              ) : (
+                <FiCopy className="h-4 w-4" />
+              )}
             </button>
-          </div>
-        </div>
+          )}
 
-        {/* Generate Key Button */}
-        <div className="flex justify-between items-center">
+          {/* Generate */}
           <button
             type="button"
             onClick={generateKey}
-            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm font-medium rounded-lg hover:from-purple-600 hover:to-blue-600 focus:ring-4 focus:ring-purple-200 transition-all duration-200 shadow-md"
+            className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded-md hover:bg-blue-50"
+            title="Generate key"
           >
-            <FaRedo className="mr-2 text-sm" />
-            Generate Key
+            <FiRefreshCw className="h-4 w-4" />
           </button>
-          
-          {currentValue && (
-            <div className="text-xs text-gray-500 bg-gray-50 px-3 py-1 rounded-md">
-              Key Length: {currentValue.length} characters
-            </div>
-          )}
-        </div>
 
-        {/* Help text */}
-        <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
-          <div className="flex items-start space-x-2">
-            <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <p className="font-medium text-blue-800 mb-1">About Enrollment Keys:</p>
-              <ul className="text-blue-700 space-y-0.5">
-                <li>• Students need this key to join your module</li>
-                <li>• Leave blank if you want to set it later</li>
-                <li>• Generated keys use uppercase letters and numbers for clarity</li>
-                <li>• You can share this key with your students via email or announcements</li>
-              </ul>
-            </div>
-          </div>
+          {/* Toggle visibility */}
+          <button
+            type="button"
+            onClick={() => setShow((s) => !s)}
+            className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-100"
+            title={show ? "Hide key" : "Show key"}
+          >
+            {show ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+          </button>
         </div>
       </div>
 
-      {/* Error message */}
-      {errors.enrollmentKey && (
-        <p className="text-blue-600 text-sm flex items-center mt-1">
-          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          {errors.enrollmentKey.message}
+      {helperText && (
+        <p className="text-xs text-gray-500 mt-1">{helperText}</p>
+      )}
+      {copied && (
+        <p className="text-xs text-green-600 mt-1 font-medium">
+          Enrollment key copied!
         </p>
       )}
     </div>
   );
 };
 
-export default EnrollmentKeyInput;
+export default EnrollmentInput;

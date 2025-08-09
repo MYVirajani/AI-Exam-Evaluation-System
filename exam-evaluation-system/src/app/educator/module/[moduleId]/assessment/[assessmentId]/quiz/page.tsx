@@ -113,7 +113,7 @@ export default function QuizAssessmentPage() {
 
   const handleEditQuiz = () => {
     router.push(
-      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form/edit?educatorId=${educatorId}`
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?edit=true&educatorId=${educatorId}`
     );
   };
 
@@ -516,7 +516,7 @@ export default function QuizAssessmentPage() {
                 <FileIcon className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Quiz Created Yet
+                No Questions Created Yet
               </h3>
               <p className="text-gray-600 mb-6">
                 Create your quiz with MCQ and short answer questions to get

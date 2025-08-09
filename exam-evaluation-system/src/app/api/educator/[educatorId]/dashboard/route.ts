@@ -8,9 +8,13 @@ export async function GET(
   { params }: { params: { educatorId: string } }
 ) {
   const { educatorId } = params;
+  const logPrefix = `[EducatorDashboardAPI][educatorId=${educatorId}]`;
+  const startTime = Date.now();
+
+  console.info(`${logPrefix} - Incoming GET request for educator dashboard`);
 
   try {
-    console.log("Fetching dashboard for educatorId:", educatorId);
+    console.debug(`${logPrefix} - Validating educator existence...`);
 
     // Validate educator
     const educator = await prisma.educator.findUnique({
@@ -18,11 +22,13 @@ export async function GET(
     });
 
     if (!educator) {
-      console.log("Educator not found for user_id:", educatorId);
+      console.warn(`${logPrefix} - Educator not found`);
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+    console.info(`${logPrefix} - Educator found: educator_id=${educator.educator_id}`);
 
     // Get modules with enrollment count
+    console.debug(`${logPrefix} - Fetching modules for educator...`);
     const modules = await prisma.module.findMany({
       where: { created_by: educatorId },
       select: {
@@ -42,8 +48,10 @@ export async function GET(
         },
       },
     });
+    console.info(`${logPrefix} - Modules fetched: count=${modules.length}`);
 
     // Get assessments with submission count and module_id
+    console.debug(`${logPrefix} - Fetching assessments for educator...`);
     const assessments = await prisma.assessment.findMany({
       where: { created_by: educatorId },
       select: {
@@ -52,7 +60,7 @@ export async function GET(
         title: true,
         description: true,
         deadline: true,
-        module_id: true, 
+        module_id: true,
         _count: {
           select: {
             submissions: true,
@@ -61,6 +69,7 @@ export async function GET(
       },
       orderBy: { deadline: 'asc' },
     });
+    console.info(`${logPrefix} - Assessments fetched: count=${assessments.length}`);
 
     // Format modules
     const formattedModules = modules.map(mod => ({
@@ -75,21 +84,23 @@ export async function GET(
       title: asm.title,
       description: asm.description,
       deadline: asm.deadline,
-      module_id: asm.module_id, 
+      module_id: asm.module_id,
       number_of_submissions: asm._count.submissions,
     }));
 
-    console.log(
-      `Fetched ${formattedModules.length} modules and ${formattedAssessments.length} assessments for educatorId:`,
-      educatorId
+    console.info(
+      `${logPrefix} - Successfully processed request in ${Date.now() - startTime}ms`
     );
 
     return NextResponse.json({
       modules: formattedModules,
       assessments: formattedAssessments,
     });
-  } catch (err) {
-    console.error("Error fetching educator dashboard:", err);
+  } catch (err: any) {
+    console.error(
+      `${logPrefix} - Error fetching educator dashboard: ${err.message}`,
+      err.stack || err
+    );
     return NextResponse.json(
       { error: "Failed to load modules and assessments" },
       { status: 500 }

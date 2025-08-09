@@ -22,7 +22,7 @@ model User {
   country           String?
   city              String?
   profile_image_url String?
-  created_on        DateTime @default(now())
+  created_on        DateTime @default(now()) @db.Timestamptz(6)
 
   educator Educator?
   student  Student?
@@ -55,7 +55,7 @@ enum Role {
 }
 
 model Module {
-  module_id           String  @id
+  module_id           String   @id
   module_code         String
   module_name         String
   semester            String
@@ -65,6 +65,7 @@ model Module {
   enrollment_key      String?
   module_image_url    String?
   created_by          String
+  created_on          DateTime @default(now()) @db.Timestamptz(6)
 
   educator    Educator     @relation(fields: [created_by], references: [user_id])
   assessments Assessment[]
@@ -73,9 +74,10 @@ model Module {
 }
 
 model Enrollment {
-  enrollment_id       String @id @default(uuid())
+  enrollment_id       String   @id @default(uuid())
   registration_number String
   module_id           String
+  enrolled_on         DateTime @default(now()) @db.Timestamptz(6)
 
   student Student @relation(fields: [registration_number], references: [registration_number])
   module  Module  @relation(fields: [module_id], references: [module_id])
@@ -87,7 +89,7 @@ model Lesson {
   lesson_id  String   @id @default(uuid())
   module_id  String
   title      String
-  created_on DateTime @default(now())
+  created_on DateTime @default(now()) @db.Timestamptz(6)
 
   module    Module            @relation(fields: [module_id], references: [module_id])
   materials LectureMaterial[]
@@ -98,7 +100,7 @@ model LectureMaterial {
   lesson_id   String
   file_name   String?
   file_url    String
-  uploaded_on DateTime @default(now())
+  uploaded_on DateTime @default(now()) @db.Timestamptz(6)
   description String?
 
   lesson Lesson @relation(fields: [lesson_id], references: [lesson_id])
@@ -111,9 +113,10 @@ model Assessment {
   description       String
   instructions      String[]
   duration          Int?
-  deadline          DateTime
+  deadline          DateTime       @db.Timestamptz(6)
   module_id         String
   created_by        String
+  created_on        DateTime       @default(now()) @db.Timestamptz(6)
   total_marks       Decimal?       @db.Decimal(4, 1)
   password          String? // For quiz access
   question_count    Int? // Number of questions to show (for quizzes)
@@ -135,7 +138,7 @@ model Question_Paper {
   assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
 
   file_url   String
-  created_on DateTime
+  created_on DateTime @default(now()) @db.Timestamptz(6)
 }
 
 model Model_Answer_Paper {
@@ -144,7 +147,7 @@ model Model_Answer_Paper {
   assessment            Assessment @relation(fields: [assessment_id], references: [assessment_id])
 
   file_url   String
-  created_on DateTime
+  created_on DateTime @default(now()) @db.Timestamptz(6)
 }
 
 model Marking_Scheme {
@@ -153,7 +156,7 @@ model Marking_Scheme {
   assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
 
   file_url   String
-  created_on DateTime
+  created_on DateTime @default(now()) @db.Timestamptz(6)
 }
 
 enum assessmentType {
@@ -173,6 +176,7 @@ model Question {
   question_id        String       @id @default(cuid())
   assessment_id      String
   type               QuestionType
+  created_on         DateTime     @default(now()) @db.Timestamptz(6)
   question_number    String
   question           String
   model_answer       String
@@ -192,18 +196,18 @@ enum SubmissionType {
 }
 
 model Submission {
-  submission_id         String         @id @default(uuid())
-  student_id            String
-  assessment_id         String
-  type                  SubmissionType
-  submission_start_time DateTime       @default(now())
-  submission_end_time   DateTime?      @default(now())
-  file_url              String? // for DOCUMENT
-  ip_address            String? // for ONLINE
-  device_info           String? // for ONLINE
+  submission_id       String         @id @default(uuid())
+  student_id          String
+  assessment_id       String
+  type                SubmissionType
+  submission_start_at DateTime       @default(now()) @db.Timestamptz(6)
+  submission_end_at   DateTime?      @db.Timestamptz(6)
+  file_url            String? // for DOCUMENT
+  ip_address          String? // for ONLINE
+  device_info         String? // for ONLINE
   // total_marks     Decimal?       @db.Decimal(4, 1)
   // obtained_marks  Decimal?       @db.Decimal(4, 1)
-  is_graded             Boolean        @default(false)
+  is_graded           Boolean        @default(false)
 
   student    Student           @relation(fields: [student_id], references: [user_id])
   assessment Assessment        @relation(fields: [assessment_id], references: [assessment_id])
@@ -219,9 +223,10 @@ model Student_Answer {
   submission_id  String
   question_id    String
   student_answer String
+  submitted_on   DateTime  @default(now()) @db.Timestamptz(6)
   is_correct     Boolean?
   marks_awarded  Decimal?  @db.Decimal(4, 1)
-  graded_at      DateTime?
+  graded_at      DateTime? @db.Timestamptz(6)
   feedback       String?
 
   submission Submission @relation(fields: [submission_id], references: [submission_id])
@@ -237,7 +242,7 @@ model Question_Grade {
   submission_id    String
   marks_awarded    Decimal  @db.Decimal(4, 1)
   max_marks        Decimal  @db.Decimal(4, 1)
-  graded_at        DateTime
+  graded_at        DateTime @default(now()) @db.Timestamptz(6)
   grading_duration Decimal  @db.Decimal(6, 2)
   auto_graded      Boolean
   feedback         String?
@@ -260,7 +265,7 @@ model Assessment_Grade {
   total_marks   Decimal  @db.Decimal(4, 1)
   marks_awarded Decimal  @db.Decimal(4, 1)
   feedback      String
-  grading_time  DateTime
+  graded_at     DateTime @default(now()) @db.Timestamptz(6)
   auto_graded   Boolean
   educator_id   String?
   model_id      String?
@@ -281,12 +286,13 @@ model Evaluation_Model {
 }
 
 model Pricing_Plan {
-  pricing_plan_id String  @id
+  pricing_plan_id String   @id
   name            String
   duration        Int
-  price           Decimal @db.Decimal(9, 3)
+  price           Decimal  @db.Decimal(9, 3)
   description     String
   payment_method  String
+  created_on      DateTime @default(now()) @db.Timestamptz(6)
 
   evaluation_models Evaluation_Model[]
 }

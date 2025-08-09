@@ -16,10 +16,15 @@ export async function POST(req: NextRequest) {
       instructions,
       questions,
       deadline,
+      openAt,
+      closeAt,
       totalMarks,
+      maxMarks,
       password,
       questionCount,
       shuffleQuestions,
+      maxAttempts
+      
     } = body;
 
     if (!moduleId || !assessmentId || !Array.isArray(questions)) {
@@ -42,14 +47,6 @@ export async function POST(req: NextRequest) {
 
     // ✅ Build questions with proper decimal handling
     const parsedQuestions = questions.map((q: any, index: number) => {
-      console.log(
-        `Question ${index + 1} - type of q.marks:`,
-        typeof q.marks,
-        "| value:",
-        q.marks
-      );
-
-      // Convert marks to proper Decimal format
       const cleanMarks = new Decimal(
         typeof q.marks === "number"
           ? q.marks.toFixed(1)
@@ -70,7 +67,7 @@ export async function POST(req: NextRequest) {
         question: q.questionText.trim(),
         model_answer: modelAnswer,
         mcq_answer_options: Array.isArray(q.options) ? q.options : [],
-        marks_allowed: cleanMarks, // Now passing as Decimal
+        marks_allowed: cleanMarks,
       };
     });
 
@@ -80,9 +77,7 @@ export async function POST(req: NextRequest) {
       new Decimal("0.0")
     );
 
-    // ✅ Update the assessment with proper decimal handling
-
-    // Inside the try block, in the prisma.assessment.update call:
+    // ✅ Update the assessment with new optional fields
     const updatedAssessment = await prisma.assessment.update({
       where: { assessment_id: assessmentId },
       data: {
@@ -99,12 +94,18 @@ export async function POST(req: NextRequest) {
         total_marks: totalMarks
           ? new Decimal(totalMarks.toString())
           : calculatedTotalMarks,
+        max_marks: maxMarks
+          ? new Decimal(maxMarks.toString())
+          : existingAssessment.max_marks,
         password: password
           ? await bcrypt.hash(password, 10)
           : existingAssessment.password,
         question_count: questionCount ?? parsedQuestions.length,
         shuffle_questions:
           shuffleQuestions ?? existingAssessment.shuffle_questions,
+        max_attempts: maxAttempts ?? existingAssessment.max_attempts,
+        open_at: openAt ? new Date(openAt) : existingAssessment.open_at,
+        close_at: closeAt ? new Date(closeAt) : existingAssessment.close_at,
       },
     });
 

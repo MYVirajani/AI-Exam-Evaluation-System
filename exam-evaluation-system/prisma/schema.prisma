@@ -108,20 +108,24 @@ model LectureMaterial {
 
 model Assessment {
   assessment_id     String         @id
+  module_id         String
+  created_by        String
+  created_on        DateTime       @default(now()) @db.Timestamptz(6)
   type              assessmentType
   title             String
   description       String
   instructions      String[]
   duration          Int?
   deadline          DateTime       @db.Timestamptz(6)
-  module_id         String
-  created_by        String
-  created_on        DateTime       @default(now()) @db.Timestamptz(6)
-  total_marks       Decimal?       @db.Decimal(4, 1)
+  open_at           DateTime?      @db.Timestamptz(6)
+  close_at          DateTime?      @db.Timestamptz(6)
+  total_marks       Decimal?       @db.Decimal(5, 2) //total marks calculated by all questions of assessment
+  max_marks         Decimal?       @db.Decimal(5, 2) //max marks a student can allocate by assessment
   password          String? // For quiz access
   question_count    Int? // Number of questions to show (for quizzes)
   shuffle_questions Boolean        @default(false) // Whether to shuffle questions
   max_attempts      Int?
+  auto_grade        Boolean        @default(false)
 
   module             Module              @relation(fields: [module_id], references: [module_id])
   educator           Educator            @relation(fields: [created_by], references: [user_id])
@@ -181,7 +185,7 @@ model Question {
   question           String
   model_answer       String
   mcq_answer_options String[]     @default([])
-  marks_allowed      Decimal      @db.Decimal(4, 1)
+  marks_allowed      Decimal      @db.Decimal(5, 2)
 
   assessment     Assessment       @relation(fields: [assessment_id], references: [assessment_id])
   grades         Question_Grade[]
@@ -205,8 +209,8 @@ model Submission {
   file_url            String? // for DOCUMENT
   ip_address          String? // for ONLINE
   device_info         String? // for ONLINE
-  // total_marks     Decimal?       @db.Decimal(4, 1)
-  // obtained_marks  Decimal?       @db.Decimal(4, 1)
+  // total_marks     Decimal?       @db.Decimal(5, 2)
+  // obtained_marks  Decimal?       @db.Decimal(5, 2)
   is_graded           Boolean        @default(false)
 
   student    Student           @relation(fields: [student_id], references: [user_id])
@@ -225,7 +229,7 @@ model Student_Answer {
   student_answer String
   submitted_on   DateTime  @default(now()) @db.Timestamptz(6)
   is_correct     Boolean?
-  marks_awarded  Decimal?  @db.Decimal(4, 1)
+  marks_awarded  Decimal?  @db.Decimal(5, 2)
   graded_at      DateTime? @db.Timestamptz(6)
   feedback       String?
 
@@ -240,8 +244,8 @@ model Student_Answer {
 model Question_Grade {
   question_id      String
   submission_id    String
-  marks_awarded    Decimal  @db.Decimal(4, 1)
-  max_marks        Decimal  @db.Decimal(4, 1)
+  marks_awarded    Decimal  @db.Decimal(5, 2)
+  max_marks        Decimal  @db.Decimal(5, 2)
   graded_at        DateTime @default(now()) @db.Timestamptz(6)
   grading_duration Decimal  @db.Decimal(6, 2)
   auto_graded      Boolean
@@ -262,8 +266,8 @@ model Question_Grade {
 model Assessment_Grade {
   grade_id      String   @id
   submission_id String   @unique
-  total_marks   Decimal  @db.Decimal(4, 1)
-  marks_awarded Decimal  @db.Decimal(4, 1)
+  max_marks     Decimal  @db.Decimal(5, 2)
+  marks_awarded Decimal  @db.Decimal(5, 2)
   feedback      String
   graded_at     DateTime @default(now()) @db.Timestamptz(6)
   auto_graded   Boolean

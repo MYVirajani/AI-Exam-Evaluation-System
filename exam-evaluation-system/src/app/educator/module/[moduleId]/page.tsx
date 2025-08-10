@@ -298,29 +298,30 @@ export default function ModulePage({ params }: ModulePageProps) {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
                 {assessments.map((assess) => (
-                  <EducatorEventCard
-                    key={assess.assessment_id}
-                    title={assess.title}
-                    module={moduleName}
-                    uploads={`${assess.submissionsCount}/${moduleData.enrollmentsCount}`}
-                    date={new Date(assess.deadline).toLocaleString("en-US", {
-                      year: "numeric",
-                      month: "numeric",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                      second: "2-digit",
-                      hour12: true,
-                    })}
-                    label={
-                      assess.type === "assignment" ? "Due on:" : "Scheduled on:"
-                    }
-                    assessmentId={assess.assessment_id}
-                    moduleId={moduleData.moduleId}
-                    assessmentType={assess.type}
-                  />
+                  <div key={assess.assessment_id} className="w-full sm:w-auto sm:max-w-sm">
+                    <EducatorEventCard
+                      title={assess.title}
+                      module={moduleName}
+                      uploads={`${assess.submissionsCount}/${moduleData.enrollmentsCount}`}
+                      date={new Date(assess.deadline).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "numeric",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: true,
+                      })}
+                      label={
+                        assess.type === "assignment" ? "Due on:" : "Scheduled on:"
+                      }
+                      assessmentId={assess.assessment_id}
+                      moduleId={moduleData.moduleId}
+                      assessmentType={assess.type}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -334,7 +335,7 @@ export default function ModulePage({ params }: ModulePageProps) {
             {/* Section Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
               <h2 className="text-xl sm:text-2xl font-semibold text-blue-800">
-                Lecture Materials
+                Lecture Maerials
               </h2>
               <Button
                 variant="primary"

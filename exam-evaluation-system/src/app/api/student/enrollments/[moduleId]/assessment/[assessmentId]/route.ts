@@ -14,38 +14,64 @@ export async function GET(
 
     const assessment = await prisma.assessment.findUnique({
       where: { assessment_id: assessmentId },
-      include: {
+      select: {
+        assessment_id: true,
+        module_id: true,
+        created_by: true,
+        created_on: true,
+        type: true,
+        title: true,
+        description: true,
+        instructions: true,
+        duration: true,
+        deadline: true,
+        open_at: true,
+        close_at: true,
+        question_count:true,
+        max_marks: true,
+        shuffle_questions: true,
+        max_attempts: true,
+        auto_grade: true,
         module: {
           select: {
             module_code: true,
             module_name: true,
           },
         },
-        question_paper: true,
+        question_paper: {
+          select: {
+            file_url: true,
+            created_on: true,
+          },
+        },
         submissions: {
           where: studentId ? { student_id: studentId } : undefined,
           include: {
-            grade: true, // ✅ use `grade` instead of `assessment_grade`
+            grade: true,
           },
+          orderBy: { submission_start_at: "asc" },
         },
       },
     });
 
-    console.log("Fetched assessment from DB:", assessment);
-
     if (!assessment) {
-      console.warn("Assessment not found for ID:", assessmentId);
       return NextResponse.json(
         { message: "Assessment not found" },
         { status: 404 }
       );
     }
 
-    const submission = assessment.submissions.length > 0 ? assessment.submissions[0] : null;
-    const grade = submission?.grade || null;
+    // Calculate attempts remaining
+    const attemptsRemaining = assessment.max_attempts
+      ? Math.max(assessment.max_attempts - assessment.submissions.length, 0)
+      : null;
 
-    console.log("Submission data:", submission);
-    console.log("Grade data:", grade);
+    // Last attempt grade (most recent submission)
+    const lastSubmission =
+      assessment.submissions.length > 0
+        ? assessment.submissions[assessment.submissions.length - 1]
+        : null;
+    const lastAttemptGrade = lastSubmission?.grade || null;
 
     const response = {
       module_code: assessment.module.module_code,
@@ -57,34 +83,48 @@ export async function GET(
         description: assessment.description,
         deadline: assessment.deadline,
         instructions: assessment.instructions,
+        duration: assessment.duration,
+        question_count:assessment.question_count,
+        open_at: assessment.open_at,
+        close_at: assessment.close_at,
+        shuffle_questions: assessment.shuffle_questions,
+        max_attempts: assessment.max_attempts,
+        auto_grade: assessment.auto_grade,
       },
-      question_paper: assessment.question_paper
+      question_paper: assessment.question_paper || null,
+      submissions: assessment.submissions.map((sub) => ({
+        submission_id: sub.submission_id,
+        type: sub.type,
+        submission_start_at: sub.submission_start_at,
+        submission_end_at: sub.submission_end_at,
+        file_url: sub.file_url,
+        ip_address: sub.ip_address,
+        device_info: sub.device_info,
+        is_graded: sub.is_graded,
+        grade: sub.grade
+          ? {
+              grade_id: sub.grade.grade_id,
+              max_marks: sub.grade.max_marks,
+              marks_awarded: sub.grade.marks_awarded,
+              feedback: sub.grade.feedback,
+              graded_at: sub.grade.graded_at,
+              auto_graded: sub.grade.auto_graded,
+            }
+          : null,
+      })),
+      attempts_remaining: attemptsRemaining,
+      last_attempt_grade: lastAttemptGrade
         ? {
-            file_url: assessment.question_paper.file_url,
-            created_on: assessment.question_paper.created_on,
-          }
-        : null,
-      submission: submission
-        ? {
-            submission_id: submission.submission_id,
-            file_url: submission.file_url,
-            submission_time: submission.submission_start_at,
-          }
-        : null,
-      graded: grade
-        ? {
-            grade_id: grade.grade_id,
-            total_marks: grade.max_marks,
-            marks_awarded: grade.marks_awarded,
-            feedback: grade.feedback,
-            grading_time: grade.grade_id,
-            auto_graded: grade.auto_graded,
+            grade_id: lastAttemptGrade.grade_id,
+            max_marks: lastAttemptGrade.max_marks,
+            marks_awarded: lastAttemptGrade.marks_awarded,
+            feedback: lastAttemptGrade.feedback,
+            graded_at: lastAttemptGrade.graded_at,
+            auto_graded: lastAttemptGrade.auto_graded,
           }
         : null,
     };
-
-    console.log("Assessmet Response:", response);
-
+console.log('response: ', response);
     return NextResponse.json(response);
   } catch (error) {
     console.error("Failed to fetch assessment details:", error);

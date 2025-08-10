@@ -358,10 +358,10 @@ export default function QuizFormPage() {
       const deadlineD = new Date(deadline);
       if (isNaN(deadlineD.getTime())) return "Invalid deadline.";
 
-      if (openD > deadlineD)
-        return "Open time must be on or before the deadline.";
-      if (closeD > deadlineD)
-        return "Close time must be on or before the deadline.";
+      // if (openD > deadlineD)
+      //   return "Open time must be on or before the deadline.";
+      // if (closeD > deadlineD)
+      //   return "Close time must be on or before the deadline.";
     }
 
     for (let i = 0; i < formData.questions.length; i++) {
@@ -414,6 +414,7 @@ export default function QuizFormPage() {
 
     try {
       const sanitizedQuestions = formData.questions.map((question) => ({
+        questionId: question.question_id,
         questionType: question.type,
         questionText: question.question,
         options:
@@ -647,12 +648,12 @@ export default function QuizFormPage() {
                           Shuffle
                         </span>
                       )}
-                      {formData.password && formData.password.trim() && (
+                      {/* {formData.password && formData.password.trim() && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                           <Lock className="w-3 h-3 mr-1" />
                           Protected
                         </span>
-                      )}
+                      )} */}
                     </div>
                   </div>
 
@@ -1114,7 +1115,7 @@ export default function QuizFormPage() {
               <div>
                 <PasswordInput
                   label=" Quiz Password (Optional)"
-                  value={formData.password ?? ""}
+                  value={ ""}
                   onChange={(value) =>
                     setFormData((prev) => ({ ...prev, password: value }))
                   }

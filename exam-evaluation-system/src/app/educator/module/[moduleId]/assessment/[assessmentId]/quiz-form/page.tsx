@@ -18,11 +18,10 @@ import {
   Calendar,
   Users,
   Target,
-  Lock,
 } from "lucide-react";
 import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
-import { Toaster, toast } from "react-hot-toast";
+import {  toast } from "react-hot-toast";
 
 interface Question {
   question_id: string;
@@ -58,6 +57,7 @@ interface Assessment {
   open_at?: string;
   close_at?: string;
   question_count?: number;
+  auto_grade?:boolean;
 }
 
 interface QuizFormData {
@@ -178,7 +178,7 @@ export default function QuizFormPage() {
           maxQuestions: enrichedAssessment.question_count || null,
           autoGrade: enrichedAssessment.auto_grade ?? false,
           shuffleQuestions: enrichedAssessment.shuffle_questions ?? true,
-          password: enrichedAssessment.password || "",
+          password: "",
           openAt: formatDateTimeForInput(enrichedAssessment.open_at),
           closeAt: formatDateTimeForInput(enrichedAssessment.close_at),
           maxAttempts: enrichedAssessment.max_attempts || 1,
@@ -540,7 +540,7 @@ export default function QuizFormPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Toasts */}
-      <Toaster position="bottom-right" />
+      {/* <Toaster position="bottom-right" /> */}
 
       {/* Header Section */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
@@ -1115,7 +1115,7 @@ export default function QuizFormPage() {
               <div>
                 <PasswordInput
                   label=" Quiz Password (Optional)"
-                  value={ ""}
+                  value={ formData.password ||""}
                   onChange={(value) =>
                     setFormData((prev) => ({ ...prev, password: value }))
                   }

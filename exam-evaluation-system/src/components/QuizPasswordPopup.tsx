@@ -82,7 +82,7 @@ const QuizPasswordPopup: React.FC<QuizPasswordPopupProps> = ({
       if (data.success) {
         toast.success("Password verified! Starting quiz...");
         onSuccess(data.submissionId);
-        onClose();
+        // onClose();
       } else {
         toast.error("Incorrect password. Please try again.");
         setPassword("");

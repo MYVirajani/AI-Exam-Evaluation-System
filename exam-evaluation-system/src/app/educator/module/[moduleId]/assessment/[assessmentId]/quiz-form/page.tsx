@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Save,
   ArrowLeft,
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
+import { Toaster, toast } from "react-hot-toast";
 
 interface Question {
   question_id: string;
@@ -92,6 +93,9 @@ export default function QuizFormPage() {
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  // for scrolling to the save area on error
+  const actionBarRef = useRef<HTMLDivElement | null>(null);
+
   const [formData, setFormData] = useState<QuizFormData>({
     title: "",
     description: "",
@@ -109,7 +113,7 @@ export default function QuizFormPage() {
     maxAttempts: 1,
   });
 
-  // Helper function to format datetime for input
+  // Helper: format DB ISO/offset timestamps into "YYYY-MM-DDTHH:mm" for datetime-local WITHOUT UTC conversion
   const formatDateTimeForInput = (dateString: string | null | undefined) => {
     if (!dateString) return "";
     try {
@@ -138,13 +142,11 @@ export default function QuizFormPage() {
         if (!res.ok) throw new Error("Failed to fetch assessment");
 
         const data = await res.json();
-        console.log("assessment: ", data.assessment);
-
         if (!data || !data.assessment) {
           throw new Error("Assessment not found");
         }
 
-        const enrichedAssessment = {
+        const enrichedAssessment: Assessment = {
           ...data.assessment,
           module: data.module,
           enrollmentCount: data.enrollmentCount,
@@ -249,12 +251,9 @@ export default function QuizFormPage() {
         if (i === index) {
           const updatedQuestion = { ...q, [field]: value };
 
-          // If changing to SHORT type, clear MCQ options
           if (field === "type" && value === "SHORT") {
             updatedQuestion.mcq_answer_options = [];
-          }
-          // If changing to MCQ type, ensure 4 options
-          else if (field === "type" && value === "MCQ") {
+          } else if (field === "type" && value === "MCQ") {
             updatedQuestion.mcq_answer_options = ["", "", "", ""];
           }
 
@@ -297,54 +296,78 @@ export default function QuizFormPage() {
 
   const calculateTotalMarks = () => {
     const total = formData.questions.reduce(
-      (total, q) => total + parseFloat(q.marks_allowed || "0"),
+      (sum, q) => sum + parseFloat(q.marks_allowed || "0"),
       0
     );
     return parseFloat(total.toFixed(2));
   };
 
+  // ---- VALIDATION (with time window + deadline rules) ----
   const validateForm = () => {
     if (!formData.title.trim()) return "Quiz title is required";
     if (formData.questions.length === 0)
       return "At least one question is required";
 
-    // Validate max marks
-    if (formData.maxMarks && formData.maxMarks <= 0) {
+    if (formData.maxMarks && formData.maxMarks <= 0)
       return "Max marks must be greater than 0";
-    }
-
-    if (formData.maxMarks && formData.maxMarks > calculateTotalMarks()) {
+    if (formData.maxMarks && formData.maxMarks > calculateTotalMarks())
       return "Max marks cannot exceed total marks from all questions";
-    }
 
-    // Validate max questions
-    if (formData.maxQuestions && formData.maxQuestions <= 0) {
+    if (formData.maxQuestions && formData.maxQuestions <= 0)
       return "Max questions must be greater than 0";
-    }
-    if (formData.password && formData.password.length < 6) {
+    if (formData.password && formData.password.length < 6)
       return "If a password is set, it must be at least 6 characters";
-    }
-
     if (
       formData.maxQuestions &&
       formData.maxQuestions > formData.questions.length
-    ) {
+    )
       return "Max questions cannot exceed total created questions";
+
+    const { openAt, closeAt, deadline, duration } = formData;
+    const hasOpen = !!openAt;
+    const hasClose = !!closeAt;
+    const hasDeadline = !!deadline;
+
+    if (hasOpen !== hasClose) {
+      return "Please provide both 'Opens at' and 'Closes at' times.";
     }
 
-    // Validate dates
-    if (formData.openAt && formData.closeAt) {
-      const openDate = new Date(formData.openAt);
-      const closeDate = new Date(formData.closeAt);
-      if (openDate >= closeDate) {
-        return "Open time must be before close time";
+    if (hasOpen && hasClose) {
+      const openD = new Date(openAt);
+      const closeD = new Date(closeAt);
+
+      if (isNaN(openD.getTime()) || isNaN(closeD.getTime()))
+        return "Invalid open/close time.";
+
+      if (openD >= closeD) return "Open time must be before close time.";
+
+      const durMin = Number(duration);
+      if (!Number.isFinite(durMin) || durMin <= 0)
+        return "Duration must be a positive number of minutes.";
+      const diffMs = closeD.getTime() - openD.getTime();
+      const minGapMs = durMin * 60 * 1000;
+      if (diffMs < minGapMs) {
+        return `Open and close times must be at least the quiz duration apart (${durMin} minute${
+          durMin === 1 ? "" : "s"
+        }).`;
       }
+
+      if (!hasDeadline)
+        return "Deadline is required when open/close times are set.";
+
+      const deadlineD = new Date(deadline);
+      if (isNaN(deadlineD.getTime())) return "Invalid deadline.";
+
+      if (openD > deadlineD)
+        return "Open time must be on or before the deadline.";
+      if (closeD > deadlineD)
+        return "Close time must be on or before the deadline.";
     }
 
     for (let i = 0; i < formData.questions.length; i++) {
       const q = formData.questions[i];
       if (!q.question.trim()) return `Question ${i + 1} text is required`;
-      if (!q.marks_allowed || parseInt(q.marks_allowed) <= 0)
+      if (!q.marks_allowed || parseFloat(q.marks_allowed) <= 0)
         return `Question ${i + 1} must have valid marks`;
 
       if (q.type === "MCQ") {
@@ -366,11 +389,22 @@ export default function QuizFormPage() {
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
+      toast.error(validationError, { duration: 5000, icon: "⚠️" });
+      actionBarRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
       return;
     }
 
     if (!moduleId || !assessmentId || !educatorId) {
-      setError("Missing required identifiers");
+      const msg = "Missing required identifiers";
+      setError(msg);
+      toast.error(msg);
+      actionBarRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
       return;
     }
 
@@ -379,9 +413,8 @@ export default function QuizFormPage() {
     setSaveMessage(null);
 
     try {
-      // Transform questions to match the API format expected by QuizBuilderPage
       const sanitizedQuestions = formData.questions.map((question) => ({
-        questionType: question.type, // MCQ or SHORT
+        questionType: question.type,
         questionText: question.question,
         options:
           question.type === "MCQ"
@@ -400,6 +433,7 @@ export default function QuizFormPage() {
           question.type === "SHORT" ? question.model_answer : undefined,
       }));
 
+      // NOTE: keeping local times (no UTC conversion) as per your preference
       const quiz = {
         moduleId,
         type: "quiz",
@@ -408,8 +442,7 @@ export default function QuizFormPage() {
         duration: formData.duration,
         description: formData.description.trim(),
         instructions: formData.instructions.filter((inst) => inst.trim()),
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString()
-          : null,
+        deadline: formData.deadline || null, // ⬅️ no UTC conversion
         questions: sanitizedQuestions,
         createdBy: educatorId,
         totalQuestions: formData.questions.length,
@@ -419,12 +452,8 @@ export default function QuizFormPage() {
         maxMarks: formData.maxMarks,
         maxAttempts: formData.maxAttempts,
         questionCount: formData.maxQuestions,
-        openAt: formData.openAt
-          ? new Date(formData.openAt).toISOString()
-          : null,
-        closeAt: formData.closeAt
-          ? new Date(formData.closeAt).toISOString()
-          : null,
+        openAt: formData.openAt || null, // ⬅️ no UTC conversion
+        closeAt: formData.closeAt || null, // ⬅️ no UTC conversion
         totalMarks: calculateTotalMarks(),
       };
 
@@ -438,19 +467,31 @@ export default function QuizFormPage() {
 
       if (result.success) {
         setSaveMessage("Quiz updated successfully!");
+        toast.success("Quiz updated successfully!");
         setTimeout(() => {
           router.push(
             `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
           );
-        }, 1500);
+        }, 1200);
       } else {
-        setError(`Failed to save quiz: ${result.message}`);
+        const msg = `Failed to save quiz: ${result.message}`;
+        setError(msg);
+        toast.error(msg);
+        actionBarRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
       }
     } catch (err) {
       console.error("Error saving quiz:", err);
-      setError(
-        "Something went wrong. Please check your connection and try again."
-      );
+      const msg =
+        "Something went wrong. Please check your connection and try again.";
+      setError(msg);
+      toast.error(msg);
+      actionBarRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     } finally {
       setSaving(false);
     }
@@ -497,6 +538,9 @@ export default function QuizFormPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      {/* Toasts */}
+      <Toaster position="bottom-right" />
+
       {/* Header Section */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-6">
@@ -537,7 +581,7 @@ export default function QuizFormPage() {
             <div className="hidden lg:block">
               <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  {/* Row 1: Questions and Marks */}
+                  {/* Row 1 */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-gray-600">
                       <BookOpen className="w-4 h-4 text-blue-600" />
@@ -567,7 +611,7 @@ export default function QuizFormPage() {
                     </span>
                   </div>
 
-                  {/* Row 2: Duration and Attempts */}
+                  {/* Row 2 */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-gray-600">
                       <Clock className="w-4 h-4 text-purple-600" />
@@ -590,10 +634,6 @@ export default function QuizFormPage() {
 
                   {/* Row 3: Status Indicators */}
                   <div className="flex items-center justify-between">
-                    {/* <div className="flex items-center space-x-2 text-gray-600">
-                      <Settings className="w-4 h-4 text-gray-500" />
-                      <span className="font-medium">Settings:</span>
-                    </div> */}
                     <div className="flex items-center space-x-3">
                       {formData.autoGrade && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -616,98 +656,101 @@ export default function QuizFormPage() {
                     </div>
                   </div>
 
-                  {/* Row 4: Time Window (if exists) */}
+                  {/* Row 4: Time Window */}
                   {(formData.openAt ||
                     formData.closeAt ||
                     formData.deadline) && (
                     <div className="col-span-2">
-                       <span className="text-gray-700">
-                    {(() => {
-                      const dateOpts: Intl.DateTimeFormatOptions = {
-                        year: "numeric",
-                        month: "short",
-                        day: "2-digit",
-                      };
-                      const timeOpts: Intl.DateTimeFormatOptions = {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      };
+                      <span className="text-gray-700">
+                        {(() => {
+                          const dateOpts: Intl.DateTimeFormatOptions = {
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                          };
+                          const timeOpts: Intl.DateTimeFormatOptions = {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          };
 
-                      const hasOpen = !!formData.openAt;
-                      const hasClose = !!formData.closeAt;
-                      const hasDeadline = !!formData.deadline;
+                          const hasOpen = !!formData.openAt;
+                          const hasClose = !!formData.closeAt;
+                          const hasDeadline = !!formData.deadline;
 
-                      const openD = hasOpen ? new Date(formData.openAt!) : null;
-                      const closeD = hasClose
-                        ? new Date(formData.closeAt!)
-                        : null;
-                      const deadlineD = hasDeadline
-                        ? new Date(formData.deadline!)
-                        : null;
+                          const openD = hasOpen
+                            ? new Date(formData.openAt!)
+                            : null;
+                          const closeD = hasClose
+                            ? new Date(formData.closeAt!)
+                            : null;
+                          const deadlineD = hasDeadline
+                            ? new Date(formData.deadline!)
+                            : null;
 
-                      const sameDay =
-                        hasOpen &&
-                        hasClose &&
-                        openD!.toDateString() === closeD!.toDateString();
+                          const sameDay =
+                            hasOpen &&
+                            hasClose &&
+                            openD!.toDateString() === closeD!.toDateString();
 
-                      const parts: string[] = [];
+                          const parts: string[] = [];
 
-                      if (hasOpen && hasClose) {
-                        if (sameDay) {
-                          parts.push(
-                            `Opens at ${openD!.toLocaleTimeString(
-                              [],
-                              timeOpts
-                            )} and closes at ${closeD!.toLocaleTimeString(
-                              [],
-                              timeOpts
-                            )} on ${openD!.toLocaleDateString([], dateOpts)}`
-                          );
-                        } else {
-                          parts.push(
-                            `Opens at ${openD!.toLocaleTimeString(
-                              [],
-                              timeOpts
-                            )} on ${openD!.toLocaleDateString(
-                              [],
-                              dateOpts
-                            )} and closes at ${closeD!.toLocaleTimeString(
-                              [],
-                              timeOpts
-                            )} on ${closeD!.toLocaleDateString([], dateOpts)}`
-                          );
-                        }
-                      } else if (hasOpen) {
-                        parts.push(
-                          `Opens at ${openD!.toLocaleTimeString(
-                            [],
-                            timeOpts
-                          )} on ${openD!.toLocaleDateString([], dateOpts)}`
-                        );
-                      } else if (hasClose) {
-                        parts.push(
-                          `Closes at ${closeD!.toLocaleTimeString(
-                            [],
-                            timeOpts
-                          )} on ${closeD!.toLocaleDateString([], dateOpts)}`
-                        );
-                      }
+                          if (hasOpen && hasClose) {
+                            if (sameDay) {
+                              parts.push(
+                                `Opens at ${openD!.toLocaleTimeString(
+                                  [],
+                                  timeOpts
+                                )} and closes at ${closeD!.toLocaleTimeString(
+                                  [],
+                                  timeOpts
+                                )} on ${openD!.toLocaleDateString(
+                                  [],
+                                  dateOpts
+                                )}`
+                              );
+                            } else {
+                              parts.push(
+                                `Opens at ${openD!.toLocaleTimeString(
+                                  [],
+                                  timeOpts
+                                )} on ${openD!.toLocaleDateString(
+                                  [],
+                                  dateOpts
+                                )} and closes at ${closeD!.toLocaleTimeString(
+                                  [],
+                                  timeOpts
+                                )} on ${closeD!.toLocaleDateString(
+                                  [],
+                                  dateOpts
+                                )}`
+                              );
+                            }
+                          } else if (hasOpen) {
+                            parts.push(
+                              `Opens at ${openD!.toLocaleTimeString(
+                                [],
+                                timeOpts
+                              )} on ${openD!.toLocaleDateString([], dateOpts)}`
+                            );
+                          } else if (hasClose) {
+                            parts.push(
+                              `Closes at ${closeD!.toLocaleTimeString(
+                                [],
+                                timeOpts
+                              )} on ${closeD!.toLocaleDateString([], dateOpts)}`
+                            );
+                          }
 
-                      // if (hasDeadline) {
-                      //   parts.push(
-                      //     `Deadline: ${deadlineD!.toLocaleDateString(
-                      //       [],
-                      //       dateOpts
-                      //     )}`
-                      //   );
-                      // }
+                          // If you want to show deadline too, uncomment:
+                          // if (hasDeadline) {
+                          //   parts.push(`Deadline: ${deadlineD!.toLocaleDateString([], dateOpts)}`);
+                          // }
 
-                      return parts.join(" · ") + ".";
-                    })()}
-                  </span>
-
-                      </div>)}
-                 
+                          return parts.join(" · ") + ".";
+                        })()}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -743,18 +786,9 @@ export default function QuizFormPage() {
           </div>
         </div>
       </div>
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Status Messages */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="font-medium text-red-800">Validation Error</h4>
-              <p className="text-red-700 text-sm mt-1">{error}</p>
-            </div>
-          </div>
-        )}
 
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        {/* Success message (kept) */}
         {saveMessage && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -856,19 +890,6 @@ export default function QuizFormPage() {
                   Set when the quiz expires or is due
                 </p>
               </div>
-              {/* 
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-semibold text-gray-800 mb-3">
-                  <Award className="w-4 h-4 inline mr-2 text-gray-600" />
-                  Total Marks
-                </label>
-                <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl text-blue-800 font-bold text-lg">
-                  {calculateTotalMarks()} marks
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Automatically calculated from questions
-                </p>
-              </div> */}
             </div>
 
             {/* Instructions Section */}
@@ -1421,8 +1442,28 @@ export default function QuizFormPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        {/* Action Buttons (with inline error & scroll ref) */}
+        <div
+          ref={actionBarRef}
+          className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
+        >
+          {/* Inline error above quick stats */}
+          {error && (
+            <div className="mb-6 p-4 rounded-lg border border-red-200 bg-red-50 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-red-800 mb-1">
+                    Error
+                  </h4>
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             {/* Quick Stats */}
             <div className="flex items-center space-x-8">
@@ -1483,8 +1524,8 @@ export default function QuizFormPage() {
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-4">
+            {/* Buttons */}
+            <div className="flex items-center gap-4">
               <Button
                 onClick={handleGoBack}
                 variant="outline"

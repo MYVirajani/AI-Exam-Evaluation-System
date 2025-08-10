@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
         answers: true,
         assessment: {
           select: {
-            total_marks: true,
+            max_marks: true,
             questions: {
               select: {
                 question_id: true,
@@ -108,10 +108,10 @@ export async function POST(req: NextRequest) {
       data: {
         grade_id: uuidv4(),
         submission_id: submissionId,
-        total_marks: submission.assessment.total_marks ?? new Decimal(0),
+        max_marks: submission.assessment.max_marks ?? new Decimal(0),
         marks_awarded: totalMarksAwarded,
-        feedback: 'Auto-graded submission',
-        grading_time: now,
+        feedback: "Auto-graded from saved responses against model answers and the marking scheme.",
+        graded_at: now,
         auto_graded: true,
       },
     });

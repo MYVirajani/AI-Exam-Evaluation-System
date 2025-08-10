@@ -1,9 +1,10 @@
+// src/app/api/educator/module/[moduleId]/assessment/[assessmentId]/questions/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   toCents,
   shuffleArray,
-  findSubsetByCountAndSum,
   findSubsetBySum,
   normalizeWithCents,
   stripHelperField,
@@ -61,59 +62,31 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       questions.map(q => ({ ...q, marks_allowed: Number(q.marks_allowed ?? 0) }))
     );
 
-    // Optional shuffle
-    const shuffledOrNot = assessment.shuffle_questions ? shuffleArray(normalized) : normalized;
-
-    const hasCount =
-      typeof assessment.question_count === "number" && assessment.question_count > 0;
     const hasMax = assessment.max_marks !== null && assessment.max_marks !== undefined;
 
-    let finalQuestions = shuffledOrNot;
+    // 1) Select ANY number of questions whose total equals max_marks (exact match).
+    let selected = normalized as typeof normalized;
 
-    if (hasCount || hasMax) {
-      const count = hasCount ? assessment.question_count! : undefined;
-      const sumCents = hasMax ? toCents(Number(assessment.max_marks)) : undefined;
+    if (hasMax) {
+      const sumCents = toCents(Number(assessment.max_marks));
+      const subset = findSubsetBySum(normalized, sumCents);
 
-      let selected: typeof normalized | null = null;
-
-      if (hasCount && hasMax) {
-        selected = findSubsetByCountAndSum(shuffledOrNot, count!, sumCents!);
-        if (!selected) {
-          return NextResponse.json(
-            {
-              message: `No combination of ${count} questions sums exactly to max_marks=${Number(
-                assessment.max_marks
-              ).toFixed(2)}.`,
-            },
-            { status: 422 }
-          );
-        }
-      } else if (hasCount && !hasMax) {
-        if (count! > shuffledOrNot.length) {
-          return NextResponse.json(
-            {
-              message: `Requested question_count=${count} exceeds available questions=${shuffledOrNot.length}.`,
-            },
-            { status: 422 }
-          );
-        }
-        selected = shuffledOrNot.slice(0, count!);
-      } else if (!hasCount && hasMax) {
-        selected = findSubsetBySum(shuffledOrNot, sumCents!);
-        if (!selected) {
-          return NextResponse.json(
-            {
-              message: `No subset of questions sums exactly to max_marks=${Number(
-                assessment.max_marks
-              ).toFixed(2)}.`,
-            },
-            { status: 422 }
-          );
-        }
+      if (!subset) {
+        return NextResponse.json(
+          {
+            message: `No subset of questions sums exactly to max_marks=${Number(
+              assessment.max_marks
+            ).toFixed(2)}.`,
+          },
+          { status: 422 }
+        );
       }
 
-      finalQuestions = selected!;
+      selected = subset;
     }
+
+    // 2) Shuffle AFTER selection if requested.
+    const finalQuestions = assessment.shuffle_questions ? shuffleArray(selected) : selected;
 
     const cleanedQuestions = stripHelperField(finalQuestions);
 
@@ -126,6 +99,7 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       started_at: submission.submission_start_at,
       shuffle_questions: assessment.shuffle_questions,
       max_marks: assessment.max_marks,
+      // question_count intentionally ignored for selection; included here only for visibility
       question_count: assessment.question_count,
       questions: cleanedQuestions,
     };

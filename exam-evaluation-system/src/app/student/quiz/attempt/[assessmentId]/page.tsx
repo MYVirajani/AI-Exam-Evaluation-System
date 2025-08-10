@@ -17,10 +17,10 @@ interface Question {
 interface QuizData {
   assessmentId: string;
   title: string;
-  duration: number | null; // minutes; if null/0 => no time limit
+  duration: number | null;
   module_code: string;
   module_name: string;
-  started_at: string; // ISO string
+  started_at: string;
   questions: Question[];
 }
 
@@ -81,7 +81,7 @@ const QuizAttemptPage = () => {
   // compute deadline/end timestamp (ms since epoch)
   const endAtMs = useMemo(() => {
     if (!quizData || !quizData.duration || quizData.duration <= 0) return null;
-    const start = new Date(quizData.started_at).getTime(); // treat as absolute instant from server
+    const start = new Date(quizData.started_at).getTime(); // absolute instant from server
     return start + quizData.duration * 60 * 1000;
   }, [quizData]);
 
@@ -105,15 +105,15 @@ const QuizAttemptPage = () => {
     return Math.min(100, Math.max(0, (elapsed / totalMs) * 100));
   }, [quizData, endAtMs, now]);
 
-  // auto-submit when time hits zero
+  // === auto-submit when time hits zero ===
   useEffect(() => {
     if (remainingMs === 0 && !submitLockRef.current) {
       submitLockRef.current = true;
       toast("Time is up! Submitting your quiz…");
-      // small timeout to let the toast render
+      // allow the toast to render
       setTimeout(() => {
         handleSubmit(true).catch(() => {
-          // even if submit fails, don't allow multiple attempts
+          /* prevent multiple attempts even on failure */
         });
       }, 300);
     }
@@ -124,8 +124,18 @@ const QuizAttemptPage = () => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
+  /**
+   * Auto-save ONLY if there's a marked/typed answer.
+   * - For MCQ: a selected option (non-empty string)
+   * - For SHORT: non-empty non-whitespace
+   */
   const autoSave = async (questionId: string, answer: string) => {
     if (!submissionId) return;
+
+    // skip empty/whitespace answers
+    if (typeof answer !== "string") return;
+    if (answer.trim().length === 0) return;
+
     try {
       await fetch("/api/student/quiz/auto-save", {
         method: "POST",
@@ -133,7 +143,7 @@ const QuizAttemptPage = () => {
         body: JSON.stringify({ submissionId, questionId, studentAnswer: answer }),
       });
     } catch (e) {
-      // non-blocking
+      // non-blocking; do not block submit
       console.error("Auto-save failed:", e);
     }
   };
@@ -154,6 +164,12 @@ const QuizAttemptPage = () => {
     if (currentIndex > 0) setCurrentIndex((prev) => prev - 1);
   };
 
+  /**
+   * handleSubmit
+   * - If isAuto === true (time up): first await autoSave for the *current* question
+   *   but only if it has a marked answer (autoSave skips empty).
+   * - Then submit all collected answers (only those the student interacted with).
+   */
   const handleSubmit = async (isAuto = false) => {
     if (!studentId || !submissionId || !quizData) {
       toast.error("Missing student or submission ID");
@@ -162,6 +178,7 @@ const QuizAttemptPage = () => {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
 
+    // 1) Try autosaving the *current* answer first, but only if it's actually filled
     const currentQuestion = quizData.questions[currentIndex];
     if (currentQuestion) {
       const latestAnswer = answers[currentQuestion.question_id] || "";
@@ -169,9 +186,10 @@ const QuizAttemptPage = () => {
     }
 
     try {
-      const formattedAnswers = Object.entries(answers).map(
-        ([question_id, student_answer]) => ({ question_id, student_answer })
-      );
+      // 2) Submit all answers we have (keys present in state)
+      const formattedAnswers = Object.entries(answers)
+        .filter(([, v]) => typeof v === "string") // sanity
+        .map(([question_id, student_answer]) => ({ question_id, student_answer }));
 
       const res = await fetch(`/api/student/quiz/${assessmentId}/submit`, {
         method: "POST",
@@ -183,7 +201,10 @@ const QuizAttemptPage = () => {
       if (!res.ok) throw new Error(result.message || "Submission failed");
 
       toast.success(isAuto ? "Submitted automatically. Time up!" : "Quiz submitted successfully!");
-      router.push(`/student/quiz/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`);
+      // 3) Navigate to results/summary page
+      router.push(
+        `/student/quiz/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`
+      );
     } catch (error: any) {
       toast.error(error.message || "Failed to submit quiz");
     }

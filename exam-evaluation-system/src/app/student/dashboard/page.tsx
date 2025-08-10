@@ -815,7 +815,7 @@ const StudentHomePage: React.FC = () => {
                     countdown={countdowns[assess.assessment_id] || "--:--:--"}
                     date={new Date(assess.deadline).toLocaleString()}
                     onClick={() =>
-                      handleEventCardClick(assess.module_id, assess.assessment_id)
+                      handleEventCardClick(assess.module_id, assess.assessment_id,  assess.type)
                     }
                   />
                 ))}

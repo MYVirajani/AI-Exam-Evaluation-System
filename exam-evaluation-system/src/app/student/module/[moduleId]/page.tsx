@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import StudentLessonCard from "./StudentLessonCard";
 import StudentEventCard from "../../dashboard/StudentEventCard";

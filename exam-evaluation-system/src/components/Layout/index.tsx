@@ -38,8 +38,8 @@ import { siteConfig } from '@/config/site'
 import Head from 'next/head'
 import { ReactNode } from 'react'
 import Header from '../Header'
-import Footer from '../Footer';
-
+import Footer from '../Footer'
+import ScrollButtons from '../ScrollButtons'
 interface LayoutProps {
   children: ReactNode
   title?: string
@@ -69,8 +69,11 @@ const Layout = ({
           {children}
         </main>
 
-        {/* Optional: Global footer if needed */}
-         <Footer />
+        {/* Footer */}
+        <Footer />
+
+        {/* Scroll Buttons */}
+        <ScrollButtons />
       </div>
     </>
   )

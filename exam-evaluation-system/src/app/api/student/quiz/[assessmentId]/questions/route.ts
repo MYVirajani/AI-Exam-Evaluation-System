@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  toCents,
+  shuffleArray,
+  findSubsetByCountAndSum,
+  findSubsetBySum,
+  normalizeWithCents,
+  stripHelperField,
+} from "@/lib/quiz-utils";
 
 export async function GET(req: NextRequest, { params }: { params: { assessmentId: string } }) {
   try {
@@ -48,19 +56,16 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       },
     });
 
-    // Convert Decimal -> number safely and attach cents for DP
-    const normalized = questions.map(q => {
-      const marksNum = Number(q.marks_allowed ?? 0);
-      return {
-        ...q,
-        _marksCents: toCents(marksNum),
-      };
-    });
+    // Normalize with cents
+    const normalized = normalizeWithCents(
+      questions.map(q => ({ ...q, marks_allowed: Number(q.marks_allowed ?? 0) }))
+    );
 
     // Optional shuffle
     const shuffledOrNot = assessment.shuffle_questions ? shuffleArray(normalized) : normalized;
 
-    const hasCount = typeof assessment.question_count === "number" && assessment.question_count > 0;
+    const hasCount =
+      typeof assessment.question_count === "number" && assessment.question_count > 0;
     const hasMax = assessment.max_marks !== null && assessment.max_marks !== undefined;
 
     let finalQuestions = shuffledOrNot;
@@ -69,21 +74,26 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       const count = hasCount ? assessment.question_count! : undefined;
       const sumCents = hasMax ? toCents(Number(assessment.max_marks)) : undefined;
 
-      // Selection logic
       let selected: typeof normalized | null = null;
 
       if (hasCount && hasMax) {
         selected = findSubsetByCountAndSum(shuffledOrNot, count!, sumCents!);
         if (!selected) {
           return NextResponse.json(
-            { message: `No combination of ${count} questions sums exactly to max_marks=${Number(assessment.max_marks).toFixed(2)}.` },
+            {
+              message: `No combination of ${count} questions sums exactly to max_marks=${Number(
+                assessment.max_marks
+              ).toFixed(2)}.`,
+            },
             { status: 422 }
           );
         }
       } else if (hasCount && !hasMax) {
         if (count! > shuffledOrNot.length) {
           return NextResponse.json(
-            { message: `Requested question_count=${count} exceeds available questions=${shuffledOrNot.length}.` },
+            {
+              message: `Requested question_count=${count} exceeds available questions=${shuffledOrNot.length}.`,
+            },
             { status: 422 }
           );
         }
@@ -92,7 +102,11 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
         selected = findSubsetBySum(shuffledOrNot, sumCents!);
         if (!selected) {
           return NextResponse.json(
-            { message: `No subset of questions sums exactly to max_marks=${Number(assessment.max_marks).toFixed(2)}.` },
+            {
+              message: `No subset of questions sums exactly to max_marks=${Number(
+                assessment.max_marks
+              ).toFixed(2)}.`,
+            },
             { status: 422 }
           );
         }
@@ -101,8 +115,7 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       finalQuestions = selected!;
     }
 
-    // Strip helper fields before sending
-    const cleanedQuestions = finalQuestions.map(({ _marksCents, ...rest }) => rest);
+    const cleanedQuestions = stripHelperField(finalQuestions);
 
     const responsePayload = {
       assessmentId: assessment.assessment_id,
@@ -112,8 +125,8 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       module_name: assessment.module.module_name,
       started_at: submission.submission_start_at,
       shuffle_questions: assessment.shuffle_questions,
-      max_marks: assessment.max_marks,        // echoing from assessment
-      question_count: assessment.question_count, // echoing from assessment
+      max_marks: assessment.max_marks,
+      question_count: assessment.question_count,
       questions: cleanedQuestions,
     };
 
@@ -123,74 +136,4 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
     console.error("❌ Error fetching quiz questions:", error);
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
-}
-
-// ---------- Utilities ----------
-
-// Exact subset with fixed count and sum (in cents)
-function findSubsetByCountAndSum<T extends { _marksCents: number }>(
-  items: T[],
-  k: number,
-  target: number
-): T[] | null {
-  // dp[c] is a Map<sum, indices[]>
-  const dp: Array<Map<number, number[]>> = Array.from({ length: k + 1 }, () => new Map());
-  dp[0].set(0, []);
-
-  for (let i = 0; i < items.length; i++) {
-    const w = items[i]._marksCents;
-    // iterate counts backwards to avoid reuse
-    for (let c = Math.min(i + 1, k); c >= 1; c--) {
-      for (const [sum, idxs] of dp[c - 1]) {
-        const newSum = sum + w;
-        if (!dp[c].has(newSum)) {
-          dp[c].set(newSum, [...idxs, i]);
-        }
-      }
-    }
-  }
-
-  const picked = dp[k].get(target);
-  if (!picked) return null;
-  return picked.map(i => items[i]);
-}
-
-// Exact subset with any count but exact sum (in cents)
-function findSubsetBySum<T extends { _marksCents: number }>(
-  items: T[],
-  target: number
-): T[] | null {
-  // map sum -> indices[]
-  let dp = new Map<number, number[]>();
-  dp.set(0, []);
-
-  for (let i = 0; i < items.length; i++) {
-    const w = items[i]._marksCents;
-    const next = new Map(dp);
-    for (const [sum, idxs] of dp) {
-      const newSum = sum + w;
-      if (!next.has(newSum)) next.set(newSum, [...idxs, i]);
-    }
-    dp = next;
-  }
-
-  const picked = dp.get(target);
-  if (!picked) return null;
-  return picked.map(i => items[i]);
-}
-
-// Convert marks to integer cents to avoid float issues
-function toCents(n: number): number {
-  // safeguards for 2dp decimals: 12.30 -> 1230
-  return Math.round(n * 100);
-}
-
-// Fisher–Yates shuffle
-function shuffleArray<T>(array: T[]): T[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
 }

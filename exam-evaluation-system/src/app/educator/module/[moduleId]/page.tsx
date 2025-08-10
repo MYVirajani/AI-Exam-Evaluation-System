@@ -53,7 +53,7 @@ export default function ModulePage({ params }: ModulePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [educatorId, setEducatorId] = useState<string | null>(null);
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
-  const [creatingEvent, setCreatingEvent] = useState(false); // New loading state for event creation
+  const [creatingEvent, setCreatingEvent] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -79,13 +79,12 @@ export default function ModulePage({ params }: ModulePageProps) {
 
     const fetchData = async () => {
       try {
-        setLoading(true); // Ensure loading is true when fetching starts
+        setLoading(true);
         const res = await fetch(`/api/educator/module/${moduleId}`);
         if (!res.ok) throw new Error("Failed to fetch module data");
 
         const data = await res.json();
 
-        // ✅ Map assessments and ensure numbers are valid
         const mappedData: ModuleData = {
           moduleId: data.moduleId,
           moduleName: data.moduleName,
@@ -122,8 +121,8 @@ export default function ModulePage({ params }: ModulePageProps) {
     }
 
     try {
-      setCreatingEvent(true); // Start loading for event creation
-      setError(null); // Clear any previous errors
+      setCreatingEvent(true);
+      setError(null);
 
       const form = new FormData();
       form.append("type", data.type);
@@ -137,8 +136,6 @@ export default function ModulePage({ params }: ModulePageProps) {
         form.append("questionPaper", data.questionPaper[0]);
       if (data.modelAnswerPaper?.length)
         form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
-      // if (data.markingScheme?.length)
-      //   form.append("markingScheme", data.markingScheme[0]);
 
       const res = await fetch("/api/educator/assessment", {
         method: "POST",
@@ -165,7 +162,7 @@ export default function ModulePage({ params }: ModulePageProps) {
       console.error("Create Event Error:", err.message);
       setError(err.message);
     } finally {
-      setCreatingEvent(false); // End loading for event creation
+      setCreatingEvent(false);
     }
   };
 
@@ -179,7 +176,6 @@ export default function ModulePage({ params }: ModulePageProps) {
     });
   };
 
-  // Show loading animation while initial data is being fetched
   if (loading) {
     return (
       <LoadingAnimation 
@@ -192,49 +188,51 @@ export default function ModulePage({ params }: ModulePageProps) {
     );
   }
 
-  // Show error state
   if (error) {
     return (
-      <div className="p-6 text-center">
-        <div className="max-w-md mx-auto bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="text-red-600 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-lg mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <div className="text-red-600 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Module</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              variant="primary"
+              size="sm"
+            >
+              Try Again
+            </Button>
           </div>
-          <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Module</h3>
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button 
-            onClick={() => window.location.reload()} 
-            variant="primary"
-            size="sm"
-          >
-            Try Again
-          </Button>
         </div>
       </div>
     );
   }
 
-  // Show error if no module data
   if (!moduleData) {
     return (
-      <div className="p-6 text-center">
-        <div className="max-w-md mx-auto bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <div className="text-gray-400 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-lg mx-auto">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Module Not Found</h3>
+            <p className="text-gray-600 mb-4">The requested module could not be found or you don't have access to it.</p>
+            <Button 
+              onClick={() => router.back()} 
+              variant="secondary"
+              size="sm"
+            >
+              Go Back
+            </Button>
           </div>
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Module Not Found</h3>
-          <p className="text-gray-600 mb-4">The requested module could not be found or you don't have access to it.</p>
-          <Button 
-            onClick={() => router.back()} 
-            variant="secondary"
-            size="sm"
-          >
-            Go Back
-          </Button>
         </div>
       </div>
     );
@@ -243,7 +241,7 @@ export default function ModulePage({ params }: ModulePageProps) {
   const { moduleName, moduleCode, lessons, assessments } = moduleData;
 
   return (
-    <div className="p-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Loading overlay for event creation */}
       {creatingEvent && (
         <LoadingAnimation 
@@ -255,80 +253,137 @@ export default function ModulePage({ params }: ModulePageProps) {
         />
       )}
 
-      <div className="mb-6 text-center">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-blue-900">
-            {moduleCode} - {moduleName}
-          </h1>
-        </div>
-      </div>
-
-      {/* Assessments */}
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-blue-800">
-            Upcoming Events
-          </h2>
-
-          <div className="flex gap-2">
-            {/* <Button
-              onClick={() =>
-                router.push(`/educator/module/${moduleId}/assessment`)
-              }
-              disabled={creatingEvent}
-            >
-              Create Assessment
-            </Button> */}
-
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsEventModalOpen(true)}
-              disabled={creatingEvent}
-            >
-              + New Event
-            </Button>
+      {/* Main Content Container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        
+        {/* Header Section */}
+        <div className="mb-8 sm:mb-12">
+          <div className="text-center">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-900 mb-2">
+              {moduleCode} - {moduleName}
+            </h1>
           </div>
         </div>
 
-        {assessments.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4h6m2-4h-2V5a1 1 0 00-1-1h-4a1 1 0 00-1 1v6h-2l2 2 2-2z" />
-              </svg>
+        {/* Assessments Section */}
+        <div className="mb-12 sm:mb-16">
+          <div className="max-w-6xl mx-auto">
+            
+            {/* Section Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+              <h2 className="text-xl sm:text-2xl font-semibold text-blue-800">
+                Upcoming Events
+              </h2>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsEventModalOpen(true)}
+                disabled={creatingEvent}
+                className="w-full sm:w-auto"
+              >
+                + New Event
+              </Button>
             </div>
-            <p className="text-gray-600 italic">No assessments scheduled.</p>
+
+            {/* Assessments Content */}
+            {assessments.length === 0 ? (
+              <div className="text-center py-12 sm:py-16">
+                <div className="max-w-md mx-auto">
+                  <div className="text-gray-400 mb-6">
+                    <svg className="w-16 h-16 sm:w-20 sm:h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4h6m2-4h-2V5a1 1 0 00-1-1h-4a1 1 0 00-1 1v6h-2l2 2 2-2z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-600 italic text-lg">No assessments scheduled.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {assessments.map((assess) => (
+                  <EducatorEventCard
+                    key={assess.assessment_id}
+                    title={assess.title}
+                    module={moduleName}
+                    uploads={`${assess.submissionsCount}/${moduleData.enrollmentsCount}`}
+                    date={new Date(assess.deadline).toLocaleString("en-US", {
+                      year: "numeric",
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: true,
+                    })}
+                    label={
+                      assess.type === "assignment" ? "Due on:" : "Scheduled on:"
+                    }
+                    assessmentId={assess.assessment_id}
+                    moduleId={moduleData.moduleId}
+                    assessmentType={assess.type}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-wrap gap-4">
-            {assessments.map((assess) => (
-              <EducatorEventCard
-                key={assess.assessment_id}
-                title={assess.title}
-                module={moduleName}
-                uploads={`${assess.submissionsCount}/${moduleData.enrollmentsCount}`}
-                date={new Date(assess.deadline).toLocaleString("en-US", {
-                  year: "numeric",
-                  month: "numeric",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  hour12: true,
-                })}
-                label={
-                  assess.type === "assignment" ? "Due on:" : "Scheduled on:"
-                }
-                assessmentId={assess.assessment_id}
-                moduleId={moduleData.moduleId}
-                assessmentType={assess.type}
-              />
-            ))}
+        </div>
+
+        {/* Lessons Section */}
+        <div className="mb-8">
+          <div className="max-w-6xl mx-auto">
+            
+            {/* Section Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+              <h2 className="text-xl sm:text-2xl font-semibold text-blue-800">
+                Lecture Materials
+              </h2>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsLessonModalOpen(true)}
+                disabled={creatingEvent}
+                className="w-full sm:w-auto"
+              >
+                + Learning Materials
+              </Button>
+            </div>
+
+            {/* Lessons Content */}
+            {lessons.length === 0 ? (
+              <div className="text-center py-12 sm:py-16">
+                <div className="max-w-md mx-auto">
+                  <div className="text-gray-400 mb-6">
+                    <svg className="w-16 h-16 sm:w-20 sm:h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-600 italic text-lg">
+                    No lecture material have been added yet.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center space-y-4 sm:space-y-6">
+                {lessons.map((lesson) => (
+                  <LessonCard
+                    key={lesson.lesson_id}
+                    user_id={educatorId}
+                    lesson_id={lesson.lesson_id}
+                    module_id={moduleData.moduleId}
+                    title={lesson.title}
+                    materials={lesson.materials}
+                    onEdit={() => {
+                      alert(`Edit lesson ${lesson.lesson_id}`);
+                    }}
+                    onDelete={handleDeleteLesson}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
+      {/* Modals */}
       <EventCreationForm
         isOpen={isEventModalOpen}
         onClose={() => setIsEventModalOpen(false)}
@@ -342,52 +397,6 @@ export default function ModulePage({ params }: ModulePageProps) {
         disableModuleSelection={true}
         defaultModuleId={moduleData.moduleId}
       />
-
-      {/* Lessons */}
-      <div className="mt-8">
-        <div className="flex flex-col items-center">
-          <div className="flex items-center justify-between mb-4 w-full max-w-screen-lg">
-            <h2 className="text-xl font-semibold text-blue-800">Lessons</h2>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsLessonModalOpen(true)}
-              disabled={creatingEvent}
-            >
-              + Learning Material
-            </Button>
-          </div>
-          {lessons.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-gray-400 mb-4">
-                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <p className="text-gray-600 italic">
-                No lecture material have been added yet.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-4 justify-center">
-              {lessons.map((lesson) => (
-                <LessonCard
-                  key={lesson.lesson_id}
-                  user_id={educatorId}
-                  lesson_id={lesson.lesson_id}
-                  module_id={moduleData.moduleId}
-                  title={lesson.title}
-                  materials={lesson.materials}
-                  onEdit={() => {
-                    alert(`Edit lesson ${lesson.lesson_id}`);
-                  }}
-                  onDelete={handleDeleteLesson}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
 
       <LessonCreationForm
         isOpen={isLessonModalOpen}

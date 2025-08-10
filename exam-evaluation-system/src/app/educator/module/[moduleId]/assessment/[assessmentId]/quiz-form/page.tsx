@@ -62,6 +62,7 @@ interface Assessment {
 interface QuizFormData {
   title: string;
   description: string;
+  deadline: string;
   duration: number;
   instructions: string[];
   questions: Question[];
@@ -75,7 +76,7 @@ interface QuizFormData {
   maxAttempts: number;
 }
 
-export default function CreateQuizFormPage() {
+export default function QuizFormPage() {
   const searchParams = useSearchParams();
   const params = useParams();
   const router = useRouter();
@@ -94,6 +95,7 @@ export default function CreateQuizFormPage() {
   const [formData, setFormData] = useState<QuizFormData>({
     title: "",
     description: "",
+    deadline: "",
     duration: 60,
     instructions: [""],
     questions: [],
@@ -112,7 +114,10 @@ export default function CreateQuizFormPage() {
     if (!dateString) return "";
     try {
       const date = new Date(dateString);
-      return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+        date.getDate()
+      )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     } catch {
       return "";
     }
@@ -131,15 +136,17 @@ export default function CreateQuizFormPage() {
           `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
         );
         if (!res.ok) throw new Error("Failed to fetch assessment");
-        const data = await res.json();
 
-        if (!data || !data.assessments || data.assessments.length === 0) {
+        const data = await res.json();
+        console.log("assessment: ", data.assessment);
+
+        if (!data || !data.assessment) {
           throw new Error("Assessment not found");
         }
 
         const enrichedAssessment = {
-          ...data.assessments[0],
-          module: data.moduleData,
+          ...data.assessment,
+          module: data.module,
           enrollmentCount: data.enrollmentCount,
         };
 
@@ -149,6 +156,9 @@ export default function CreateQuizFormPage() {
         setFormData({
           title: enrichedAssessment.title || "",
           description: enrichedAssessment.description || "",
+          deadline: enrichedAssessment.deadline
+            ? formatDateTimeForInput(enrichedAssessment.deadline)
+            : "",
           duration: enrichedAssessment.duration || 60,
           instructions: enrichedAssessment.instructions?.length
             ? enrichedAssessment.instructions
@@ -398,7 +408,8 @@ export default function CreateQuizFormPage() {
         duration: formData.duration,
         description: formData.description.trim(),
         instructions: formData.instructions.filter((inst) => inst.trim()),
-        deadline: assessment?.deadline || new Date().toISOString(),
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString()
+          : null,
         questions: sanitizedQuestions,
         createdBy: educatorId,
         totalQuestions: formData.questions.length,
@@ -497,7 +508,7 @@ export default function CreateQuizFormPage() {
                 className="flex items-center gap-2 hover:bg-gray-50"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to Quiz
+                Go Back
               </Button>
               <div className="border-l border-gray-300 pl-4">
                 <div className="flex items-center space-x-3">
@@ -522,25 +533,216 @@ export default function CreateQuizFormPage() {
               </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="hidden md:flex items-center space-x-6 text-sm">
-              <div className="flex items-center space-x-2 text-gray-600">
-                <BookOpen className="w-4 h-4" />
-                <span>{formData.questions.length} Questions</span>
+            {/* Structured Quick Stats */}
+            <div className="hidden lg:block">
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                  {/* Row 1: Questions and Marks */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <BookOpen className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium">Questions:</span>
+                    </div>
+                    <span className="font-bold text-gray-900">
+                      {formData.maxQuestions &&
+                      formData.maxQuestions !== formData.questions.length
+                        ? `${formData.maxQuestions}/${formData.questions.length}`
+                        : formData.questions.length}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Award className="w-4 h-4 text-green-600" />
+                      <span className="font-medium">Max Marks:</span>
+                    </div>
+                    <span className="font-bold text-gray-900">
+                      {formData.maxMarks || calculateTotalMarks()}
+                      {formData.maxMarks &&
+                        formData.maxMarks !== calculateTotalMarks() && (
+                          <span className="text-gray-500">
+                            /{calculateTotalMarks()}
+                          </span>
+                        )}
+                    </span>
+                  </div>
+
+                  {/* Row 2: Duration and Attempts */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Clock className="w-4 h-4 text-purple-600" />
+                      <span className="font-medium">Duration:</span>
+                    </div>
+                    <span className="font-bold text-gray-900">
+                      {formData.duration} min
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Users className="w-4 h-4 text-indigo-600" />
+                      <span className="font-medium">Attempts:</span>
+                    </div>
+                    <span className="font-bold text-gray-900">
+                      {formData.maxAttempts}
+                    </span>
+                  </div>
+
+                  {/* Row 3: Status Indicators */}
+                  <div className="flex items-center justify-between">
+                    {/* <div className="flex items-center space-x-2 text-gray-600">
+                      <Settings className="w-4 h-4 text-gray-500" />
+                      <span className="font-medium">Settings:</span>
+                    </div> */}
+                    <div className="flex items-center space-x-3">
+                      {formData.autoGrade && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Auto Grade
+                        </span>
+                      )}
+                      {formData.shuffleQuestions && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <Shuffle className="w-3 h-3 mr-1" />
+                          Shuffle
+                        </span>
+                      )}
+                      {formData.password && formData.password.trim() && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                          <Lock className="w-3 h-3 mr-1" />
+                          Protected
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 4: Time Window (if exists) */}
+                  {(formData.openAt ||
+                    formData.closeAt ||
+                    formData.deadline) && (
+                    <div className="col-span-2">
+                       <span className="text-gray-700">
+                    {(() => {
+                      const dateOpts: Intl.DateTimeFormatOptions = {
+                        year: "numeric",
+                        month: "short",
+                        day: "2-digit",
+                      };
+                      const timeOpts: Intl.DateTimeFormatOptions = {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      };
+
+                      const hasOpen = !!formData.openAt;
+                      const hasClose = !!formData.closeAt;
+                      const hasDeadline = !!formData.deadline;
+
+                      const openD = hasOpen ? new Date(formData.openAt!) : null;
+                      const closeD = hasClose
+                        ? new Date(formData.closeAt!)
+                        : null;
+                      const deadlineD = hasDeadline
+                        ? new Date(formData.deadline!)
+                        : null;
+
+                      const sameDay =
+                        hasOpen &&
+                        hasClose &&
+                        openD!.toDateString() === closeD!.toDateString();
+
+                      const parts: string[] = [];
+
+                      if (hasOpen && hasClose) {
+                        if (sameDay) {
+                          parts.push(
+                            `Opens at ${openD!.toLocaleTimeString(
+                              [],
+                              timeOpts
+                            )} and closes at ${closeD!.toLocaleTimeString(
+                              [],
+                              timeOpts
+                            )} on ${openD!.toLocaleDateString([], dateOpts)}`
+                          );
+                        } else {
+                          parts.push(
+                            `Opens at ${openD!.toLocaleTimeString(
+                              [],
+                              timeOpts
+                            )} on ${openD!.toLocaleDateString(
+                              [],
+                              dateOpts
+                            )} and closes at ${closeD!.toLocaleTimeString(
+                              [],
+                              timeOpts
+                            )} on ${closeD!.toLocaleDateString([], dateOpts)}`
+                          );
+                        }
+                      } else if (hasOpen) {
+                        parts.push(
+                          `Opens at ${openD!.toLocaleTimeString(
+                            [],
+                            timeOpts
+                          )} on ${openD!.toLocaleDateString([], dateOpts)}`
+                        );
+                      } else if (hasClose) {
+                        parts.push(
+                          `Closes at ${closeD!.toLocaleTimeString(
+                            [],
+                            timeOpts
+                          )} on ${closeD!.toLocaleDateString([], dateOpts)}`
+                        );
+                      }
+
+                      // if (hasDeadline) {
+                      //   parts.push(
+                      //     `Deadline: ${deadlineD!.toLocaleDateString(
+                      //       [],
+                      //       dateOpts
+                      //     )}`
+                      //   );
+                      // }
+
+                      return parts.join(" · ") + ".";
+                    })()}
+                  </span>
+
+                      </div>)}
+                 
+                </div>
               </div>
-              <div className="flex items-center space-x-2 text-gray-600">
-                <Award className="w-4 h-4" />
-                <span>{calculateTotalMarks()} Marks</span>
-              </div>
-              <div className="flex items-center space-x-2 text-gray-600">
-                <Clock className="w-4 h-4" />
-                <span>{formData.duration} min</span>
+            </div>
+
+            {/* Compact Mobile View */}
+            <div className="lg:hidden md:flex items-center space-x-4">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg px-3 py-2 border border-blue-200">
+                <div className="flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-1">
+                    <BookOpen className="w-4 h-4 text-blue-600" />
+                    <span className="font-bold">
+                      {formData.maxQuestions &&
+                      formData.maxQuestions !== formData.questions.length
+                        ? `${formData.maxQuestions}/${formData.questions.length}`
+                        : formData.questions.length}
+                    </span>
+                  </div>
+                  <div className="w-px h-4 bg-gray-300"></div>
+                  <div className="flex items-center space-x-1">
+                    <Award className="w-4 h-4 text-green-600" />
+                    <span className="font-bold">
+                      {formData.maxMarks || calculateTotalMarks()}
+                    </span>
+                  </div>
+                  <div className="w-px h-4 bg-gray-300"></div>
+                  <div className="flex items-center space-x-1">
+                    <Clock className="w-4 h-4 text-purple-600" />
+                    <span className="font-bold">{formData.duration}min</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Status Messages */}
         {error && (
@@ -636,6 +838,27 @@ export default function CreateQuizFormPage() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <Calendar className="w-4 h-4 inline mr-2 text-gray-600" />
+                  Deadline
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.deadline}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      deadline: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Set when the quiz expires or is due
+                </p>
+              </div>
+              {/* 
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
                   <Award className="w-4 h-4 inline mr-2 text-gray-600" />
                   Total Marks
                 </label>
@@ -645,7 +868,7 @@ export default function CreateQuizFormPage() {
                 <p className="text-xs text-gray-500 mt-2">
                   Automatically calculated from questions
                 </p>
-              </div>
+              </div> */}
             </div>
 
             {/* Instructions Section */}
@@ -740,7 +963,7 @@ export default function CreateQuizFormPage() {
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={formData.autoGrade || false}
+                      checked={formData.autoGrade}
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,

@@ -45,7 +45,7 @@ export async function GET(
       where: { module_id: moduleId },
     });
 
-    // Fetch assessment with related questions and submissions
+    // Fetch full assessment data (all fields + relations)
     const assessment = await prisma.assessment.findFirst({
       where: {
         assessment_id: assessmentId,
@@ -53,12 +53,11 @@ export async function GET(
         created_by: educatorId,
       },
       include: {
-        model_answer_paper: {
-          select: { file_url: true },
-        },
-        question_paper: {
-          select: { file_url: true },
-        },
+        module: true,
+        educator: true,
+        question_paper: true,
+        model_answer_paper: true,
+        marking_scheme: true,
         questions: {
           orderBy: { question_number: 'asc' },
         },
@@ -70,12 +69,7 @@ export async function GET(
                 user_id: true,
               },
             },
-            grade: {  
-              select: {
-                marks_awarded: true,
-                max_marks: true,
-              },
-            },
+            grade: true,
             q_grades: true,
           },
         },
@@ -89,7 +83,7 @@ export async function GET(
       );
     }
 
-    // Debug log all fetched questions in detail
+    // Debug logging for questions
     console.log("Fetched Questions:");
     assessment.questions.forEach((q, index) => {
       console.log(`  Q${index + 1}:`);
@@ -102,36 +96,11 @@ export async function GET(
       console.log(`    MCQ Options: ${JSON.stringify(q.mcq_answer_options)}`);
     });
 
-    // Build response (unchanged format)
+    // Build response with all assessment fields
     const responseData = {
-      moduleData,
+      module: moduleData,
       enrollmentCount,
-      assessments: [
-        {
-          assessment_id: assessment.assessment_id,
-          type: assessment.type,
-          title: assessment.title,
-          description: assessment.description,
-          instructions: assessment.instructions,
-          duration: assessment.duration,
-          deadline: assessment.deadline,
-          total_marks: assessment.total_marks,
-          // model_answer_paper: assessment.model_answer_paper || null,
-          // question_paper: assessment.question_paper || null,
-          questions: assessment.questions,
-          submissions: assessment.submissions.map((sub) => ({
-            submission_id: sub.submission_id,
-            student: {
-              student_id: sub.student.user_id,
-              registration_number: sub.student.registration_number,
-            },
-            file_url: sub.file_url,
-            submission_time: sub.submission_start_at, 
-            assessment_grade: sub.grade || null, 
-            question_grades: sub.q_grades,      
-          })),
-        },
-      ],
+      assessment, // includes all fields + relations
     };
 
     console.log("Assessment response data (full):", JSON.stringify(responseData, null, 2));

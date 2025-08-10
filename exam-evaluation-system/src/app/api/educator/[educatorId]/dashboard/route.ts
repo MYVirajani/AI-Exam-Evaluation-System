@@ -91,6 +91,7 @@ export async function GET(
     console.info(
       `${logPrefix} - Successfully processed request in ${Date.now() - startTime}ms`
     );
+    console.log('formattedAssessments', formattedAssessments);
 
     return NextResponse.json({
       modules: formattedModules,

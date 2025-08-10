@@ -96,8 +96,8 @@ export default function AssessmentPage() {
         }
 
         const enrichedAssessment = {
-          ...data.assessments[0],
-          module: data.moduleData,
+          ...data.assessment,
+          module: data.module,
           enrollmentCount: data.enrollmentCount,
         };
 
@@ -158,8 +158,8 @@ export default function AssessmentPage() {
       if (updatedAssessmentRes.ok) {
         const updatedData = await updatedAssessmentRes.json();
         setAssessment({
-          ...updatedData.assessments[0],
-          module: updatedData.moduleData,
+          ...updatedData.assessment,
+          module: updatedData.module,
           enrollmentCount: updatedData.enrollmentCount,
         });
       }
@@ -208,8 +208,8 @@ export default function AssessmentPage() {
       if (updatedAssessmentRes.ok) {
         const updatedData = await updatedAssessmentRes.json();
         setAssessment({
-          ...updatedData.assessments[0],
-          module: updatedData.moduleData,
+          ...updatedData.assessment,
+          module: updatedData.module,
           enrollmentCount: updatedData.enrollmentCount,
         });
       }

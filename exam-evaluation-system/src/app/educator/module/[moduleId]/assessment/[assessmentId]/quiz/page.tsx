@@ -74,33 +74,35 @@ export default function QuizAssessmentPage() {
       return;
     }
 
-    const fetchAssessment = async () => {
-      try {
-        const res = await fetch(
-          `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
-        );
-        if (!res.ok) throw new Error("Failed to fetch assessment");
-        const data = await res.json();
+ const fetchAssessment = async () => {
+  try {
+    const res = await fetch(
+      `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
+    );
+    if (!res.ok) throw new Error("Failed to fetch assessment");
 
-        if (!data || !data.assessments || data.assessments.length === 0) {
-          throw new Error("Assessment not found");
-        }
+    const data = await res.json();
 
-        const enrichedAssessment = {
-          ...data.assessments[0],
-          module: data.moduleData,
-          enrollmentCount: data.enrollmentCount,
-        };
+    if (!data || !data.assessment) {
+      throw new Error("Assessment not found");
+    }
 
-        setAssessment(enrichedAssessment);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch assessment"
-        );
-      } finally {
-        setLoading(false);
-      }
+    const enrichedAssessment = {
+      ...data.assessment, // new API: assessment is an object, not array
+      module: data.module, // changed from moduleData → module
+      enrollmentCount: data.enrollmentCount,
     };
+
+    setAssessment(enrichedAssessment);
+  } catch (err) {
+    setError(
+      err instanceof Error ? err.message : "Failed to fetch assessment"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
 
     fetchAssessment();
   }, [moduleId, assessmentId, educatorId]);

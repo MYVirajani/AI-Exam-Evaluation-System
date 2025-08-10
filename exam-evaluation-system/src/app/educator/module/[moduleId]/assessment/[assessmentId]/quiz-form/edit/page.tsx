@@ -106,8 +106,8 @@ export default function EditQuizFormPage() {
         }
 
         const enrichedAssessment = {
-          ...data.assessments[0],
-          module: data.moduleData,
+          ...data.assessment,
+          module: data.module,
           enrollmentCount: data.enrollmentCount,
         };
 

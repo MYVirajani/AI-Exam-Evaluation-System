@@ -6,3 +6,6 @@ npx prisma db push
 
 npx prisma generate
 npx prisma db push
+
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+

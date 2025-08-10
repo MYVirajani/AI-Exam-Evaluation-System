@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       maxMarks,
       password,
       questionCount,
+      autoGrade,
       shuffleQuestions,
       maxAttempts
       
@@ -101,6 +102,7 @@ export async function POST(req: NextRequest) {
           ? await bcrypt.hash(password, 10)
           : existingAssessment.password,
         question_count: questionCount ?? parsedQuestions.length,
+        auto_grade: autoGrade ?? existingAssessment.auto_grade,
         shuffle_questions:
           shuffleQuestions ?? existingAssessment.shuffle_questions,
         max_attempts: maxAttempts ?? existingAssessment.max_attempts,

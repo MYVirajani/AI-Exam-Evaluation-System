@@ -4,6 +4,8 @@ import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { FileIcon, PlusIcon, EditIcon } from "@/components/Icons";
 import Button from "@/components/Button";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs"
 
 interface User {
   first_name: string;
@@ -196,10 +198,31 @@ export default function QuizAssessmentPage() {
   const totalMarks = calculateTotalMarks();
   const mcqCount = getMCQCount();
   const shortAnswerCount = getShortAnswerCount();
+    // Generate breadcrumbs
+    const breadcrumbs = assessment 
+      ? getAssessmentBreadcrumbs(
+          assessment.module.module_code, 
+          moduleId, 
+          assessment.title, 
+          assessmentId, 
+          'educator'
+        )
+      : [
+          { label: 'Dashboard', href: '/educator/dashboard' }, 
+          { label: 'Module', href: `/educator/module/${moduleId}` }, 
+          { label: 'Assessment', current: true }
+        ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-8">
+          {/* Breadcrumbs */}
+        <div className="mb-6">
+          <Breadcrumbs 
+            items={breadcrumbs} 
+            className=""
+          />
+        </div>
         {/* Header Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="border-b border-gray-100 pb-4 mb-4">

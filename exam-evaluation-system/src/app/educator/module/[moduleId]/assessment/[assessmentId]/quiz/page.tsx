@@ -2,7 +2,7 @@
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { FileIcon, PlusIcon, EditIcon } from "@/components/Icons";
+import { FileText, Plus, Edit, BarChart3, Shield, Shuffle, Zap } from "lucide-react";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs"
@@ -32,8 +32,12 @@ interface Assessment {
   deadline: string;
   duration?: number;
   total_marks?: number;
+  max_marks?: number;
   instructions?: string[];
   questions?: Question[];
+  auto_grade?: boolean;
+  shuffle_questions?: boolean;
+  password?: string | null;
   submissions: {
     submission_id: string;
     file_url: string;
@@ -105,7 +109,6 @@ export default function QuizAssessmentPage() {
   }
 };
 
-
     fetchAssessment();
   }, [moduleId, assessmentId, educatorId]);
 
@@ -121,6 +124,12 @@ export default function QuizAssessmentPage() {
     );
   };
 
+  const handleViewResults = () => {
+    router.push(
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/results?educatorId=${educatorId}`
+    );
+  };
+
   const calculateTotalMarks = () => {
     return (
       assessment?.total_marks ??
@@ -131,6 +140,11 @@ export default function QuizAssessmentPage() {
       0
     );
   };
+
+  const getMaxMarks = () => {
+    return assessment?.max_marks ?? calculateTotalMarks();
+  };
+
   const getMCQCount = () => {
     if (!assessment?.questions) return 0;
     return assessment.questions.filter((q) => q.type === "MCQ").length;
@@ -196,8 +210,10 @@ export default function QuizAssessmentPage() {
   }
 
   const totalMarks = calculateTotalMarks();
+  const maxMarks = getMaxMarks();
   const mcqCount = getMCQCount();
   const shortAnswerCount = getShortAnswerCount();
+  const hasSubmissions = assessment.submissions && assessment.submissions.length > 0;
     // Generate breadcrumbs
     const breadcrumbs = assessment 
       ? getAssessmentBreadcrumbs(
@@ -270,10 +286,15 @@ export default function QuizAssessmentPage() {
               </div>
             )}
             <div>
-              <span className="font-medium text-gray-700">Total Marks:</span>
+              <span className="font-medium text-gray-700">Max Marks:</span>
               <span className="ml-2 text-gray-600 font-semibold text-blue-600">
-                {totalMarks}
+                {maxMarks}
               </span>
+              {maxMarks !== totalMarks && (
+                <span className="ml-1 text-gray-500">
+                  / {totalMarks} max
+                </span>
+              )}
             </div>
             <div>
               <span className="font-medium text-gray-700">Questions:</span>
@@ -281,6 +302,28 @@ export default function QuizAssessmentPage() {
                 {assessment.questions?.length || 0}
               </span>
             </div>
+          </div>
+
+          {/* Assessment Features */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {assessment.auto_grade && (
+              <div className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+                <Zap className="w-3 h-3" />
+                Auto Grade
+              </div>
+            )}
+            {assessment.shuffle_questions && (
+              <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-medium">
+                <Shuffle className="w-3 h-3" />
+                Shuffle Questions
+              </div>
+            )}
+            {assessment.password && (
+              <div className="flex items-center gap-1 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-medium">
+                <Shield className="w-3 h-3" />
+                Protected
+              </div>
+            )}
           </div>
         </div>
 
@@ -291,37 +334,27 @@ export default function QuizAssessmentPage() {
               Quiz Questions
             </h2>
             <div className="flex gap-3">
+              {hasSubmissions && (
+                <Button
+                  onClick={handleViewResults}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  View Results
+                </Button>
+              )}
               {assessment.questions && assessment.questions.length > 0 && (
                 <Button
                   onClick={handleEditQuiz}
                   variant="outline"
                   className="flex items-center gap-2"
                 >
-                  <EditIcon className="w-4 h-4" />
+                  <Edit className="w-4 h-4" />
                   Edit Quiz
                 </Button>
               )}
             </div>
-            {/* <div className="flex gap-3">
-              {assessment.questions && assessment.questions.length > 0 ? (
-                <Button
-                  onClick={handleEditQuiz}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <EditIcon className="w-4 h-4" />
-                  Edit Quiz
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleCreateQuiz}
-                  className="flex items-center gap-2"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Create Quiz
-                </Button>
-              )}
-            </div> */}
           </div>
 
           {assessment.questions && assessment.questions.length > 0 ? (
@@ -355,9 +388,16 @@ export default function QuizAssessmentPage() {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">
-                      {totalMarks}
+                      {maxMarks}
+                      {maxMarks !== totalMarks && (
+                        <span className="text-lg text-gray-500">
+                          /{totalMarks}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-gray-600 font-medium">Total Marks</div>
+                    <div className="text-gray-600 font-medium">
+                      {maxMarks !== totalMarks ? "Max/Total Marks" : "Total Marks"}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -538,7 +578,7 @@ export default function QuizAssessmentPage() {
           ) : (
             <div className="text-center py-12">
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <FileIcon className="w-8 h-8 text-gray-400" />
+                <FileText className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 No Questions Created Yet
@@ -551,7 +591,7 @@ export default function QuizAssessmentPage() {
                 onClick={handleCreateQuiz}
                 className="flex items-center gap-2 mx-auto"
               >
-                <PlusIcon className="w-4 h-4" />
+                <Plus className="w-4 h-4" />
                 Create Quiz Now
               </Button>
             </div>

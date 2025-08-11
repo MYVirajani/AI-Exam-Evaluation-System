@@ -23,6 +23,10 @@ export const breadcrumbConfig: BreadcrumbConfig = {
     label: 'Module Details',
     dynamic: true
   },
+  '/educator/module/[moduleId]/assessment/[assessmentId]': {
+    label: 'Assessment Details',
+    dynamic: true
+  },
   '/educator/assessment': {
     label: 'Assessments',
     href: '/educator/assessments'
@@ -146,6 +150,35 @@ export const getModuleBreadcrumbs = (
     },
     {
       label: moduleCode || 'Module',
+      current: true
+    }
+  ];
+};
+
+// Helper function specifically for assessment pages
+export const getAssessmentBreadcrumbs = (
+  moduleCode?: string,
+  moduleId?: string,
+  assessmentTitle?: string,
+  assessmentId?: string,
+  userType: 'educator' | 'student' = 'educator'
+): BreadcrumbItem[] => {
+  const dashboardHref = userType === 'educator' ? '/educator/dashboard' : '/student/dashboard';
+  const moduleHref = userType === 'educator' 
+    ? `/educator/module/${moduleId}` 
+    : `/student/module/${moduleId}`;
+  
+  return [
+    {
+      label: 'Dashboard',
+      href: dashboardHref
+    },
+    {
+      label: moduleCode || 'Module',
+      href: moduleId ? moduleHref : undefined
+    },
+    {
+      label: assessmentTitle || 'Assessment',
       current: true
     }
   ];

@@ -6,49 +6,45 @@ import { FileIcon, BotIcon } from "@/components/Icons";
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import { FileUploadSection } from "@/components/Upload/FileUploadSection";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs"
 import toast from "react-hot-toast";
 import { FILE_CONFIG } from "@/lib/fileConfig";
 
-
-interface User {
-  first_name: string;
-  last_name: string;
-  email: string;
-}
-
-interface Assessment {
-  assessment_id: string;
-  type: string;
-  title: string;
-  description?: string;
-  deadline: string;
-  model_answer_paper?: {
-    file_url: string;
-  } | null;
-  question_paper?: {
-    file_url: string;
-  } | null;
-  submissions: {
-    submission_id: string;
-    file_url: string;
-    submission_time: string;
-    student: {
-      student_id: string;
-      registration_number: string;
-      user: User;
-    };
-    assessment_grade?: {
-      marks_awarded: number;
-      total_marks: number;
-    } | null;
-    question_grades: any[];
-  }[];
-  module: {
-    module_code: string;
-    module_name: string;
+interface Submission {
+  submission_id: string;
+  file_url: string;
+  submission_time: string;
+  student: {
+    registration_number: string;
+    user_id: string; // matches API
   };
-  enrollmentCount: number;
+  grade?: {
+    marks_awarded: number;
+    total_marks: number;
+  } | null;
+  q_grades: any[];
 }
+
+interface AssessmentDataFromApi {
+  module: { module_code: string; module_name: string };
+  enrollmentCount: number;
+  assessment: {
+    assessment_id: string;
+    type: string;
+    title: string;
+    description?: string;
+    deadline: string;
+    model_answer_paper?: { file_url: string } | null;
+    question_paper?: { file_url: string } | null;
+    submissions: Submission[];
+  };
+}
+
+type Assessment = AssessmentDataFromApi["assessment"] & {
+  module: AssessmentDataFromApi["module"];
+  enrollmentCount: number;
+};
 
 export default function AssessmentPage() {
   const searchParams = useSearchParams();
@@ -75,6 +71,20 @@ export default function AssessmentPage() {
   const [isUploadingQuestionPaper, setIsUploadingQuestionPaper] = useState(false);
 
   const models = ["ChatGPT", "Deepseek", "Gemini", "Llama"];
+  // Generate breadcrumbs
+  const breadcrumbs = assessment 
+    ? getAssessmentBreadcrumbs(
+        assessment.module.module_code, 
+        moduleId, 
+        assessment.title, 
+        assessmentId, 
+        'educator'
+      )
+    : [
+        { label: 'Dashboard', href: '/educator/dashboard' }, 
+        { label: 'Module', href: `/educator/module/${moduleId}` }, 
+        { label: 'Assessment', current: true }
+      ];
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {
@@ -89,13 +99,16 @@ export default function AssessmentPage() {
           `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
         );
         if (!res.ok) throw new Error("Failed to fetch assessment");
-        const data = await res.json();
 
-        if (!data || !data.assessments || data.assessments.length === 0) {
+        const data: AssessmentDataFromApi = await res.json();
+
+        // ✅ Correct existence check
+        if (!data || !data.assessment) {
           throw new Error("Assessment not found");
         }
 
-        const enrichedAssessment = {
+        // ✅ Correct keys from API
+        const enrichedAssessment: Assessment = {
           ...data.assessment,
           module: data.module,
           enrollmentCount: data.enrollmentCount,
@@ -103,9 +116,7 @@ export default function AssessmentPage() {
 
         setAssessment(enrichedAssessment);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch assessment"
-        );
+        setError(err instanceof Error ? err.message : "Failed to fetch assessment");
       } finally {
         setLoading(false);
       }
@@ -127,6 +138,20 @@ export default function AssessmentPage() {
     e.target.value = "";
   };
 
+  const refetchAssessment = async () => {
+    const updatedAssessmentRes = await fetch(
+      `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
+    );
+    if (updatedAssessmentRes.ok) {
+      const updatedData: AssessmentDataFromApi = await updatedAssessmentRes.json();
+      setAssessment({
+        ...updatedData.assessment,
+        module: updatedData.module,                // ✅ use module
+        enrollmentCount: updatedData.enrollmentCount,
+      });
+    }
+  };
+
   const uploadModelAnswer = async () => {
     if (!uploadedFiles.modelAnswer) return;
 
@@ -139,10 +164,7 @@ export default function AssessmentPage() {
 
       const res = await fetch(
         `/api/educator/module/${moduleId}/assessment/${assessmentId}/model-paper`,
-        {
-          method: "POST",
-          body: formData,
-        }
+        { method: "POST", body: formData }
       );
 
       if (!res.ok) {
@@ -150,28 +172,13 @@ export default function AssessmentPage() {
         throw new Error(errorData.error || "Upload failed");
       }
 
-      // Refetch assessment data to get updated information
-      const updatedAssessmentRes = await fetch(
-        `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
-      );
-      
-      if (updatedAssessmentRes.ok) {
-        const updatedData = await updatedAssessmentRes.json();
-        setAssessment({
-          ...updatedData.assessment,
-          module: updatedData.module,
-          enrollmentCount: updatedData.enrollmentCount,
-        });
-      }
+      await refetchAssessment();
 
       toast.success("Model answer uploaded successfully!", { id: toastId });
       setUploadedFiles((prev) => ({ ...prev, modelAnswer: null }));
     } catch (error) {
       console.error("Error uploading model answer:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload model answer",
-        { id: toastId }
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to upload model answer", { id: toastId });
     } finally {
       setIsUploadingModelAnswer(false);
     }
@@ -189,10 +196,7 @@ export default function AssessmentPage() {
 
       const res = await fetch(
         `/api/educator/module/${moduleId}/assessment/${assessmentId}/question-paper`,
-        {
-          method: "POST",
-          body: formData,
-        }
+        { method: "POST", body: formData }
       );
 
       if (!res.ok) {
@@ -200,30 +204,13 @@ export default function AssessmentPage() {
         throw new Error(errorData.error || "Upload failed");
       }
 
-      // Refetch assessment data to get updated information
-      const updatedAssessmentRes = await fetch(
-        `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
-      );
-      
-      if (updatedAssessmentRes.ok) {
-        const updatedData = await updatedAssessmentRes.json();
-        setAssessment({
-          ...updatedData.assessment,
-          module: updatedData.module,
-          enrollmentCount: updatedData.enrollmentCount,
-        });
-      }
+      await refetchAssessment();
 
       toast.success("Question paper uploaded successfully!", { id: toastId });
       setUploadedFiles((prev) => ({ ...prev, questionPaper: null }));
     } catch (error) {
       console.error("Error uploading question paper:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to upload question paper",
-        { id: toastId }
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to upload question paper", { id: toastId });
     } finally {
       setIsUploadingQuestionPaper(false);
     }
@@ -234,27 +221,22 @@ export default function AssessmentPage() {
   };
 
   const handleStartEvaluation = () => {
-    // Check if required files are available
     if (!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) {
       toast.error("Please upload a question paper first");
       return;
     }
-
     if (!assessment?.model_answer_paper?.file_url && !uploadedFiles.modelAnswer) {
       toast.error("Please upload a model answer first");
       return;
     }
-
     if (!assessment?.submissions || assessment.submissions.length === 0) {
       toast.error("No student submissions found for evaluation");
       return;
     }
-
     console.log("Starting evaluation with model:", selectedModel);
     toast.success(`Starting evaluation with ${selectedModel}...`);
   };
 
-  // Check if evaluation is ready
   const isEvaluationReady = () => {
     return (
       (assessment?.question_paper?.file_url || uploadedFiles.questionPaper) &&
@@ -301,7 +283,14 @@ export default function AssessmentPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-8">
-        {/* Header Section */}
+         {/* Breadcrumbs */}
+        <div className="mb-6">
+          <Breadcrumbs 
+            items={breadcrumbs} 
+            className=""
+          />
+        </div>
+        {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="border-b border-gray-100 pb-4 mb-4">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -315,15 +304,12 @@ export default function AssessmentPage() {
               </div>
               <div className="text-sm text-gray-600">
                 <span className="font-medium">Submissions: </span>
-                <span className="text-blue-600">
-                  {assessment.submissions?.length ?? 0}
-                </span>
+                <span className="text-blue-600">{assessment.submissions?.length ?? 0}</span>
                 <span className="mx-1">/</span>
                 <span>{assessment.enrollmentCount ?? 0} enrolled</span>
               </div>
             </div>
           </div>
-          
           {assessment.description && (
             <p className="text-gray-700 leading-relaxed">{assessment.description}</p>
           )}
@@ -331,7 +317,7 @@ export default function AssessmentPage() {
 
         {/* File Upload Sections */}
         <div className="space-y-6">
-          {/* Question Paper Section */}
+          {/* Question Paper */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Question Paper</h2>
@@ -347,38 +333,33 @@ export default function AssessmentPage() {
                 </a>
               )}
             </div>
-            
+
             <input
               type="file"
               ref={questionPaperInputRef}
               onChange={(e) => handleFileChange(e, "questionPaper")}
               className="hidden"
               accept={FILE_CONFIG.QUESTION_PAPER.types.join(",")}
-
             />
-            
+
             <FileUploadSection
               title="Upload Question Paper"
               icon={<FileIcon />}
-              type='QUESTION_PAPER'
+              type="QUESTION_PAPER"
               uploadedFile={uploadedFiles.questionPaper}
               onTriggerUpload={() => triggerFileInput(questionPaperInputRef)}
             />
-            
+
             {uploadedFiles.questionPaper && (
               <div className="mt-4 flex justify-end">
-                <Button
-                  onClick={uploadQuestionPaper}
-                  disabled={isUploadingQuestionPaper}
-                  className="px-6"
-                >
+                <Button onClick={uploadQuestionPaper} disabled={isUploadingQuestionPaper} className="px-6">
                   {isUploadingQuestionPaper ? "Uploading..." : "Upload Question Paper"}
                 </Button>
               </div>
             )}
           </div>
 
-          {/* Model Answer Section */}
+          {/* Model Answer */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Model Answer</h2>
@@ -394,7 +375,7 @@ export default function AssessmentPage() {
                 </a>
               )}
             </div>
-            
+
             <input
               type="file"
               ref={modelAnswerInputRef}
@@ -402,22 +383,18 @@ export default function AssessmentPage() {
               className="hidden"
               accept={FILE_CONFIG.MODEL_PAPER.types.join(",")}
             />
-            
+
             <FileUploadSection
               title="Upload Model Answer"
               icon={<FileIcon />}
-              type='MODEL_PAPER'
+              type="MODEL_PAPER"
               uploadedFile={uploadedFiles.modelAnswer}
               onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
             />
-            
+
             {uploadedFiles.modelAnswer && (
               <div className="mt-4 flex justify-end">
-                <Button
-                  onClick={uploadModelAnswer}
-                  disabled={isUploadingModelAnswer}
-                  className="px-6"
-                >
+                <Button onClick={uploadModelAnswer} disabled={isUploadingModelAnswer} className="px-6">
                   {isUploadingModelAnswer ? "Uploading..." : "Upload Model Answer"}
                 </Button>
               </div>
@@ -425,46 +402,29 @@ export default function AssessmentPage() {
           </div>
         </div>
 
-        {/* Evaluation Section */}
+        {/* Evaluation */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">AI Evaluation</h2>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700">
-                Select AI Model:
-              </label>
-              <Dropdown
-                options={models}
-                selectedOption={selectedModel}
-                onSelect={setSelectedModel}
-              />
+              <label className="text-sm font-medium text-gray-700">Select AI Model:</label>
+              <Dropdown options={models} selectedOption={selectedModel} onSelect={setSelectedModel} />
             </div>
-            <Button
-              disabled={!isEvaluationReady()}
-              onClick={handleStartEvaluation}
-              className="px-6 py-2.5"
-            >
+            <Button disabled={!isEvaluationReady()} onClick={handleStartEvaluation} className="px-6 py-2.5">
               <BotIcon className="w-5 h-5 mr-2" />
               Start Evaluation
             </Button>
           </div>
-          
-          {/* Status Messages */}
+
           {!isEvaluationReady() && (
             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
               <p className="text-sm text-amber-800">
                 <span className="font-medium">Requirements for evaluation:</span>
               </p>
               <ul className="text-sm text-amber-700 mt-2 space-y-1">
-                {(!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) && (
-                  <li>• Question paper needs to be uploaded</li>
-                )}
-                {(!assessment?.model_answer_paper?.file_url && !uploadedFiles.modelAnswer) && (
-                  <li>• Model answer needs to be uploaded</li>
-                )}
-                {(!assessment?.submissions || assessment.submissions.length === 0) && (
-                  <li>• No student submissions available</li>
-                )}
+                {(!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) && <li>• Question paper needs to be uploaded</li>}
+                {(!assessment?.model_answer_paper?.file_url && !uploadedFiles.modelAnswer) && <li>• Model answer needs to be uploaded</li>}
+                {(!assessment?.submissions || assessment.submissions.length === 0) && <li>• No student submissions available</li>}
               </ul>
             </div>
           )}

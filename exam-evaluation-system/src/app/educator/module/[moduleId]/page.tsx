@@ -180,7 +180,7 @@ export default function ModulePage({ params }: ModulePageProps) {
 
   // Generate breadcrumbs
   const breadcrumbs = moduleData 
-    ? getModuleBreadcrumbs(moduleData.moduleCode, moduleData.moduleId)
+    ? getModuleBreadcrumbs(moduleData.moduleCode, moduleData.moduleId, 'educator')
     : [{ label: 'Dashboard', href: '/educator/dashboard' }, { label: 'Module', current: true }];
 
   if (loading) {

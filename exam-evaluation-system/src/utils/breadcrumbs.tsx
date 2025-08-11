@@ -38,6 +38,30 @@ export const breadcrumbConfig: BreadcrumbConfig = {
   '/educator/settings': {
     label: 'Settings',
     href: '/educator/settings'
+  },
+  '/student/dashboard': {
+    label: 'Dashboard',
+    href: '/student/dashboard'
+  },
+  '/student/module': {
+    label: 'Modules',
+    href: '/student/modules'
+  },
+  '/student/module/[moduleId]': {
+    label: 'Module Details',
+    dynamic: true
+  },
+  '/student/assessments': {
+    label: 'Assessments',
+    href: '/student/assessments'
+  },
+  '/student/quiz': {
+    label: 'Quiz',
+    href: '/student/quiz'
+  },
+  '/student/profile': {
+    label: 'Profile',
+    href: '/student/profile'
   }
 };
 
@@ -48,11 +72,16 @@ export const generateBreadcrumbs = (
   const pathSegments = pathname.split('/').filter(segment => segment);
   const breadcrumbs: BreadcrumbItem[] = [];
   
-  // Always start with Dashboard for educator routes
+  // Always start with Dashboard for educator/student routes
   if (pathSegments[0] === 'educator') {
     breadcrumbs.push({
       label: 'Dashboard',
       href: '/educator/dashboard'
+    });
+  } else if (pathSegments[0] === 'student') {
+    breadcrumbs.push({
+      label: 'Dashboard',
+      href: '/student/dashboard'
     });
   }
   
@@ -105,12 +134,15 @@ export const generateBreadcrumbs = (
 // Helper function specifically for module pages
 export const getModuleBreadcrumbs = (
   moduleCode?: string,
-  moduleId?: string
+  moduleId?: string,
+  userType: 'educator' | 'student' = 'educator'
 ): BreadcrumbItem[] => {
+  const dashboardHref = userType === 'educator' ? '/educator/dashboard' : '/student/dashboard';
+  
   return [
     {
       label: 'Dashboard',
-      href: '/educator/dashboard'
+      href: dashboardHref
     },
     {
       label: moduleCode || 'Module',

@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import StudentLessonCard from "./StudentLessonCard";
 import StudentEventCard from "../../dashboard/StudentEventCard";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { getModuleBreadcrumbs } from "@/utils/breadcrumbs";
 import axios from "axios";
 
 interface Material {
@@ -130,6 +132,11 @@ const StudentModulePage = () => {
     }
   };
 
+  // Generate breadcrumbs
+  const breadcrumbs = module 
+    ? getModuleBreadcrumbs(module.module_code, module.module_id, 'student')
+    : [{ label: 'Dashboard', href: '/student/dashboard' }, { label: 'Module', current: true }];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -171,6 +178,15 @@ const StudentModulePage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl">
+        
+        {/* Breadcrumbs */}
+        <div className="mb-6">
+          <Breadcrumbs 
+            items={breadcrumbs} 
+            className=""
+          />
+        </div>
+
         <div className="space-y-8 lg:space-y-12">
           {/* Module Header */}
           <div className="relative overflow-hidden bg-white rounded-2xl shadow-xl border border-slate-200/50 backdrop-blur-sm">

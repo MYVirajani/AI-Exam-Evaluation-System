@@ -267,7 +267,7 @@ export default function ModulePage({ params }: ModulePageProps) {
         <div className="mb-6">
           <Breadcrumbs 
             items={breadcrumbs} 
-            className="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200"
+            className=""
           />
         </div>
         

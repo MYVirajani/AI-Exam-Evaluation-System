@@ -297,7 +297,7 @@ const StudentModulePage = () => {
                   </svg>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-800 to-purple-800 bg-clip-text text-transparent">
-                  Lecture Materials
+                  Learning Materials
                 </h2>
               </div>
               {lessons.length > 0 && (

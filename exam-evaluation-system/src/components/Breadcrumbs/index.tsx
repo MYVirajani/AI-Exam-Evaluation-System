@@ -42,7 +42,7 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
             ) : item.href ? (
               <Link
                 href={item.href}
-                className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-colors duration-200"
+                className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-purple-600 transition-colors duration-200"
               >
                 {index === 0 && (
                   <HomeIcon className="w-3 h-3 me-2.5" />
@@ -50,7 +50,7 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
                 {item.label}
               </Link>
             ) : (
-              <span className="inline-flex items-center text-sm font-medium text-gray-700 dark:text-gray-400">
+              <span className="inline-flex items-center text-sm font-medium text-blue-600">
                 {index === 0 && (
                   <HomeIcon className="w-3 h-3 me-2.5" />
                 )}

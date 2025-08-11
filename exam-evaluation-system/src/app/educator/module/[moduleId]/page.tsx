@@ -9,6 +9,8 @@ import EventCreationForm, {
 import LessonCreationForm from "./LessonCreationForm";
 import LessonCard from "./LessonCard";
 import LoadingAnimation from "@/components/LoadingAnimation";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { getModuleBreadcrumbs } from "@/utils/breadcrumbs";
 import { useRouter } from "next/navigation";
 
 interface Material {
@@ -176,6 +178,11 @@ export default function ModulePage({ params }: ModulePageProps) {
     });
   };
 
+  // Generate breadcrumbs
+  const breadcrumbs = moduleData 
+    ? getModuleBreadcrumbs(moduleData.moduleCode, moduleData.moduleId)
+    : [{ label: 'Dashboard', href: '/educator/dashboard' }, { label: 'Module', current: true }];
+
   if (loading) {
     return (
       <LoadingAnimation 
@@ -256,6 +263,14 @@ export default function ModulePage({ params }: ModulePageProps) {
       {/* Main Content Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         
+        {/* Breadcrumbs */}
+        <div className="mb-6">
+          <Breadcrumbs 
+            items={breadcrumbs} 
+            className="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200"
+          />
+        </div>
+        
         {/* Header Section */}
         <div className="mb-8 sm:mb-12">
           <div className="text-center">
@@ -335,7 +350,7 @@ export default function ModulePage({ params }: ModulePageProps) {
             {/* Section Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
               <h2 className="text-xl sm:text-2xl font-semibold text-blue-800">
-                Lecture Maerials
+                Lecture Materials
               </h2>
               <Button
                 variant="primary"
@@ -358,7 +373,7 @@ export default function ModulePage({ params }: ModulePageProps) {
                     </svg>
                   </div>
                   <p className="text-gray-600 italic text-lg">
-                    No lecture material have been added yet.
+                    No lecture materials have been added yet.
                   </p>
                 </div>
               </div>

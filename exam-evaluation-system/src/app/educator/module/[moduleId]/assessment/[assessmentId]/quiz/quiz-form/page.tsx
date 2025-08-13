@@ -19,6 +19,7 @@ import {
   Users,
   Target,
   Lock,
+  Type,
 } from "lucide-react";
 import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
@@ -60,6 +61,8 @@ interface Assessment {
   close_at?: string;
   question_count?: number;
   auto_grade?: boolean;
+  back_navigation?: boolean;
+  case_sensitive_evaluation?: boolean;
 }
 
 interface QuizFormData {
@@ -73,6 +76,8 @@ interface QuizFormData {
   maxQuestions: number | null;
   shuffleQuestions: boolean;
   autoGrade: boolean;
+  backNavigation: boolean;
+  caseSensitive: boolean;
   password?: string;
   openAt: string;
   closeAt: string;
@@ -108,6 +113,8 @@ export default function QuizFormPage() {
     maxQuestions: null,
     shuffleQuestions: true,
     autoGrade: false,
+    backNavigation: true,
+    caseSensitive: false,
     password: "",
     openAt: "",
     closeAt: "",
@@ -178,6 +185,8 @@ export default function QuizFormPage() {
             : null,
           maxQuestions: enrichedAssessment.question_count || null,
           autoGrade: enrichedAssessment.auto_grade ?? false,
+          backNavigation: enrichedAssessment.back_navigation ?? true,
+          caseSensitive: enrichedAssessment.case_sensitive_evaluation ?? false,
           shuffleQuestions: enrichedAssessment.shuffle_questions ?? true,
           password: enrichedAssessment.password || "",
           openAt: formatDateTimeForInput(enrichedAssessment.open_at),
@@ -883,71 +892,132 @@ export default function QuizFormPage() {
 
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Auto Grading and Shuffle Questions Toggles */}
-              <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Auto Grading, Shuffle Questions, Back Navigation, and Case Sensitive Toggles */}
+              <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                 {/* Auto Grading Toggle */}
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
+                <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-green-100 rounded-lg">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-sm">
                         Auto Grading
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        Automatically grade and show results after quiz
-                      </p>
                     </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.autoGrade}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            autoGrade: e.target.checked,
+                          }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
+                    </label>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.autoGrade}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          autoGrade: e.target.checked,
-                        }))
-                      }
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
+                  <p className="text-xs text-gray-600">
+                    Automatically grade and show results to students after quiz
+                  </p>
                 </div>
 
                 {/* Shuffle Questions Toggle */}
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Shuffle className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-blue-100 rounded-lg">
+                        <Shuffle className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-sm">
                         Shuffle Questions
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        Randomize the order of questions for each student
-                      </p>
                     </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.shuffleQuestions}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            shuffleQuestions: e.target.checked,
+                          }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.shuffleQuestions}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          shuffleQuestions: e.target.checked,
-                        }))
-                      }
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
+                  <p className="text-xs text-gray-600">
+                    Randomize the order of questions for each student
+                  </p>
+                </div>
+
+                {/* Back Navigation Toggle */}
+                <div className="p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl border border-purple-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-purple-100 rounded-lg">
+                        <ArrowLeft className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-sm">
+                        Back Navigation
+                      </h3>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.backNavigation}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            backNavigation: !e.target.checked,
+                          }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    Allow students to navigate back to previous questions
+                  </p>
+                </div>
+
+                {/* Case Sensitive Toggle */}
+                <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-orange-100 rounded-lg">
+                        <Type className="w-4 h-4 text-orange-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-sm">
+                        Case Sensitive
+                      </h3>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.caseSensitive}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            caseSensitive: e.target.checked,
+                          }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-600"></div>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    Make text answers case sensitive during evaluation
+                  </p>
                 </div>
               </div>
-
               {/* Max Marks */}
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3">

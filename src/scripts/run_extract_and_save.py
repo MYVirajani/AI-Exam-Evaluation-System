@@ -176,9 +176,9 @@ def get_submissions_from_db():
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT submission_id, assessment_id, student_id, file_url, submission_time 
+                SELECT submission_id, assessment_id, student_id, file_url, submission_start_at
                 FROM "Submission" 
-                ORDER BY assessment_id, submission_time ASC
+                ORDER BY assessment_id, submission_start_at ASC
             """)
             
             submissions = cur.fetchall()

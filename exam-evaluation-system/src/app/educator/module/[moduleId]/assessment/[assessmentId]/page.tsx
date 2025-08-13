@@ -516,7 +516,7 @@ interface Assessment {
   submissions: {
     submission_id: string;
     file_url: string;
-    submission_time: string;
+    submission_start_at: string;
     student: {
       student_id: string;
       registration_number: string;

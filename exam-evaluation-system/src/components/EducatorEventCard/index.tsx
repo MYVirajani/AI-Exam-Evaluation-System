@@ -52,6 +52,7 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
   };
 
   const educatorId = getEducatorId();
+  console.log('assessmentType: ',assessmentType);
 
   const navigationUrl =
     assessmentType === 'quiz'

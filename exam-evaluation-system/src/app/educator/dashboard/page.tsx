@@ -12,6 +12,7 @@ import EventCreationForm, {
 import Link from "next/link";
 import Button from "@/components/Button";
 import LoadingAnimation from "@/components/LoadingAnimation";
+import { assessmentType } from "@/generated/prisma";
 
 interface ModuleAPI {
   module_id: string;
@@ -216,6 +217,7 @@ export default function EducatorHomePage() {
             date: formattedDate,
             label,
             moduleId: mod?.module_id || "",
+            assessmentType:a.type,
           };
         });
 

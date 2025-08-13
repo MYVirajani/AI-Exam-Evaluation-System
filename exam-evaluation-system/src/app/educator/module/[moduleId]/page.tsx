@@ -86,6 +86,7 @@ export default function ModulePage({ params }: ModulePageProps) {
         if (!res.ok) throw new Error("Failed to fetch module data");
 
         const data = await res.json();
+        // console.log('data: ', data);
 
         const mappedData: ModuleData = {
           moduleId: data.moduleId,

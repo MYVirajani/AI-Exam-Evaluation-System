@@ -891,7 +891,6 @@ export default function QuizFormPage() {
             </div>
           </div>
         </div>
-
         {/* Advanced Settings Section */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-8">
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-200">
@@ -1032,6 +1031,9 @@ export default function QuizFormPage() {
                   </p>
                 </div>
               </div>
+
+             
+
               {/* Max Marks */}
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
@@ -1060,34 +1062,6 @@ export default function QuizFormPage() {
                 </p>
               </div>
 
-              {/* Max Questions */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3">
-                  <BookOpen className="w-4 h-4 inline mr-2 text-gray-600" />
-                  Max Questions (Optional)
-                </label>
-                <input
-                  type="number"
-                  value={formData.maxQuestions || ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      maxQuestions: e.target.value
-                        ? parseInt(e.target.value)
-                        : null,
-                    }))
-                  }
-                  min="1"
-                  max={formData.questions.length}
-                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                  placeholder={`Max ${formData.questions.length}`}
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Leave empty to show all questions. System will randomly select
-                  questions.
-                </p>
-              </div>
-
               {/* Max Attempts */}
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
@@ -1111,23 +1085,6 @@ export default function QuizFormPage() {
                 <p className="text-xs text-gray-500 mt-2">
                   Number of attempts allowed per student
                 </p>
-              </div>
-
-              {/* Password (Optional) */}
-              <div>
-                <PasswordInput
-                  label="Quiz Password (Optional)"
-                  value={passwordInput}
-                  onChange={(value) => {
-                    setPasswordInput(value);
-                    setFormData((prev) => ({ ...prev, password: value })); // still update formData for submission
-                  }}
-                  placeholder="Leave empty to allow access without a password"
-                  required={false}
-                  helperText="If set, students must enter this password to start the quiz. You can add or change it anytime."
-                  className=""
-                  id="quiz-password"
-                />
               </div>
 
               {/* Open At */}
@@ -1171,6 +1128,22 @@ export default function QuizFormPage() {
                   After this time, students cannot access the quiz
                 </p>
               </div>
+               {/* Password Input - Now spans full width at the top */}
+              <div className="lg:col-span-2">
+                <PasswordInput
+                  label="Quiz Password (Optional)"
+                  value={passwordInput}
+                  onChange={(value) => {
+                    setPasswordInput(value);
+                    setFormData((prev) => ({ ...prev, password: value }));
+                  }}
+                  placeholder="Leave empty to allow access without a password"
+                  required={false}
+                  helperText="If set, students must enter this password to start the quiz. You can add or change it anytime."
+                  className=""
+                  id="quiz-password"
+                />
+              </div>
             </div>
 
             {/* Advanced Settings Info Panel */}
@@ -1192,12 +1165,16 @@ export default function QuizFormPage() {
                       questions up to this mark limit
                     </li>
                     <li>
-                      • <strong>Max Questions:</strong> System will show only
-                      this many questions per student
-                    </li>
-                    <li>
                       • <strong>Shuffle Questions:</strong> Each student will
                       see questions in different order
+                    </li>
+                    <li>
+                      • <strong>Back Navigation:</strong> Controls whether
+                      students can go back to previous questions
+                    </li>
+                    <li>
+                      • <strong>Case Sensitive:</strong> Text answers will be
+                      evaluated with exact case matching
                     </li>
                     <li>
                       • <strong>Open/Close Times:</strong> Control when students

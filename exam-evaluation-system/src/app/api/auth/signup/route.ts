@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         first_name,
         last_name,
         title,
-        role: role as Role,
+        role: role,
         username,
         password: hashed,
         email,

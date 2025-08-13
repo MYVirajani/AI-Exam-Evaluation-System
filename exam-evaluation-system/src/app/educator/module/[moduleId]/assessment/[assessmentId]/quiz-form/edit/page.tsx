@@ -106,8 +106,8 @@ export default function EditQuizFormPage() {
         }
 
         const enrichedAssessment = {
-          ...data.assessments[0],
-          module: data.moduleData,
+          ...data.assessment,
+          module: data.module,
           enrollmentCount: data.enrollmentCount,
         };
 
@@ -253,7 +253,7 @@ export default function EditQuizFormPage() {
 
   const validateForm = () => {
     if (!formData.title.trim()) return "Title is required";
-    if (!formData.password.trim()) return "Password is required";
+    // if (!formData.password.trim()) return "Password is required";
     if (formData.questions.length === 0)
       return "At least one question is required";
 
@@ -410,7 +410,7 @@ export default function EditQuizFormPage() {
               Back to Quiz
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Edit Quiz</h1>
+              <h1 className="text-3xl font-bold text-slate-900">Edit Your Quiz Assessment</h1>
               <div className="flex items-center gap-2 mt-2">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   {assessment?.module.module_code}

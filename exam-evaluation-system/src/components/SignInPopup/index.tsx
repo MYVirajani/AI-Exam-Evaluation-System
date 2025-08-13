@@ -1,13 +1,12 @@
 "use client";
 
-import { Dialog, DialogPanel,DialogTitle } from "@headlessui/react";
+import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { FaUser, FaLock } from "react-icons/fa";
+import { FaLock, FaEye, FaEyeSlash, FaRobot, FaBrain, FaChartLine } from "react-icons/fa";
 import { siteConfig } from "@/config/site";
 import { useRouter } from "next/navigation";
 import { FiX } from "react-icons/fi";
-
 
 interface SignInPopupProps {
   isOpen: boolean;
@@ -15,11 +14,12 @@ interface SignInPopupProps {
   onSwitchToSignUp: () => void;
 }
 
-export default function SignInPopup({ isOpen, onClose,onSwitchToSignUp }: SignInPopupProps) {
+export default function SignInPopup({ isOpen, onClose, onSwitchToSignUp }: SignInPopupProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const router = useRouter(); 
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +41,11 @@ export default function SignInPopup({ isOpen, onClose,onSwitchToSignUp }: SignIn
         toast.error(json.error || "Sign in failed");
       } else {
         toast.success("Signed in successfully!");
-         const user = json.user;
+        const user = json.user;
 
         // ✅ store user data 
         localStorage.setItem("user", JSON.stringify(user));
-        console.log('user: ',user);
+        console.log('user: ', user);
 
         // ✅ navigate based on role
         if (user.role === "admin") {
@@ -69,102 +69,179 @@ export default function SignInPopup({ isOpen, onClose,onSwitchToSignUp }: SignIn
     }
   };
 
+  const handleSwitchToSignUp = () => {
+    onClose();
+    onSwitchToSignUp();
+  };
+
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      {/* Backdrop with blur effect */}
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
+      
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="relative w-full max-w-4xl bg-white rounded-lg shadow-lg flex overflow-hidden">
-                  {/* Close button in top-right */}
-                  <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
-                    disabled={submitting}
-                    aria-label="Close"
-                  >
-                    <FiX className="w-6 h-6" />
-                  </button>
-          {/* Left Section */}
-          <div className="bg-blue-900 text-white w-1/2 p-8 hidden md:block">
-            <h2 className="text-3xl font-bold mb-4">WELCOME BACK</h2>
-            <p className="text-sm">Log in to {siteConfig.title}</p>
-            <p className="mt-4 text-sm opacity-90">
-              Continue your journey with {siteConfig.title} — the platform that
-              makes exam evaluation smarter, faster, and more accurate.
-            </p>
+        <DialogPanel className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex overflow-hidden transform transition-all">
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 z-10 text-gray-400 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 transition-colors"
+            disabled={submitting}
+            aria-label="Close"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+
+          {/* Left Section - Enhanced Design with Animation */}
+          <div className="relative bg-gradient-to-br from-blue-900 via-purple-800 to-indigo-900 text-white w-1/2 p-12 hidden md:flex flex-col justify-center overflow-hidden">
+            {/* Animated Background Elements */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-20 left-10 w-32 h-32 bg-purple-200 rounded-full blur-3xl animate-pulse"></div>
+              <div className="absolute bottom-20 right-10 w-24 h-24 bg-blue-300 rounded-full blur-2xl animate-ping"></div>
+              <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-indigo-300 rounded-full blur-xl animate-bounce"></div>
+            </div>
+            
+            {/* Floating AI Icons Animation */}
+            <div className="absolute inset-0">
+              <FaRobot className="absolute top-16 right-20 w-6 h-6 text-purple-300/30 animate-bounce" />
+              <FaBrain className="absolute top-32 left-16 w-5 h-5 text-blue-300/40 animate-pulse" />
+              <FaChartLine className="absolute bottom-24 left-20 w-4 h-4 text-indigo-300/30 animate-ping" />
+            </div>
+            
+            <div className="relative z-10">
+              <div className="mb-8">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500/30 to-blue-500/30 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm border border-purple-400/20 animate-pulse">
+                  <FaRobot className="w-8 h-8 text-purple-200 animate-bounce" />
+                </div>
+                <h2 className="text-4xl font-bold mb-4 leading-tight transform transition-all duration-1000 translate-x-0 opacity-100">
+                  Welcome Back
+                </h2>
+                <p className="text-purple-100 text-lg font-medium transform transition-all duration-1000 delay-300 translate-y-0 opacity-100">
+                  Access your AI-powered learning hub
+                </p>
+              </div>
+              
+              <div className="space-y-4 transform transition-all duration-1000 delay-500 translate-y-0 opacity-100">
+                <p className="text-purple-100/90 leading-relaxed">
+                  Experience smart exam evaluation with AI-driven analytics and instant results.
+                </p>
+                
+                <div className="flex items-center space-x-4 pt-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-purple-100">AI Evaluation</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse delay-75"></div>
+                    <span className="text-sm text-purple-100">Smart Analytics</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Right Section */}
-          <div className="w-full md:w-1/2 p-8">
-            <DialogTitle className="text-2xl font-bold text-blue-900 mb-6">
-              Sign in
-            </DialogTitle>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="relative">
-                <FaUser className="absolute left-3 top-3 text-gray-500" />
-                <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  type="text"
-                  placeholder="Username"
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-gray-800"
+          {/* Right Section - Enhanced Form */}
+          <div className="w-full md:w-1/2 p-12 flex flex-col justify-center">
+            <div className="max-w-sm mx-auto w-full">
+              <DialogTitle className="text-3xl font-bold text-gray-900 mb-2 text-center">
+                Sign In
+              </DialogTitle>
+              <p className="text-gray-600 text-center mb-8">
+                Enter your credentials to access your account
+              </p>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Username Field */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 block">
+                    Username
+                  </label>
+                  <div className="relative">
+                    <input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      type="text"
+                      placeholder="Enter your username"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                      disabled={submitting}
+                    />
+                  </div>
+                </div>
+
+                {/* Password Field */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 block">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <FaLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                      disabled={submitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      disabled={submitting}
+                    >
+                      {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Remember me & Forgot password */}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center text-sm text-gray-600 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 mr-2" 
+                      disabled={submitting}
+                    />
+                    Remember me
+                  </label>
+                  <a href="#" className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors">
+                    Forgot Password?
+                  </a>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
                   disabled={submitting}
-                />
+                  className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-700 text-white font-medium rounded-xl hover:from-purple-700 hover:via-blue-700 hover:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                >
+                  {submitting ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Signing in...
+                    </span>
+                  ) : (
+                    "Sign In"
+                  )}
+                </button>
+              </form>
+
+              {/* Sign up link */}
+              <div className="mt-8 text-center">
+                <p className="text-gray-600">
+                  Don't have an account?{" "}
+                  <button
+                    onClick={handleSwitchToSignUp}
+                    className="text-blue-600 hover:text-blue-800 font-medium transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-purple-500 rounded px-1"
+                    disabled={submitting}
+                  >
+                    Create Account
+                  </button>
+                </p>
               </div>
-
-              <div className="relative">
-                <FaLock className="absolute left-3 top-3 text-gray-500" />
-                <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type="password"
-                  placeholder="Password"
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-gray-800"
-                  disabled={submitting}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <label className="text-gray-800">
-                  <input type="checkbox" className="mr-1" disabled={submitting}/>
-                  Remember me
-                </label>
-                <a href="#" className="text-blue-900 hover:underline">
-                  Forgot Password?
-                </a>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 disabled:opacity-50"
-              >
-                {submitting ? "Signing in…" : "Sign in"}
-              </button>
-
-              <div className="text-center text-gray-500 my-2">OR</div>
-
-              <button
-                type="button"
-                className="w-full px-4 py-2 border border-blue-900 text-blue-900 rounded-md hover:bg-blue-50"
-                disabled={submitting}
-              >
-                Sign in with other
-              </button>
-            </form>
-
-            <p className="mt-4 text-sm text-center text-gray-600">
-              Don’t have an account?{" "}
-              <button
-                 onClick={() => {
-                      onClose();
-                      onSwitchToSignUp();
-                    }}
-                className="text-blue-900 hover:underline"
-                disabled={submitting}
-              >
-                Sign up
-              </button>
-            </p>
+            </div>
           </div>
         </DialogPanel>
       </div>

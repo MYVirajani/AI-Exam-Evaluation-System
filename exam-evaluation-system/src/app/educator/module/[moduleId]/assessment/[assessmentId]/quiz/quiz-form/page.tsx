@@ -18,10 +18,12 @@ import {
   Calendar,
   Users,
   Target,
+  Lock,
 } from "lucide-react";
 import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
-import {  toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
+import { formatDuration, formatOpenCloseTime } from "@/lib/date-time";
 
 interface Question {
   question_id: string;
@@ -57,7 +59,7 @@ interface Assessment {
   open_at?: string;
   close_at?: string;
   question_count?: number;
-  auto_grade?:boolean;
+  auto_grade?: boolean;
 }
 
 interface QuizFormData {
@@ -92,9 +94,8 @@ export default function QuizFormPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-
-  // for scrolling to the save area on error
   const actionBarRef = useRef<HTMLDivElement | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
 
   const [formData, setFormData] = useState<QuizFormData>({
     title: "",
@@ -178,7 +179,7 @@ export default function QuizFormPage() {
           maxQuestions: enrichedAssessment.question_count || null,
           autoGrade: enrichedAssessment.auto_grade ?? false,
           shuffleQuestions: enrichedAssessment.shuffle_questions ?? true,
-          password: "",
+          password: enrichedAssessment.password || "",
           openAt: formatDateTimeForInput(enrichedAssessment.open_at),
           closeAt: formatDateTimeForInput(enrichedAssessment.close_at),
           maxAttempts: enrichedAssessment.max_attempts || 1,
@@ -619,7 +620,7 @@ export default function QuizFormPage() {
                       <span className="font-medium">Duration:</span>
                     </div>
                     <span className="font-bold text-gray-900">
-                      {formData.duration} min
+                      {formatDuration(formData.duration)}
                     </span>
                   </div>
 
@@ -635,8 +636,7 @@ export default function QuizFormPage() {
 
                   {/* Row 3: Status Indicators */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {formData.autoGrade && (
+                     {formData.autoGrade && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           <CheckCircle className="w-3 h-3 mr-1" />
                           Auto Grade
@@ -648,110 +648,25 @@ export default function QuizFormPage() {
                           Shuffle
                         </span>
                       )}
-                      {/* {formData.password && formData.password.trim() && (
+                      {formData.password && formData.password.trim() && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                           <Lock className="w-3 h-3 mr-1" />
                           Protected
                         </span>
-                      )} */}
-                    </div>
+                      )}
                   </div>
 
-                  {/* Row 4: Time Window */}
-                  {(formData.openAt ||
-                    formData.closeAt ||
-                    formData.deadline) && (
-                    <div className="col-span-2">
-                      <span className="text-gray-700">
-                        {(() => {
-                          const dateOpts: Intl.DateTimeFormatOptions = {
-                            year: "numeric",
-                            month: "short",
-                            day: "2-digit",
-                          };
-                          const timeOpts: Intl.DateTimeFormatOptions = {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          };
+                  
 
-                          const hasOpen = !!formData.openAt;
-                          const hasClose = !!formData.closeAt;
-                          const hasDeadline = !!formData.deadline;
+{/* Row 4: Time Window */}
+{(formData.openAt || formData.closeAt || formData.deadline) && (
+  <div className="col-span-2">
+    <span className="text-gray-700">
+      {formatOpenCloseTime(formData.openAt, formData.closeAt, formData.deadline)}
+    </span>
+  </div>
+)}
 
-                          const openD = hasOpen
-                            ? new Date(formData.openAt!)
-                            : null;
-                          const closeD = hasClose
-                            ? new Date(formData.closeAt!)
-                            : null;
-                          const deadlineD = hasDeadline
-                            ? new Date(formData.deadline!)
-                            : null;
-
-                          const sameDay =
-                            hasOpen &&
-                            hasClose &&
-                            openD!.toDateString() === closeD!.toDateString();
-
-                          const parts: string[] = [];
-
-                          if (hasOpen && hasClose) {
-                            if (sameDay) {
-                              parts.push(
-                                `Opens at ${openD!.toLocaleTimeString(
-                                  [],
-                                  timeOpts
-                                )} and closes at ${closeD!.toLocaleTimeString(
-                                  [],
-                                  timeOpts
-                                )} on ${openD!.toLocaleDateString(
-                                  [],
-                                  dateOpts
-                                )}`
-                              );
-                            } else {
-                              parts.push(
-                                `Opens at ${openD!.toLocaleTimeString(
-                                  [],
-                                  timeOpts
-                                )} on ${openD!.toLocaleDateString(
-                                  [],
-                                  dateOpts
-                                )} and closes at ${closeD!.toLocaleTimeString(
-                                  [],
-                                  timeOpts
-                                )} on ${closeD!.toLocaleDateString(
-                                  [],
-                                  dateOpts
-                                )}`
-                              );
-                            }
-                          } else if (hasOpen) {
-                            parts.push(
-                              `Opens at ${openD!.toLocaleTimeString(
-                                [],
-                                timeOpts
-                              )} on ${openD!.toLocaleDateString([], dateOpts)}`
-                            );
-                          } else if (hasClose) {
-                            parts.push(
-                              `Closes at ${closeD!.toLocaleTimeString(
-                                [],
-                                timeOpts
-                              )} on ${closeD!.toLocaleDateString([], dateOpts)}`
-                            );
-                          }
-
-                          // If you want to show deadline too, uncomment:
-                          // if (hasDeadline) {
-                          //   parts.push(`Deadline: ${deadlineD!.toLocaleDateString([], dateOpts)}`);
-                          // }
-
-                          return parts.join(" · ") + ".";
-                        })()}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -1114,11 +1029,12 @@ export default function QuizFormPage() {
               {/* Password (Optional) */}
               <div>
                 <PasswordInput
-                  label=" Quiz Password (Optional)"
-                  value={ formData.password ||""}
-                  onChange={(value) =>
-                    setFormData((prev) => ({ ...prev, password: value }))
-                  }
+                  label="Quiz Password (Optional)"
+                  value={passwordInput}
+                  onChange={(value) => {
+                    setPasswordInput(value);
+                    setFormData((prev) => ({ ...prev, password: value })); // still update formData for submission
+                  }}
                   placeholder="Leave empty to allow access without a password"
                   required={false}
                   helperText="If set, students must enter this password to start the quiz. You can add or change it anytime."

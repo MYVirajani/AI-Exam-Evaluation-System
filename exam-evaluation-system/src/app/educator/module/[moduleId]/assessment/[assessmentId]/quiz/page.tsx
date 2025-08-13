@@ -14,7 +14,7 @@ import {
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
-import { formatDateTime, formatDuration } from "@/lib/date-time";
+import { formatOpenCloseTime, formatDuration } from "@/lib/date-time";
 
 interface User {
   first_name: string;
@@ -292,22 +292,22 @@ export default function QuizAssessmentPage() {
 
           {/* Quiz Details */}
           {assessment.open_at && assessment.close_at && (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm mb-4">
-              <div>
-                <span className="font-medium text-gray-800">
-                  Quiz is scheduled to open at {formatDateTime(assessment.open_at)} and closes at {formatDateTime(assessment.close_at)}
-                </span>
-              </div>
-              {assessment.duration && (
-  <div className="flex-shrink-0">
-    <span className="font-medium text-gray-700">Duration:</span>
-    <span className="ml-2 text-gray-600">
-      {formatDuration(assessment.duration)}
-    </span>
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm mb-4">
+    <div>
+      <span className="font-medium text-gray-800">
+        {formatOpenCloseTime(assessment.open_at, assessment.close_at)}
+      </span>
+    </div>
+    {assessment.duration && (
+      <div className="flex-shrink-0">
+        <span className="font-medium text-gray-700">Duration:</span>
+        <span className="ml-2 text-gray-600">
+          {formatDuration(assessment.duration)}
+        </span>
+      </div>
+    )}
   </div>
 )}
-            </div>
-          )}
 
           {/* Assessment Features */}
           <div className="mt-4 flex flex-wrap gap-2">
@@ -343,17 +343,18 @@ export default function QuizAssessmentPage() {
                 <Button
                   onClick={handleViewResults}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-500 text-white border-none hover:opacity-90"
                 >
                   <BarChart3 className="w-4 h-4" />
                   View Results
                 </Button>
               )}
+
               {assessment.questions && assessment.questions.length > 0 && (
                 <Button
                   onClick={handleEditQuiz}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-500 text-white border-none hover:opacity-90"
                 >
                   <Edit className="w-4 h-4" />
                   Edit Quiz

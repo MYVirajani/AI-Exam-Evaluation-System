@@ -460,6 +460,8 @@ export default function QuizFormPage() {
         password: formData.password?.trim() ? formData.password.trim() : null,
         autoGrade: formData.autoGrade,
         shuffleQuestions: formData.shuffleQuestions,
+        backNavigation: formData.backNavigation,
+        caseSensitive: formData.caseSensitive,
         maxMarks: formData.maxMarks,
         maxAttempts: formData.maxAttempts,
         questionCount: formData.maxQuestions,
@@ -655,6 +657,18 @@ export default function QuizFormPage() {
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         <Shuffle className="w-3 h-3 mr-1" />
                         Shuffle
+                      </span>
+                    )}
+                    {!formData.backNavigation && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        <ArrowLeft className="w-3 h-3 mr-1" />
+                        No Back Nav
+                      </span>
+                    )}
+                    {formData.caseSensitive && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        <Type className="w-3 h-3 mr-1" />
+                        Case Sensitive
                       </span>
                     )}
                     {formData.password && formData.password.trim() && (
@@ -974,7 +988,7 @@ export default function QuizFormPage() {
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            backNavigation: !e.target.checked,
+                            backNavigation: e.target.checked,
                           }))
                         }
                         className="sr-only peer"

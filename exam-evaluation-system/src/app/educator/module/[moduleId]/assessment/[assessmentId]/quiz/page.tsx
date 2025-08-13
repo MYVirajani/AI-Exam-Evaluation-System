@@ -10,6 +10,8 @@ import {
   Shield,
   Shuffle,
   Zap,
+  ArrowLeft,
+  Type,
 } from "lucide-react";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
@@ -48,6 +50,8 @@ interface Assessment {
   questions?: Question[];
   auto_grade?: boolean;
   shuffle_questions?: boolean;
+  back_navigation?: boolean;
+  case_sensitive_evaluation?: boolean;
   password?: string | null;
   submissions: {
     submission_id: string;
@@ -292,22 +296,22 @@ export default function QuizAssessmentPage() {
 
           {/* Quiz Details */}
           {assessment.open_at && assessment.close_at && (
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm mb-4">
-    <div>
-      <span className="font-medium text-gray-800">
-        {formatOpenCloseTime(assessment.open_at, assessment.close_at)}
-      </span>
-    </div>
-    {assessment.duration && (
-      <div className="flex-shrink-0">
-        <span className="font-medium text-gray-700">Duration:</span>
-        <span className="ml-2 text-gray-600">
-          {formatDuration(assessment.duration)}
-        </span>
-      </div>
-    )}
-  </div>
-)}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm mb-4">
+              <div>
+                <span className="font-medium text-gray-800">
+                  {formatOpenCloseTime(assessment.open_at, assessment.close_at)}
+                </span>
+              </div>
+              {assessment.duration && (
+                <div className="flex-shrink-0">
+                  <span className="font-medium text-gray-700">Duration:</span>
+                  <span className="ml-2 text-gray-600">
+                    {formatDuration(assessment.duration)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Assessment Features */}
           <div className="mt-4 flex flex-wrap gap-2">
@@ -321,6 +325,18 @@ export default function QuizAssessmentPage() {
               <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-medium">
                 <Shuffle className="w-3 h-3" />
                 Shuffle Questions
+              </div>
+            )}
+            {!assessment.back_navigation && (
+              <div className="flex items-center gap-1 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-medium">
+                <ArrowLeft className="w-3 h-3" />
+                No Back Nav
+              </div>
+            )}
+            {assessment.case_sensitive_evaluation && (
+              <div className="flex items-center gap-1 bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">
+                <Type className="w-3 h-3" />
+                Case Sensitive
               </div>
             )}
             {assessment.password && (

@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
       questionCount,       // <-- API field in camelCase
       autoGrade,
       shuffleQuestions,
+      backNavigation,
+      caseSensitive,
       maxAttempts,
     } = body;
 
@@ -134,33 +136,43 @@ export async function POST(req: NextRequest) {
       : existingAssessment.instructions;
 
     // ---- Update assessment fields (never recreating the assessment)
-    const updatedAssessment = await prisma.assessment.update({
-      where: { assessment_id: assessmentId },
-      data: {
-        title: title ?? existingAssessment.title,
-        duration: duration ?? existingAssessment.duration,
-        description: description ?? existingAssessment.description,
-        instructions: normalizedInstructions,
-        type: "quiz",
-        deadline: deadline ? new Date(deadline) : existingAssessment.deadline,
-        total_marks: finalTotalMarks,
-        max_marks:
-          maxMarks != null
-            ? new Decimal(maxMarks.toString())
-            : existingAssessment.max_marks,
-        password: password ? await bcrypt.hash(password, 10) : existingAssessment.password,
-        question_count: finalQuestionCount,
-        auto_grade: typeof autoGrade === "boolean" ? autoGrade : existingAssessment.auto_grade,
-        shuffle_questions:
-          typeof shuffleQuestions === "boolean"
-            ? shuffleQuestions
-            : existingAssessment.shuffle_questions,
-        max_attempts:
-          typeof maxAttempts === "number" ? maxAttempts : existingAssessment.max_attempts,
-        open_at: openAt ? new Date(openAt) : existingAssessment.open_at,
-        close_at: closeAt ? new Date(closeAt) : existingAssessment.close_at,
-      },
-    });
+const updatedAssessment = await prisma.assessment.update({
+  where: { assessment_id: assessmentId },
+  data: {
+    title: title ?? existingAssessment.title,
+    duration: duration ?? existingAssessment.duration,
+    description: description ?? existingAssessment.description,
+    instructions: normalizedInstructions,
+    type: "quiz",
+    deadline: deadline ? new Date(deadline) : existingAssessment.deadline,
+    total_marks: finalTotalMarks,
+    max_marks:
+      maxMarks != null
+        ? new Decimal(maxMarks.toString())
+        : existingAssessment.max_marks,
+    password: password ? await bcrypt.hash(password, 10) : existingAssessment.password,
+    question_count: finalQuestionCount,
+    auto_grade: typeof autoGrade === "boolean" ? autoGrade : existingAssessment.auto_grade,
+    shuffle_questions:
+      typeof shuffleQuestions === "boolean"
+        ? shuffleQuestions
+        : existingAssessment.shuffle_questions,
+    max_attempts:
+      typeof maxAttempts === "number" ? maxAttempts : existingAssessment.max_attempts,
+    open_at: openAt ? new Date(openAt) : existingAssessment.open_at,
+    close_at: closeAt ? new Date(closeAt) : existingAssessment.close_at,
+
+    // ---- New fields added
+    back_navigation:
+      typeof backNavigation === "boolean"
+        ? backNavigation
+        : existingAssessment.back_navigation,
+    case_sensitive_evaluation:
+      typeof caseSensitive === "boolean"
+        ? caseSensitive
+        : existingAssessment.case_sensitive_evaluation,
+  },
+});
 
     // ---- If locked, do not touch questions; just return with a friendly notice
     if (questionsLocked) {

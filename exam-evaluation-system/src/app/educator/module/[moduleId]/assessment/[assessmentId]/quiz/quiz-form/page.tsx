@@ -635,38 +635,41 @@ export default function QuizFormPage() {
                   </div>
 
                   {/* Row 3: Status Indicators */}
-                  <div className="flex items-center justify-between">
-                     {formData.autoGrade && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Auto Grade
-                        </span>
-                      )}
-                      {formData.shuffleQuestions && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          <Shuffle className="w-3 h-3 mr-1" />
-                          Shuffle
-                        </span>
-                      )}
-                      {formData.password && formData.password.trim() && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                          <Lock className="w-3 h-3 mr-1" />
-                          Protected
-                        </span>
-                      )}
+                  <div className="col-span-2 flex items-center gap-2 flex-wrap">
+                    {formData.autoGrade && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Auto Grade
+                      </span>
+                    )}
+                    {formData.shuffleQuestions && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <Shuffle className="w-3 h-3 mr-1" />
+                        Shuffle
+                      </span>
+                    )}
+                    {formData.password && formData.password.trim() && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        <Lock className="w-3 h-3 mr-1" />
+                        Protected
+                      </span>
+                    )}
                   </div>
 
-                  
-
-{/* Row 4: Time Window */}
-{(formData.openAt || formData.closeAt || formData.deadline) && (
-  <div className="col-span-2">
-    <span className="text-gray-700">
-      {formatOpenCloseTime(formData.openAt, formData.closeAt, formData.deadline)}
-    </span>
-  </div>
-)}
-
+                  {/* Row 4: Time Window */}
+                  {(formData.openAt ||
+                    formData.closeAt ||
+                    formData.deadline) && (
+                    <div className="col-span-2">
+                      <span className="text-gray-700">
+                        {formatOpenCloseTime(
+                          formData.openAt,
+                          formData.closeAt,
+                          formData.deadline
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

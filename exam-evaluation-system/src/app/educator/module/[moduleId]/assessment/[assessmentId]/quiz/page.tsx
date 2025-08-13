@@ -114,13 +114,13 @@ export default function QuizAssessmentPage() {
 
   const handleCreateQuiz = () => {
     router.push(
-      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?educatorId=${educatorId}`
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/quiz-form?educatorId=${educatorId}`
     );
   };
 
   const handleEditQuiz = () => {
     router.push(
-      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?edit=true&educatorId=${educatorId}`
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/quiz-form?edit=true&educatorId=${educatorId}`
     );
   };
 

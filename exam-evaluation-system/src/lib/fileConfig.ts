@@ -9,12 +9,12 @@ export const FILE_CONFIG = {
     maxSizeMB: 5,
   },
   ANSWER_SCRIPT: {
-    types: [".pdf", ".docx"],
+    types: [".pdf", ".docx", ".png", ".jpg", ".jpeg"],
     maxSizeMB: 5,
   },
   IMAGE: {
     types: [".png", ".jpg", ".jpeg", ".webp"],
-    maxSizeMB: 2,
+    maxSizeMB: 5,
   },
   LECTURE_MATERIAL: {
     types: [".pdf", ".docx", ".pptx", ".xlsx"],

@@ -189,12 +189,31 @@ model Question {
   @@index([assessment_id])
 }
 
+// model Submission {
+//   submission_id   String   @id
+//   assessment_id   String
+//   student_id      String
+//   file_url        String
+//   submission_time DateTime
+
+//   assessment       Assessment        @relation(fields: [assessment_id], references: [assessment_id])
+//   student          Student           @relation(fields: [student_id], references: [user_id])
+//   question_grades  Question_Grade[]
+//   assessment_grade Assessment_Grade?
+// }
+
 model Submission {
   submission_id   String   @id
   assessment_id   String
   student_id      String
-  file_url        String
+  file_url        String?
   submission_time DateTime
+
+  // New fields for handwritten submissions
+  is_handwritten       Boolean @default(false)
+  handwritten_file_url String?
+  // conversion_status    String? // "pending", "processing", "completed", "failed"
+  // conversion_time      DateTime?
 
   assessment       Assessment        @relation(fields: [assessment_id], references: [assessment_id])
   student          Student           @relation(fields: [student_id], references: [user_id])

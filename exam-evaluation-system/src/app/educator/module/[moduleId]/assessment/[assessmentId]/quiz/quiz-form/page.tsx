@@ -25,6 +25,7 @@ import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
 import { toast } from "react-hot-toast";
 import { formatDuration, formatOpenCloseTime } from "@/lib/date-time";
+import QuizSection from "./QuizSection"; 
 
 interface Question {
   question_id: string;
@@ -244,7 +245,7 @@ export default function QuizFormPage() {
       question_number: String(formData.questions.length + 1),
       question: "",
       model_answer: "",
-      mcq_answer_options: ["", "", "", ""],
+      mcq_answer_options: ["", ""],
       marks_allowed: "1",
     };
 
@@ -264,7 +265,7 @@ export default function QuizFormPage() {
           if (field === "type" && value === "SHORT") {
             updatedQuestion.mcq_answer_options = [];
           } else if (field === "type" && value === "MCQ") {
-            updatedQuestion.mcq_answer_options = ["", "", "", ""];
+            updatedQuestion.mcq_answer_options = ["", ""];
           }
 
           return updatedQuestion;
@@ -286,6 +287,44 @@ export default function QuizFormPage() {
           const newOptions = [...q.mcq_answer_options];
           newOptions[optionIndex] = value;
           return { ...q, mcq_answer_options: newOptions };
+        }
+        return q;
+      }),
+    }));
+  };
+
+  // NEW: Add MCQ option function
+  const addMCQOption = (questionIndex: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      questions: prev.questions.map((q, i) => {
+        if (i === questionIndex) {
+          return {
+            ...q,
+            mcq_answer_options: [...q.mcq_answer_options, ""],
+          };
+        }
+        return q;
+      }),
+    }));
+  };
+
+  // NEW: Remove MCQ option function
+  const removeMCQOption = (questionIndex: number, optionIndex: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      questions: prev.questions.map((q, i) => {
+        if (i === questionIndex) {
+          const newOptions = q.mcq_answer_options.filter((_, idx) => idx !== optionIndex);
+          // If the removed option was the model answer, clear the model answer
+          const removedOption = q.mcq_answer_options[optionIndex];
+          const newModelAnswer = q.model_answer === removedOption ? "" : q.model_answer;
+          
+          return {
+            ...q,
+            mcq_answer_options: newOptions,
+            model_answer: newModelAnswer,
+          };
         }
         return q;
       }),
@@ -367,11 +406,6 @@ export default function QuizFormPage() {
 
       const deadlineD = new Date(deadline);
       if (isNaN(deadlineD.getTime())) return "Invalid deadline.";
-
-      // if (openD > deadlineD)
-      //   return "Open time must be on or before the deadline.";
-      // if (closeD > deadlineD)
-      //   return "Close time must be on or before the deadline.";
     }
 
     for (let i = 0; i < formData.questions.length; i++) {
@@ -444,7 +478,6 @@ export default function QuizFormPage() {
           question.type === "SHORT" ? question.model_answer : undefined,
       }));
 
-      // NOTE: keeping local times (no UTC conversion) as per your preference
       const quiz = {
         moduleId,
         type: "quiz",
@@ -453,7 +486,7 @@ export default function QuizFormPage() {
         duration: formData.duration,
         description: formData.description.trim(),
         instructions: formData.instructions.filter((inst) => inst.trim()),
-        deadline: formData.deadline || null, // ⬅️ no UTC conversion
+        deadline: formData.deadline || null,
         questions: sanitizedQuestions,
         createdBy: educatorId,
         totalQuestions: formData.questions.length,
@@ -465,8 +498,8 @@ export default function QuizFormPage() {
         maxMarks: formData.maxMarks,
         maxAttempts: formData.maxAttempts,
         questionCount: formData.maxQuestions,
-        openAt: formData.openAt || null, // ⬅️ no UTC conversion
-        closeAt: formData.closeAt || null, // ⬅️ no UTC conversion
+        openAt: formData.openAt || null,
+        closeAt: formData.closeAt || null,
         totalMarks: calculateTotalMarks(),
       };
 
@@ -551,9 +584,6 @@ export default function QuizFormPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Toasts */}
-      {/* <Toaster position="bottom-right" /> */}
-
       {/* Header Section */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-6">
@@ -590,11 +620,10 @@ export default function QuizFormPage() {
               </div>
             </div>
 
-            {/* Structured Quick Stats */}
+            {/* Quick Stats Display */}
             <div className="hidden lg:block">
               <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  {/* Row 1 */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-gray-600">
                       <BookOpen className="w-4 h-4 text-blue-600" />
@@ -624,7 +653,6 @@ export default function QuizFormPage() {
                     </span>
                   </div>
 
-                  {/* Row 2 */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-gray-600">
                       <Clock className="w-4 h-4 text-purple-600" />
@@ -645,7 +673,6 @@ export default function QuizFormPage() {
                     </span>
                   </div>
 
-                  {/* Row 3: Status Indicators */}
                   <div className="col-span-2 flex items-center gap-2 flex-wrap">
                     {formData.autoGrade && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -679,7 +706,6 @@ export default function QuizFormPage() {
                     )}
                   </div>
 
-                  {/* Row 4: Time Window */}
                   {(formData.openAt ||
                     formData.closeAt ||
                     formData.deadline) && (
@@ -730,7 +756,7 @@ export default function QuizFormPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Success message (kept) */}
+        {/* Success message */}
         {saveMessage && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -788,29 +814,36 @@ export default function QuizFormPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3">
-                  <Clock className="w-4 h-4 inline mr-2 text-gray-600" />
-                  Duration (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      duration: parseInt(e.target.value) || 0,
-                    }))
-                  }
-                  min="1"
-                  max="300"
-                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                  placeholder="60"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Recommended: 1-2 minutes per question
-                </p>
-              </div>
+             <div>
+  <label className="block text-sm font-semibold text-gray-800 mb-3">
+    <Clock className="w-4 h-4 inline mr-2 text-gray-600" />
+    Duration (minutes)
+  </label>
+  <input
+    type="number"
+    value={formData.duration}
+    onChange={(e) =>
+      setFormData((prev) => ({
+        ...prev,
+        duration: parseInt(e.target.value) || 0,
+      }))
+    }
+    min="1"
+    max="300"
+    className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+    placeholder="60"
+  />
+  <p className="text-xs text-gray-500 mt-2">
+    <span className="font-medium">Duration:</span> {formatDuration(formData.duration)} • 
+    <span className="ml-2">Recommended: 1-2 minutes per question</span>
+    {formData.duration > 180 && (
+      <span className="ml-2 text-amber-600 flex items-center mt-1">
+        <AlertCircle className="w-3 h-3 mr-1" />
+        Long duration may affect student focus
+      </span>
+    )}
+  </p>
+</div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
@@ -880,9 +913,8 @@ export default function QuizFormPage() {
                 <div className="flex justify-end mt-4">
                   <Button
                     onClick={addInstruction}
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
-                    className="flex items-center gap-2 text-blue-600 border-blue-300 bg-indigo-50 hover:bg-indigo-100"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -891,6 +923,7 @@ export default function QuizFormPage() {
             </div>
           </div>
         </div>
+
         {/* Advanced Settings Section */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-8">
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-200">
@@ -1032,8 +1065,6 @@ export default function QuizFormPage() {
                 </div>
               </div>
 
-             
-
               {/* Max Marks */}
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
@@ -1128,7 +1159,8 @@ export default function QuizFormPage() {
                   After this time, students cannot access the quiz
                 </p>
               </div>
-               {/* Password Input - Now spans full width at the top */}
+              
+              {/* Password Input - Now spans full width at the top */}
               <div className="lg:col-span-2">
                 <PasswordInput
                   label="Quiz Password (Optional)"
@@ -1188,241 +1220,15 @@ export default function QuizFormPage() {
         </div>
 
         {/* Questions Section */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-8">
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-indigo-600" />
-                  Quiz Questions ({formData.questions.length})
-                </h2>
-                <p className="text-gray-600 text-sm mt-1">
-                  Create and manage your quiz questions
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="space-y-8">
-              {formData.questions.map((question, questionIndex) => (
-                <div
-                  key={question.question_id}
-                  className="border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-blue-300 transition-colors"
-                >
-                  {/* Question Header */}
-                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-4 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-lg">
-                          {questionIndex + 1}
-                        </div>
-                        <div>
-                          <select
-                            value={question.type}
-                            onChange={(e) =>
-                              updateQuestion(
-                                questionIndex,
-                                "type",
-                                e.target.value
-                              )
-                            }
-                            className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                          >
-                            <option value="MCQ">
-                              Multiple Choice Question
-                            </option>
-                            <option value="SHORT">Short Answer Question</option>
-                          </select>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Choose the question type
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Marks
-                          </label>
-                          <input
-                            type="number"
-                            value={question.marks_allowed}
-                            onChange={(e) =>
-                              updateQuestion(
-                                questionIndex,
-                                "marks_allowed",
-                                e.target.value
-                              )
-                            }
-                            min="0.00"
-                            step="0.5"
-                            className="w-20 px-3 py-2 text-center bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                          />
-                        </div>
-                        <Button
-                          onClick={() => removeQuestion(questionIndex)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    {/* Question Text */}
-                    <div className="mb-6">
-                      <label className="block text-sm font-semibold text-gray-800 mb-3">
-                        Question Text <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={question.question}
-                        onChange={(e) =>
-                          updateQuestion(
-                            questionIndex,
-                            "question",
-                            e.target.value
-                          )
-                        }
-                        rows={3}
-                        className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
-                        placeholder="Enter your question here. Be clear and specific..."
-                      />
-                    </div>
-
-                    {/* MCQ Options */}
-                    {question.type === "MCQ" && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-semibold text-gray-800 mb-4">
-                          Answer Options <span className="text-red-500">*</span>
-                        </label>
-                        <div className="space-y-4">
-                          {question.mcq_answer_options.map(
-                            (option, optionIndex) => (
-                              <div
-                                key={optionIndex}
-                                className="flex items-center gap-4 group"
-                              >
-                                <div className="flex items-center">
-                                  <input
-                                    type="radio"
-                                    name={`correct_answer_${questionIndex}`}
-                                    checked={
-                                      question.model_answer === option &&
-                                      option.trim() !== ""
-                                    }
-                                    onChange={() =>
-                                      updateQuestion(
-                                        questionIndex,
-                                        "model_answer",
-                                        option
-                                      )
-                                    }
-                                    className="w-5 h-5 text-green-600 focus:ring-green-500 focus:ring-2"
-                                    disabled={option.trim() === ""}
-                                  />
-                                  <span className="ml-3 w-8 h-8 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center font-bold text-sm">
-                                    {String.fromCharCode(65 + optionIndex)}
-                                  </span>
-                                </div>
-                                <input
-                                  type="text"
-                                  value={option}
-                                  onChange={(e) =>
-                                    updateMCQOption(
-                                      questionIndex,
-                                      optionIndex,
-                                      e.target.value
-                                    )
-                                  }
-                                  className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                                  placeholder={`Enter option ${String.fromCharCode(
-                                    65 + optionIndex
-                                  )}...`}
-                                />
-                              </div>
-                            )
-                          )}
-                        </div>
-                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                          <p className="text-xs text-amber-800 flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4" />
-                            Select the radio button next to the correct answer.
-                            Students will see these options in random order.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Short Answer Model Answer */}
-                    {question.type === "SHORT" && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-semibold text-gray-800 mb-3">
-                          Model Answer <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          value={question.model_answer}
-                          onChange={(e) =>
-                            updateQuestion(
-                              questionIndex,
-                              "model_answer",
-                              e.target.value
-                            )
-                          }
-                          rows={3}
-                          className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
-                          placeholder="Enter the expected answer or key points that should be included..."
-                        />
-                        <p className="text-xs text-gray-500 mt-2">
-                          This will be used as a reference for manual grading.
-                          Include key points or the exact answer expected.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {formData.questions.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <BookOpen className="w-10 h-10 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    No Questions Added Yet
-                  </h3>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Start building your quiz by adding your first question. You
-                    can create multiple choice or short answer questions.
-                  </p>
-                  <Button
-                    onClick={addQuestion}
-                    className="flex items-center gap-2 mx-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Add Your First Question
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Add Question Button - Bottom Right */}
-            {formData.questions.length > 0 && (
-              <div className="flex justify-end mt-6">
-                <Button
-                  onClick={addQuestion}
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Question
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
+        <QuizSection
+          questions={formData.questions}
+          onAddQuestion={addQuestion}
+          onUpdateQuestion={updateQuestion}
+          onUpdateMCQOption={updateMCQOption}
+          onAddMCQOption={addMCQOption}
+          onRemoveMCQOption={removeMCQOption}
+          onRemoveQuestion={removeQuestion}
+        />
         {/* Action Buttons (with inline error & scroll ref) */}
         <div
           ref={actionBarRef}
@@ -1510,14 +1316,15 @@ export default function QuizFormPage() {
               <Button
                 onClick={handleGoBack}
                 variant="outline"
-                className="px-6 py-3 border-gray-300 text-gray-700 hover:bg-gray-50"
+                className=""
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                className=""
+                variant="primary"
               >
                 {saving ? (
                   <div className="flex items-center gap-3">

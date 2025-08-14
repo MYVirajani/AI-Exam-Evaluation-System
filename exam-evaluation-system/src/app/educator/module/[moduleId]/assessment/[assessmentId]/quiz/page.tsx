@@ -369,8 +369,8 @@ export default function QuizAssessmentPage() {
               {assessment.questions && assessment.questions.length > 0 && (
                 <Button
                   onClick={handleEditQuiz}
-                  variant="outline"
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-500 text-white border-none hover:opacity-90"
+                  variant="primary"
+                  className=""
                 >
                   <Edit className="w-4 h-4" />
                   Edit Quiz

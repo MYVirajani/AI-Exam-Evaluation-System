@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { calculateCountdown, CountdownResult } from "@/utils/countdownUtils";
+import { formatDuration, formatOpenCloseTime } from "@/utils/date-time";
 
 interface StudentEventCardProps {
   title: string;
   module: string;
+  duration?: number; 
   open_at?: string;
   close_at?: string;
   deadline?: string;
@@ -44,6 +46,7 @@ const statusConfig = {
 const StudentEventCard: React.FC<StudentEventCardProps> = ({
   title,
   module,
+  duration,
   open_at,
   close_at,
   deadline,
@@ -62,6 +65,8 @@ const StudentEventCard: React.FC<StudentEventCardProps> = ({
   }, [open_at, close_at, deadline]);
 
   const config = statusConfig[countdown.status];
+  const timingInfo = formatOpenCloseTime(open_at, close_at, deadline);
+  const durationText = duration ? formatDuration(duration) : null;
 
   return (
     <div
@@ -83,6 +88,15 @@ const StudentEventCard: React.FC<StudentEventCardProps> = ({
             <p className="text-sm text-gray-600 font-medium truncate" title={module}>
               {module}
             </p>
+            {/* Duration Display */}
+            {durationText && (
+              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Duration: {durationText}
+              </p>
+            )}
           </div>
           <span className={`
             inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
@@ -94,7 +108,7 @@ const StudentEventCard: React.FC<StudentEventCardProps> = ({
       </div>
 
       {/* Countdown Section */}
-      <div className={`mx-5 mb-5 p-4 rounded-lg border ${config.border}`}>
+      <div className={`mx-5 mb-3 p-4 rounded-lg border ${config.border}`}>
         <div className="flex items-center justify-between">
           <div>
             <div className={`text-2xl font-bold font-mono ${config.text} mb-1`}>
@@ -111,6 +125,20 @@ const StudentEventCard: React.FC<StudentEventCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Assessment Timing Information */}
+      {timingInfo && (
+        <div className="mx-5 mb-4 p-3 bg-white/50 rounded-lg border border-gray-200">
+          <div className="flex items-start gap-2">
+            <svg className="w-4 h-4 mt-0.5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              {timingInfo}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Footer hint for interaction */}
       <div className="px-5 pb-3">

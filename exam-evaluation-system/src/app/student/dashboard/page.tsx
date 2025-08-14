@@ -21,6 +21,7 @@ interface Assessment {
   module_id: string;
   title: string;
   type: string;
+  duration:string;
   deadline: string;
   open_at: string;
   close_at: string;
@@ -361,6 +362,7 @@ const allAssessments = useMemo(() => {
                     key={assess.assessment_id}
                     title={assess.title}
                     module={assess.module}
+                    duration={assess.duration}
                     open_at={assess.open_at}
                     close_at={assess.close_at}
                     deadline={assess.deadline}

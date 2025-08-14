@@ -12,7 +12,7 @@ interface Material {
   material_id?: string;
   file_name?: string;
   file_url: string | null;
-  description?: string | null;
+  duration?: string | null;
 }
 
 interface Lesson {
@@ -26,7 +26,7 @@ interface Assessment {
   assessment_id: string;
   title: string;
   type: string;
-  description: string;
+  duration: string;
   deadline: string;
   open_at?: string | null;
   close_at?: string | null;
@@ -342,6 +342,7 @@ const StudentModulePage = () => {
                       key={assess.assessment_id}
                       title={assess.title}
                       module={`${module.module_code} ${module.module_name}`}
+                      duration={assess.duration}
                       open_at={assess.open_at}
                       close_at={assess.close_at}
                       deadline={assess.deadline}
@@ -364,6 +365,7 @@ const StudentModulePage = () => {
                       key={assess.assessment_id}
                       title={assess.title}
                       module={`${module.module_code} ${module.module_name}`}
+                      duration={assess.duration}
                       open_at={assess.open_at}
                       close_at={assess.close_at}
                       deadline={assess.deadline}

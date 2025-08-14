@@ -47,7 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: { moduleId: st
         assessment_id: true,
         title: true,
         type: true,
-        description: true,
+        duration: true,
         deadline: true,
         open_at:true,
         close_at:true,

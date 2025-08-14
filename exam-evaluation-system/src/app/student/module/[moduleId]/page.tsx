@@ -7,7 +7,6 @@ import StudentEventCard from "../../dashboard/StudentEventCard";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getModuleBreadcrumbs } from "@/utils/breadcrumbs";
 import axios from "axios";
-import { CountdownResult, updateAllCountdowns } from "@/utils/countdownUtils";
 
 interface Material {
   material_id?: string;
@@ -59,9 +58,6 @@ const StudentModulePage = () => {
   const [module, setModule] = useState<ModuleData | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [countdowns, setCountdowns] = useState<Record<string, CountdownResult>>(
-    {}
-  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -79,23 +75,16 @@ const StudentModulePage = () => {
           res.data.assessments
             .map((a: any) => ({
               ...a,
-              open_at: a.open_at || null,
               close_at: a.close_at || null,
+              deadline: a.deadline || null,
             }))
             .sort((a: Assessment, b: Assessment) => {
-              const aTime = a.open_at
-                ? new Date(a.open_at).getTime()
-                : a.close_at
-                ? new Date(a.close_at).getTime()
-                : new Date(a.deadline).getTime();
-              const bTime = b.open_at
-                ? new Date(b.open_at).getTime()
-                : b.close_at
-                ? new Date(b.close_at).getTime()
-                : new Date(b.deadline).getTime();
+              const aTime = new Date(a.close_at ?? a.deadline).getTime();
+              const bTime = new Date(b.close_at ?? b.deadline).getTime();
               return aTime - bTime;
             })
         );
+
         setLessons(res.data.lessons);
       } catch (error) {
         console.error("[fetchModuleData] Failed to fetch module data:", error);
@@ -106,25 +95,6 @@ const StudentModulePage = () => {
 
     fetchModuleData();
   }, [moduleId, studentId]);
-
-  // Real-time countdown updater
-  useEffect(() => {
-    const updateCountdowns = () => {
-      const newCountdowns = updateAllCountdowns(
-        assessments.map((a) => ({
-          assessment_id: a.assessment_id,
-          deadline: a.deadline,
-          open_at: a.open_at,
-          close_at: a.close_at,
-        }))
-      );
-      setCountdowns(newCountdowns);
-    };
-
-    updateCountdowns(); // Initial call
-    const timer = setInterval(updateCountdowns, 1000);
-    return () => clearInterval(timer);
-  }, [assessments]);
 
   // Navigate to assessment detail page on event card click - Updated with type-based routing
   const handleEventCardClick = (
@@ -372,14 +342,9 @@ const StudentModulePage = () => {
                       key={assess.assessment_id}
                       title={assess.title}
                       module={`${module.module_code} ${module.module_name}`}
-                      countdown={
-                        countdowns[assess.assessment_id]?.text || "--:--:--"
-                      }
-                      status={
-                        countdowns[assess.assessment_id]?.status ||
-                        "not_started"
-                      }
-                      date={new Date(assess.deadline).toLocaleString()}
+                      open_at={assess.open_at}
+                      close_at={assess.close_at}
+                      deadline={assess.deadline}
                       onClick={() =>
                         handleEventCardClick(
                           module.module_id,
@@ -399,14 +364,9 @@ const StudentModulePage = () => {
                       key={assess.assessment_id}
                       title={assess.title}
                       module={`${module.module_code} ${module.module_name}`}
-                      countdown={
-                        countdowns[assess.assessment_id]?.text || "--:--:--"
-                      }
-                      status={
-                        countdowns[assess.assessment_id]?.status ||
-                        "not_started"
-                      }
-                      date={new Date(assess.deadline).toLocaleString()}
+                      open_at={assess.open_at}
+                      close_at={assess.close_at}
+                      deadline={assess.deadline}
                       onClick={() =>
                         handleEventCardClick(
                           module.module_id,

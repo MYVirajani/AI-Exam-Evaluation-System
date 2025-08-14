@@ -358,8 +358,8 @@ export default function QuizAssessmentPage() {
               {hasSubmissions && (
                 <Button
                   onClick={handleViewResults}
-                  variant="outline"
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-500 text-white border-none hover:opacity-90"
+                  variant="primary"
+                  className=""
                 >
                   <BarChart3 className="w-4 h-4" />
                   View Results

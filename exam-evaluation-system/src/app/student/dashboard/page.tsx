@@ -7,7 +7,6 @@ import {
   FiChevronRight,
   FiCalendar,
   FiBook,
-  FiClock,
   FiTrendingUp,
 } from "react-icons/fi";
 import StudentEventCard from "./StudentEventCard";
@@ -16,8 +15,6 @@ import Button from "@/components/Button";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import toast from "react-hot-toast";
 import EnrollModulePopup from "./ModuleEnrollPopup";
-import { updateAllCountdowns, CountdownResult } from "@/utils/countdownUtils";
-import { formatOpenCloseTime } from "@/utils/date-time";
 
 interface Assessment {
   assessment_id: string;
@@ -46,11 +43,6 @@ const StudentHomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [popupOpen, setPopupOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [countdowns, setCountdowns] = useState<Record<string, CountdownResult>>(
-    {}
-  );
-
-  // Scroll button states
   const [canScrollModuleLeft, setCanScrollModuleLeft] = useState(false);
   const [canScrollModuleRight, setCanScrollModuleRight] = useState(false);
   const [canScrollEventLeft, setCanScrollEventLeft] = useState(false);
@@ -114,50 +106,28 @@ const StudentHomePage: React.FC = () => {
   }, []);
 
   // Flatten all assessments for event cards - include type
-  const allAssessments = useMemo(() => {
-    return modules
-      .flatMap((mod) =>
-        mod.assessments.map((assess) => ({
-          ...assess,
-          module: `${mod.module_code} ${mod.module_name}`,
-          type: assess.type,
-          open_at: assess.open_at,
-          close_at: assess.close_at,
-        }))
-      )
-      .sort((a, b) => {
-        const aTime = a.open_at
-          ? new Date(a.open_at).getTime()
-          : a.close_at
-          ? new Date(a.close_at).getTime()
-          : new Date(a.deadline).getTime();
-        const bTime = b.open_at
-          ? new Date(b.open_at).getTime()
-          : b.close_at
-          ? new Date(b.close_at).getTime()
-          : new Date(b.deadline).getTime();
-        return aTime - bTime;
-      });
-  }, [modules]);
+const allAssessments = useMemo(() => {
+  return modules
+    .flatMap((mod) =>
+      mod.assessments.map((assess) => ({
+        ...assess,
+        module: `${mod.module_code} ${mod.module_name}`,
+        type: assess.type,
+        close_at: assess.close_at,
+        deadline: assess.deadline,
+      }))
+    )
+    .sort((a, b) => {
+      const aTime = a.close_at
+        ? new Date(a.close_at).getTime()
+        : new Date(a.deadline).getTime();
+      const bTime = b.close_at
+        ? new Date(b.close_at).getTime()
+        : new Date(b.deadline).getTime();
+      return aTime - bTime;
+    });
+}, [modules]);
 
-  // Countdown timers update every second
-  useEffect(() => {
-    const updateCountdowns = () => {
-      const newCountdowns = updateAllCountdowns(
-        allAssessments.map((a) => ({
-          assessment_id: a.assessment_id,
-          deadline: a.deadline,
-          open_at: a.open_at,
-          close_at: a.close_at,
-        }))
-      );
-      setCountdowns(newCountdowns);
-    };
-
-    updateCountdowns(); // initial call
-    const timer = setInterval(updateCountdowns, 1000);
-    return () => clearInterval(timer);
-  }, [allAssessments]);
 
   // Update scroll buttons when content changes
   useEffect(() => {
@@ -391,13 +361,9 @@ const StudentHomePage: React.FC = () => {
                     key={assess.assessment_id}
                     title={assess.title}
                     module={assess.module}
-                    countdown={
-                      countdowns[assess.assessment_id]?.text || "--:--:--"
-                    }
-                    status={
-                      countdowns[assess.assessment_id]?.status || "not_started"
-                    }
-                    date={new Date(assess.deadline).toLocaleString()}
+                    open_at={assess.open_at}
+                    close_at={assess.close_at}
+                    deadline={assess.deadline}
                     onClick={() =>
                       handleEventCardClick(
                         assess.module_id,

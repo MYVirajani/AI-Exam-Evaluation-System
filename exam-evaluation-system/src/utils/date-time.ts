@@ -1,4 +1,4 @@
-// lib/date-time.ts
+// utils/date-time.ts
 export function formatDateTime(dateTimeStr: string): string {
   const date = new Date(dateTimeStr);
   const options: Intl.DateTimeFormatOptions = {
@@ -25,6 +25,7 @@ export function formatDuration(minutes: number): string {
   return parts.length > 0 ? parts.join(' ') : '0 minutes';
 }
 
+// utils/date-time.ts
 // open close time formatting
 export function formatOpenCloseTime(
   openAt?: string,

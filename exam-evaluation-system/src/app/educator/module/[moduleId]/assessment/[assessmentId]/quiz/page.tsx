@@ -16,7 +16,7 @@ import {
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
-import { formatOpenCloseTime, formatDuration } from "@/lib/date-time";
+import { formatOpenCloseTime, formatDuration } from "@/utils/date-time";
 
 interface User {
   first_name: string;

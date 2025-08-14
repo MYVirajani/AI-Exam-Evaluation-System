@@ -24,7 +24,7 @@ import {
 import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
 import { toast } from "react-hot-toast";
-import { formatDuration, formatOpenCloseTime } from "@/lib/date-time";
+import { formatDuration, formatOpenCloseTime } from "@/utils/date-time";
 import QuizSection from "./QuizSection"; 
 
 interface Question {

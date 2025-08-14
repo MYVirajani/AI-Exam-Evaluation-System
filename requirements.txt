@@ -357,3 +357,8 @@ pymupdf
 # langchain-google-genai==0.0.9
 # langchain-core==0.1.53
 langchain-google-genai
+
+
+Flask
+Flask-CORS
+python-dotenv

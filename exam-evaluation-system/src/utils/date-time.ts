@@ -25,8 +25,6 @@ export function formatDuration(minutes: number): string {
   return parts.length > 0 ? parts.join(' ') : '0 minutes';
 }
 
-// utils/date-time.ts
-// open close time formatting
 export function formatOpenCloseTime(
   openAt?: string,
   closeAt?: string,
@@ -46,6 +44,7 @@ export function formatOpenCloseTime(
   const hasClose = !!closeAt;
   const hasDeadline = !!deadline;
 
+  const now = new Date();
   const openD = hasOpen ? new Date(openAt!) : null;
   const closeD = hasClose ? new Date(closeAt!) : null;
   const deadlineD = hasDeadline ? new Date(deadline!) : null;
@@ -56,30 +55,39 @@ export function formatOpenCloseTime(
   const parts: string[] = [];
 
   if (hasOpen && hasClose) {
+    const isOpenPast = openD! <= now;
+    const isClosePast = closeD! <= now;
+
+    const openPrefix = isOpenPast ? "Opened at" : "Opens at";
+    const closePrefix = isClosePast ? "closed at" : "closes at";
+
     if (sameDay) {
       parts.push(
-        `Opens at ${openD!.toLocaleTimeString([], timeOpts)} and closes at ${closeD!.toLocaleTimeString([], timeOpts)} on ${openD!.toLocaleDateString([], dateOpts)}`
+        `${openPrefix} ${openD!.toLocaleTimeString([], timeOpts)} and ${closePrefix} ${closeD!.toLocaleTimeString([], timeOpts)} on ${openD!.toLocaleDateString([], dateOpts)}`
       );
     } else {
       parts.push(
-        `Opens at ${openD!.toLocaleTimeString([], timeOpts)} on ${openD!.toLocaleDateString([], dateOpts)} and closes at ${closeD!.toLocaleTimeString([], timeOpts)} on ${closeD!.toLocaleDateString([], dateOpts)}`
+        `${openPrefix} ${openD!.toLocaleTimeString([], timeOpts)} on ${openD!.toLocaleDateString([], dateOpts)} and ${closePrefix} ${closeD!.toLocaleTimeString([], timeOpts)} on ${closeD!.toLocaleDateString([], dateOpts)}`
       );
     }
   } else if (hasOpen) {
+    const isOpenPast = openD! <= now;
+    const prefix = isOpenPast ? "Opened at" : "Opens at";
     parts.push(
-      `Opens at ${openD!.toLocaleTimeString([], timeOpts)} on ${openD!.toLocaleDateString([], dateOpts)}`
+      `${prefix} ${openD!.toLocaleTimeString([], timeOpts)} on ${openD!.toLocaleDateString([], dateOpts)}`
     );
   } else if (hasClose) {
+    const isClosePast = closeD! <= now;
+    const prefix = isClosePast ? "Closed at" : "Closes at";
     parts.push(
-      `Closes at ${closeD!.toLocaleTimeString([], timeOpts)} on ${closeD!.toLocaleDateString([], dateOpts)}`
+      `${prefix} ${closeD!.toLocaleTimeString([], timeOpts)} on ${closeD!.toLocaleDateString([], dateOpts)}`
     );
   }
 
-  // Uncomment if you want deadline to display:
-  // if (hasDeadline) {
-  //   parts.push(`Deadline: ${deadlineD!.toLocaleDateString([], dateOpts)}`);
-  // }
+  // Show deadline only if both openAt and closeAt are missing
+  if (hasDeadline && !hasOpen && !hasClose) {
+    parts.push(`Deadline: ${deadlineD!.toLocaleDateString([], dateOpts)}`);
+  }
 
   return parts.length > 0 ? parts.join(" · ") + "." : "";
 }
-

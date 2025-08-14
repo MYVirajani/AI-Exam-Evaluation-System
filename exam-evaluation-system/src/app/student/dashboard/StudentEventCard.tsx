@@ -13,7 +13,7 @@ interface StudentEventCardProps {
   module: string;
   countdown: string;
   status: AssessmentStatus;
-  date?: string;
+  date: string;
   onClick?: () => void;
 }
 

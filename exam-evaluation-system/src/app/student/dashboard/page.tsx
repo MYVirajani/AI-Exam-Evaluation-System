@@ -2,13 +2,22 @@
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { FiChevronLeft, FiChevronRight, FiCalendar, FiBook, FiClock, FiTrendingUp } from "react-icons/fi";
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiCalendar,
+  FiBook,
+  FiClock,
+  FiTrendingUp,
+} from "react-icons/fi";
 import StudentEventCard from "./StudentEventCard";
 import StudentModuleCard from "./StudentModuleCard";
 import Button from "@/components/Button";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import toast from "react-hot-toast";
 import EnrollModulePopup from "./ModuleEnrollPopup";
+import { updateAllCountdowns, CountdownResult } from "@/utils/countdownUtils";
+import { formatOpenCloseTime } from "@/utils/date-time";
 
 interface Assessment {
   assessment_id: string;
@@ -16,6 +25,8 @@ interface Assessment {
   title: string;
   type: string;
   deadline: string;
+  open_at: string;
+  close_at: string;
 }
 
 interface Module {
@@ -35,7 +46,9 @@ const StudentHomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [popupOpen, setPopupOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [countdowns, setCountdowns] = useState<Record<string, string>>({});
+  const [countdowns, setCountdowns] = useState<Record<string, CountdownResult>>(
+    {}
+  );
 
   // Scroll button states
   const [canScrollModuleLeft, setCanScrollModuleLeft] = useState(false);
@@ -101,49 +114,43 @@ const StudentHomePage: React.FC = () => {
   }, []);
 
   // Flatten all assessments for event cards - include type
- const allAssessments = useMemo(() => {
-  return modules
-    .flatMap((mod) =>
-      mod.assessments.map((assess) => ({
-        ...assess,
-        module: `${mod.module_code} ${mod.module_name}`,
-        type: assess.type,
-      }))
-    )
-    .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
-}, [modules]);
-
+  const allAssessments = useMemo(() => {
+    return modules
+      .flatMap((mod) =>
+        mod.assessments.map((assess) => ({
+          ...assess,
+          module: `${mod.module_code} ${mod.module_name}`,
+          type: assess.type,
+          open_at: assess.open_at,
+          close_at: assess.close_at,
+        }))
+      )
+      .sort((a, b) => {
+        const aTime = a.open_at
+          ? new Date(a.open_at).getTime()
+          : a.close_at
+          ? new Date(a.close_at).getTime()
+          : new Date(a.deadline).getTime();
+        const bTime = b.open_at
+          ? new Date(b.open_at).getTime()
+          : b.close_at
+          ? new Date(b.close_at).getTime()
+          : new Date(b.deadline).getTime();
+        return aTime - bTime;
+      });
+  }, [modules]);
 
   // Countdown timers update every second
   useEffect(() => {
     const updateCountdowns = () => {
-      const now = Date.now();
-      const newCountdowns: Record<string, string> = {};
-
-      allAssessments.forEach(({ assessment_id, deadline }) => {
-        const deadlineTime = new Date(deadline).getTime();
-        const diff = deadlineTime - now;
-
-        if (diff <= 0) {
-          newCountdowns[assessment_id] = "Expired";
-        } else {
-          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-          const hours = Math.floor(
-            (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-          );
-          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-          const parts: string[] = [];
-          if (days > 0) parts.push(`${days}d`);
-          if (hours > 0 || parts.length > 0) parts.push(`${hours}h`);
-          if (minutes > 0 || parts.length > 0) parts.push(`${minutes}m`);
-          parts.push(`${seconds}s`);
-
-          newCountdowns[assessment_id] = parts.join(" ");
-        }
-      });
-
+      const newCountdowns = updateAllCountdowns(
+        allAssessments.map((a) => ({
+          assessment_id: a.assessment_id,
+          deadline: a.deadline,
+          open_at: a.open_at,
+          close_at: a.close_at,
+        }))
+      );
       setCountdowns(newCountdowns);
     };
 
@@ -173,8 +180,12 @@ const StudentHomePage: React.FC = () => {
   }, [modules, allAssessments]);
 
   // Navigate to assessment detail page on event card click - Updated with type-based routing
-  const handleEventCardClick = (moduleId: string, assessmentId: string, assessmentType: string) => {
-    if (assessmentType === 'quiz') {
+  const handleEventCardClick = (
+    moduleId: string,
+    assessmentId: string,
+    assessmentType: string
+  ) => {
+    if (assessmentType === "quiz") {
       router.push(
         `/student/quiz/${assessmentId}?studentId=${userId}&moduleId=${moduleId}`
       );
@@ -241,7 +252,6 @@ const StudentHomePage: React.FC = () => {
 
       {/* Main Content Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
         {/* Hero Section */}
         <div className="relative overflow-hidden">
           <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl p-8 md:p-12 text-white relative">
@@ -257,7 +267,8 @@ const StudentHomePage: React.FC = () => {
                     Welcome Back!
                   </h1>
                   <p className="text-blue-100 text-lg md:text-xl max-w-2xl">
-                    Track your progress, manage assignments, and explore your enrolled modules all in one place.
+                    Track your progress, manage assignments, and explore your
+                    enrolled modules all in one place.
                   </p>
                 </div>
                 <div className="hidden lg:block">
@@ -267,7 +278,7 @@ const StudentHomePage: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Decorative Elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/10 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-white/5 to-transparent rounded-full translate-y-24 -translate-x-24"></div>
@@ -279,28 +290,36 @@ const StudentHomePage: React.FC = () => {
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Enrolled Modules</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{modules.length}</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Enrolled Modules
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {modules.length}
+                </p>
               </div>
               <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <FiBook className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Upcoming Events</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{allAssessments.length}</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Upcoming Events
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {allAssessments.length}
+                </p>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center">
                 <FiCalendar className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </div>
-          
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+
+          {/* <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Deadlines</p>
@@ -312,7 +331,7 @@ const StudentHomePage: React.FC = () => {
                 <FiClock className="h-6 w-6 text-orange-600" />
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Upcoming Events Section */}
@@ -320,8 +339,12 @@ const StudentHomePage: React.FC = () => {
           <div className="px-6 py-5 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Upcoming Events</h2>
-                <p className="text-gray-600 mt-1">Track your assignment deadlines and assessments</p>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Upcoming Events
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  Track your assignment deadlines and assessments
+                </p>
               </div>
               <div className="flex items-center space-x-2">
                 {canScrollEventLeft && (
@@ -343,16 +366,19 @@ const StudentHomePage: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="p-6">
             {allAssessments.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FiCalendar className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No upcoming events</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No upcoming events
+                </h3>
                 <p className="text-gray-600 max-w-sm mx-auto">
-                  You have no upcoming events at the moment. Stay tuned for updates!
+                  You have no upcoming events at the moment. Stay tuned for
+                  updates!
                 </p>
               </div>
             ) : (
@@ -365,10 +391,19 @@ const StudentHomePage: React.FC = () => {
                     key={assess.assessment_id}
                     title={assess.title}
                     module={assess.module}
-                    countdown={countdowns[assess.assessment_id] || "--:--:--"}
+                    countdown={
+                      countdowns[assess.assessment_id]?.text || "--:--:--"
+                    }
+                    status={
+                      countdowns[assess.assessment_id]?.status || "not_started"
+                    }
                     date={new Date(assess.deadline).toLocaleString()}
                     onClick={() =>
-                      handleEventCardClick(assess.module_id, assess.assessment_id,  assess.type)
+                      handleEventCardClick(
+                        assess.module_id,
+                        assess.assessment_id,
+                        assess.type
+                      )
                     }
                   />
                 ))}
@@ -382,8 +417,12 @@ const StudentHomePage: React.FC = () => {
           <div className="px-6 py-5 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Enrolled Modules</h2>
-                <p className="text-gray-600 mt-1">Access your enrolled courses and materials</p>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Enrolled Modules
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  Access your enrolled courses and materials
+                </p>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
@@ -415,16 +454,19 @@ const StudentHomePage: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="p-6">
             {modules.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FiBook className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No enrolled modules</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No enrolled modules
+                </h3>
                 <p className="text-gray-600 max-w-sm mx-auto mb-6">
-                  You are not enrolled in any modules yet. Please enroll to start learning.
+                  You are not enrolled in any modules yet. Please enroll to
+                  start learning.
                 </p>
                 {/* <Button
                   variant="primary"

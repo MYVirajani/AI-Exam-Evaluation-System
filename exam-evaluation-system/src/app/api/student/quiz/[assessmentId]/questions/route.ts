@@ -8,7 +8,7 @@ import {
   findSubsetBySum,
   normalizeWithCents,
   stripHelperField,
-} from "@/lib/quiz-utils";
+} from "@/utils/quiz-utils";
 
 export async function GET(req: NextRequest, { params }: { params: { assessmentId: string } }) {
   try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Minus, BookOpen, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Minus, BookOpen, AlertCircle, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
@@ -75,6 +75,56 @@ export default function QuizSection({
     return type === "MCQ"
       ? "Multiple Choice Question"
       : "Short Answer Question";
+  };
+
+  // Helper function to check if a single question is complete
+  const isQuestionComplete = (question: Question): boolean => {
+    // Check basic requirements
+    if (!question.question.trim()) return false;
+    if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) return false;
+    
+    if (question.type === "MCQ") {
+      const validOptions = question.mcq_answer_options.filter(opt => opt.trim() !== "");
+      if (validOptions.length < 2) return false;
+      if (!question.model_answer.trim() || 
+          !question.mcq_answer_options.some(opt => opt.trim() === question.model_answer.trim())) {
+        return false;
+      }
+    } else if (question.type === "SHORT") {
+      if (!question.model_answer.trim()) return false;
+    }
+    
+    return true;
+  };
+
+  // Helper function to get specific validation issues for a question
+  const getQuestionValidationIssues = (question: Question): string[] => {
+    const issues: string[] = [];
+    
+    if (!question.question.trim()) {
+      issues.push("Question text required");
+    }
+    
+    if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) {
+      issues.push("Valid marks required");
+    }
+    
+    if (question.type === "MCQ") {
+      const validOptions = question.mcq_answer_options.filter(opt => opt.trim() !== "");
+      if (validOptions.length < 2) {
+        issues.push("At least 2 answer options required");
+      }
+      if (validOptions.length >= 2 && (!question.model_answer.trim() || 
+          !question.mcq_answer_options.some(opt => opt.trim() === question.model_answer.trim()))) {
+        issues.push("Please select the correct answer");
+      }
+    } else if (question.type === "SHORT") {
+      if (!question.model_answer.trim()) {
+        issues.push("Model answer required");
+      }
+    }
+    
+    return issues;
   };
 
   // Helper function to normalize text for comparison
@@ -239,12 +289,12 @@ export default function QuizSection({
       
       // Show success toast
       toast.success(`Successfully imported ${processedQuestions.length} question(s)!`, {
-        duration: 4000,
+        duration: 5000,
       });
       
       if (duplicatesCount > 0) {
         toast(`${duplicatesCount} duplicate(s) were skipped`, {
-          duration: 3000,
+          duration: 5000,
         });
       }
       
@@ -384,13 +434,30 @@ export default function QuizSection({
               {questions.map((question, questionIndex) => (
                 <div
                   key={`question-${questionIndex}-${question.question_id || Date.now()}`}
-                  className="border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-blue-300 transition-colors"
+                  className={`border-2 rounded-2xl overflow-hidden transition-all duration-200 ${
+                    isQuestionComplete(question) 
+                      ? 'border-green-200 hover:border-green-300 bg-green-50/30' 
+                      : 'border-amber-200 hover:border-amber-300 bg-amber-50/30'
+                  }`}
                 >
-                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-4 border-b border-gray-200">
+                  <div className={`px-6 py-4 border-b ${
+                    isQuestionComplete(question)
+                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                      : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+                  }`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-lg">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg text-white relative ${
+                          isQuestionComplete(question) 
+                            ? 'bg-gradient-to-r from-green-600 to-green-700' 
+                            : 'bg-gradient-to-r from-amber-600 to-orange-600'
+                        }`}>
                           {questionIndex + 1}
+                          {isQuestionComplete(question) && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                              <CheckCircle className="w-3 h-3 text-white" />
+                            </div>
+                          )}
                         </div>
                         <div className="w-auto">
                           <Dropdown
@@ -437,6 +504,16 @@ export default function QuizSection({
                         </Button>
                       </div>
                     </div>
+                    
+                    {/* Add completion status indicator */}
+                    {!isQuestionComplete(question) && (
+                      <div className="mt-3 flex items-center gap-2 text-sm text-amber-800 bg-amber-100 px-3 py-2 rounded-lg border border-amber-300">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          {getQuestionValidationIssues(question).join(" • ")}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-6">

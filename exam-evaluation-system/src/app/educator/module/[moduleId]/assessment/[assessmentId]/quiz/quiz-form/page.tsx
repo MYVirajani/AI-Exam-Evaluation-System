@@ -351,84 +351,126 @@ export default function QuizFormPage() {
     return parseFloat(total.toFixed(2));
   };
 
-  // ---- VALIDATION (with time window + deadline rules) ----
-  const validateForm = () => {
-    if (!formData.title.trim()) return "Quiz title is required";
-    // if (formData.questions.length === 0)
-    //   return "At least one question is required";
-
-    if (formData.maxMarks && formData.maxMarks <= 0)
-      return "Max marks must be greater than 0";
-    if (formData.maxMarks && formData.maxMarks > calculateTotalMarks())
-      return "Max marks cannot exceed total marks from all questions";
-
-    // if (formData.maxQuestions && formData.maxQuestions <= 0)
-    //   return "Max questions must be greater than 0";
-    if (formData.password && formData.password.length < 6)
-      return "If a password is set, it must be at least 6 characters";
-    // if (
-    //   formData.maxQuestions &&
-    //   formData.maxQuestions > formData.questions.length
-    // )
-    //   return "Max questions cannot exceed total created questions";
-
-    const { openAt, closeAt, deadline, duration } = formData;
-    const hasOpen = !!openAt;
-    const hasClose = !!closeAt;
-    const hasDeadline = !!deadline;
-
-    if (hasOpen !== hasClose) {
-      return "Please provide both 'Opens at' and 'Closes at' times.";
-    }
-
-    if (hasOpen && hasClose) {
-      const openD = new Date(openAt);
-      const closeD = new Date(closeAt);
-
-      if (isNaN(openD.getTime()) || isNaN(closeD.getTime()))
-        return "Invalid open/close time.";
-
-      if (openD >= closeD) return "Open time must be before close time.";
-
-      const durMin = Number(duration);
-      if (!Number.isFinite(durMin) || durMin <= 0)
-        return "Duration must be a positive number of minutes.";
-      const diffMs = closeD.getTime() - openD.getTime();
-      const minGapMs = durMin * 60 * 1000;
-      if (diffMs < minGapMs) {
-        return `Open and close times must be at least the quiz duration apart (${durMin} minute${
-          durMin === 1 ? "" : "s"
-        }).`;
+ // Add this helper function to check if all questions have complete answers
+const checkAllQuestionsComplete = (): { isComplete: boolean; missingAnswers: string[] } => {
+  const missingAnswers: string[] = [];
+  
+  formData.questions.forEach((question, index) => {
+    const questionNumber = index + 1;
+    
+    if (question.type === "MCQ") {
+      // Check if there are at least 2 non-empty options
+      const validOptions = question.mcq_answer_options.filter(opt => opt.trim() !== "");
+      if (validOptions.length < 2) {
+        missingAnswers.push(`Question ${questionNumber}: At least 2 answer options required`);
       }
-
-      if (!hasDeadline)
-        return "Deadline is required when open/close times are set.";
-
-      const deadlineD = new Date(deadline);
-      if (isNaN(deadlineD.getTime())) return "Invalid deadline.";
-    }
-
-    for (let i = 0; i < formData.questions.length; i++) {
-      const q = formData.questions[i];
-      if (!q.question.trim()) return `Question ${i + 1} text is required`;
-      if (!q.marks_allowed || parseFloat(q.marks_allowed) <= 0)
-        return `Question ${i + 1} must have valid marks`;
-
-      if (q.type === "MCQ") {
-        const validOptions = q.mcq_answer_options.filter((opt) => opt.trim());
-        if (validOptions.length < 2)
-          return `Question ${i + 1} must have at least 2 answer options`;
-        if (!q.model_answer.trim())
-          return `Question ${i + 1} must have a correct answer selected`;
-      } else if (q.type === "SHORT") {
-        if (!q.model_answer.trim())
-          return `Question ${i + 1} must have a model answer`;
+      
+      // Check if a correct answer is selected
+      if (!question.model_answer.trim() || 
+          !question.mcq_answer_options.some(opt => opt.trim() === question.model_answer.trim())) {
+        missingAnswers.push(`Question ${questionNumber}: No correct answer selected`);
+      }
+    } else if (question.type === "SHORT") {
+      // Check if model answer is provided
+      if (!question.model_answer.trim()) {
+        missingAnswers.push(`Question ${questionNumber}: Model answer required`);
       }
     }
-
-    return null;
+    
+    // Check if question text is provided
+    if (!question.question.trim()) {
+      missingAnswers.push(`Question ${questionNumber}: Question text required`);
+    }
+    
+    // Check if marks are provided
+    if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) {
+      missingAnswers.push(`Question ${questionNumber}: Valid marks required`);
+    }
+  });
+  
+  return {
+    isComplete: missingAnswers.length === 0,
+    missingAnswers
   };
+};
 
+// Update the validateForm function to use the new check
+const validateForm = () => {
+  if (!formData.title.trim()) return "Quiz title is required";
+  
+  // Check if there are any questions
+  if (formData.questions.length === 0) {
+    return "At least one question is required";
+  }
+  
+  // Check if all questions are complete
+  const { isComplete, missingAnswers } = checkAllQuestionsComplete();
+  if (!isComplete) {
+    return `Please complete all questions:\n${missingAnswers.join('\n')}`;
+  }
+
+  if (formData.maxMarks && formData.maxMarks <= 0)
+    return "Max marks must be greater than 0";
+  if (formData.maxMarks && formData.maxMarks > calculateTotalMarks())
+    return "Max marks cannot exceed total marks from all questions";
+
+  if (formData.password && formData.password.length < 6)
+    return "If a password is set, it must be at least 6 characters";
+
+  const { openAt, closeAt, deadline, duration } = formData;
+  const hasOpen = !!openAt;
+  const hasClose = !!closeAt;
+  const hasDeadline = !!deadline;
+
+  if (hasOpen !== hasClose) {
+    return "Please provide both 'Opens at' and 'Closes at' times.";
+  }
+
+  if (hasOpen && hasClose) {
+    const openD = new Date(openAt);
+    const closeD = new Date(closeAt);
+
+    if (isNaN(openD.getTime()) || isNaN(closeD.getTime()))
+      return "Invalid open/close time.";
+
+    if (openD >= closeD) return "Open time must be before close time.";
+
+    const durMin = Number(duration);
+    if (!Number.isFinite(durMin) || durMin <= 0)
+      return "Duration must be a positive number of minutes.";
+    const diffMs = closeD.getTime() - openD.getTime();
+    const minGapMs = durMin * 60 * 1000;
+    if (diffMs < minGapMs) {
+      return `Open and close times must be at least the quiz duration apart (${durMin} minute${
+        durMin === 1 ? "" : "s"
+      }).`;
+    }
+
+    if (!hasDeadline)
+      return "Deadline is required when open/close times are set.";
+
+    const deadlineD = new Date(deadline);
+    if (isNaN(deadlineD.getTime())) return "Invalid deadline.";
+  }
+
+  return null;
+};
+
+// Add a helper to check if save should be disabled
+const isSaveDisabled = (): boolean => {
+  // Basic checks
+  if (!formData.title.trim()) return true;
+  if (formData.questions.length === 0) return true;
+  
+  // Check if all questions are complete
+  const { isComplete } = checkAllQuestionsComplete();
+  if (!isComplete) return true;
+  
+  // Check if currently saving
+  if (saving) return true;
+  
+  return false;
+};
   const handleSave = async () => {
     const validationError = validateForm();
     if (validationError) {
@@ -1225,117 +1267,133 @@ export default function QuizFormPage() {
           assessmentId={assessmentId}
         />
         {/* Action Buttons (with inline error & scroll ref) */}
-        <div
-          ref={actionBarRef}
-          className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
-        >
-          {/* Inline error above quick stats */}
-          {error && (
-            <div className="mb-6 p-4 rounded-lg border border-red-200 bg-red-50 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0">
-                  <AlertCircle className="w-5 h-5 text-red-500" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium text-red-800 mb-1">
-                    Error
-                  </h4>
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
+       {/* Action Buttons (with inline error & scroll ref) */}
+<div
+  ref={actionBarRef}
+  className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
+>
+  {/* Inline error above quick stats */}
+  {error && (
+    <div className="mb-6 p-4 rounded-lg border border-red-200 bg-red-50 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0">
+          <AlertCircle className="w-5 h-5 text-red-500" />
+        </div>
+        <div className="flex-1">
+          <h4 className="text-sm font-medium text-red-800 mb-1">
+            Error
+          </h4>
+          <p className="text-sm text-red-700 whitespace-pre-line">{error}</p>
+        </div>
+      </div>
+    </div>
+  )}
 
-          <div className="flex items-center justify-between">
-            {/* Quick Stats */}
-            <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Total Questions
-                  </p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formData.questions.length}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center">
-                  <Award className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    {formData.maxMarks ? "Max Marks" : "Total Marks"}
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formData.maxMarks || calculateTotalMarks()}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Duration</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {formData.duration}min
-                  </p>
-                </div>
-              </div>
-
-              {/* {formData.maxQuestions && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center">
-                    <Target className="w-6 h-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Shown Questions
-                    </p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {formData.maxQuestions}
-                    </p>
-                  </div>
-                </div>
-              )} */}
-            </div>
-
-            {/* Buttons */}
-            <div className="flex items-center gap-4">
-              <Button
-                onClick={handleGoBack}
-                variant="outline"
-                className=""
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className=""
-                variant="primary"
-              >
-                {saving ? (
-                  <div className="flex items-center gap-3">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    <span>Saving Quiz...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Save className="w-5 h-5" />
-                    <span>Save Quiz</span>
-                  </div>
-                )}
-              </Button>
-            </div>
+  {/* Warning for incomplete questions */}
+  {(() => {
+    const { isComplete, missingAnswers } = checkAllQuestionsComplete();
+    return !isComplete && formData.questions.length > 0 && (
+      <div className="mb-6 p-4 rounded-lg border border-amber-200 bg-amber-50 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0">
+            <AlertCircle className="w-5 h-5 text-amber-500" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-medium text-amber-800 mb-2">
+              Questions Need Completion
+            </h4>
+            <ul className="text-sm text-amber-700 space-y-1">
+              {missingAnswers.slice(0, 5).map((issue, index) => (
+                <li key={index}>• {issue}</li>
+              ))}
+              {missingAnswers.length > 5 && (
+                <li className="italic">... and {missingAnswers.length - 5} more issues</li>
+              )}
+            </ul>
           </div>
         </div>
+      </div>
+    );
+  })()}
+
+  <div className="flex items-center justify-between">
+    {/* Quick Stats */}
+    <div className="flex items-center space-x-8">
+      <div className="flex items-center space-x-3">
+        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
+          <BookOpen className="w-6 h-6 text-blue-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600">
+            Total Questions
+          </p>
+          <p className="text-2xl font-bold text-blue-600">
+            {formData.questions.length}
+          </p>
+        </div>
+      </div>
+
+      {/* Completion Status */}
+      {/* <CompletionIndicator /> */}
+
+      <div className="flex items-center space-x-3">
+        <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center">
+          <Award className="w-6 h-6 text-green-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600">
+            {formData.maxMarks ? "Max Marks" : "Total Marks"}
+          </p>
+          <p className="text-2xl font-bold text-green-600">
+            {formData.maxMarks || calculateTotalMarks()}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-3">
+        <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
+          <Clock className="w-6 h-6 text-purple-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600">Duration</p>
+          <p className="text-2xl font-bold text-purple-600">
+            {formData.duration}min
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Buttons */}
+    <div className="flex items-center gap-4">
+      <Button
+        onClick={handleGoBack}
+        variant="outline"
+        className=""
+      >
+        Cancel
+      </Button>
+      <Button
+        onClick={handleSave}
+        disabled={isSaveDisabled()}
+        className={`${isSaveDisabled() ? 'opacity-50 cursor-not-allowed' : ''}`}
+        variant="primary"
+        title={isSaveDisabled() ? 'Please complete all questions before saving' : 'Save quiz'}
+      >
+        {saving ? (
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+            <span>Saving Quiz...</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Save className="w-5 h-5" />
+            <span>Save Quiz</span>
+          </div>
+        )}
+      </Button>
+    </div>
+  </div>
+</div>
       </div>
     </div>
   );

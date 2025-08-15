@@ -1,7 +1,7 @@
 "use client";
 
 import { Upload, FileText, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 
@@ -22,6 +22,23 @@ export default function ImportQuestions({ onImport }: ImportQuestionsProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dropdownDirection, setDropdownDirection] = useState<"top" | "bottom">("bottom");
+
+  useEffect(() => {
+    const checkSpace = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        setDropdownDirection(spaceBelow < 200 && spaceAbove > spaceBelow ? "top" : "bottom");
+      }
+    };
+
+    checkSpace();
+    window.addEventListener("resize", checkSpace);
+    return () => window.removeEventListener("resize", checkSpace);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -64,7 +81,7 @@ export default function ImportQuestions({ onImport }: ImportQuestionsProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm" ref={containerRef}>
       <div className="flex items-center gap-2">
         <Dropdown
           options={supportedFormats.map(f => f.label)}
@@ -74,7 +91,7 @@ export default function ImportQuestions({ onImport }: ImportQuestionsProps) {
             setSelectedFormat(format);
           }}
           className="w-48"
-          buttonClassName="text-sm"
+          direction={dropdownDirection}
         />
         <label className="flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors px-3 py-2 rounded-lg border border-gray-300">
           <Upload className="w-4 h-4 mr-2 text-gray-500" />

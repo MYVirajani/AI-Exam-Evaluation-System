@@ -99,7 +99,7 @@ export default function QuizSection({
               Create and manage your quiz questions
             </p>
           </div>
-          <div className="flex gap-2">
+          {/* <div className="flex gap-2">
             <ImportQuestions onImport={handleImport} />
             <Button
               onClick={onAddQuestion}
@@ -109,7 +109,7 @@ export default function QuizSection({
               <Plus className="w-4 h-4" />
               Add Question
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
 

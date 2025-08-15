@@ -1228,6 +1228,7 @@ export default function QuizFormPage() {
           onAddMCQOption={addMCQOption}
           onRemoveMCQOption={removeMCQOption}
           onRemoveQuestion={removeQuestion}
+          assessmentId={assessmentId}
         />
         {/* Action Buttons (with inline error & scroll ref) */}
         <div

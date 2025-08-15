@@ -48,37 +48,48 @@ export default function ImportQuestions({ onImport }: ImportQuestionsProps) {
   };
 
   const handleImport = async () => {
-    if (!file) {
-      setError("Please select a file first");
-      return;
-    }
+  if (!file) {
+    setError("Please select a file first");
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("format", selectedFormat);
-
-      const response = await fetch("/api/student/assessment/quiz/import-questions", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const data = await response.json();
-      onImport(data.questions);
-      setFile(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import questions");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    // Simulate API delay for realistic behavior
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Mock response data
+    const mockResponse = {
+      questions: [
+        {
+          "type": "MCQ",
+          "question": "What is the capital of France?",
+          "correctAnswer": "Paris",
+          "options": ["London", "Paris", "Berlin", "Madrid"],
+          "marks": 1
+        },
+        {
+          "type": "SHORT",
+          "question": "Name the largest ocean on Earth",
+          "correctAnswer": "Pacific Ocean",
+          "options": [],
+          "marks": 2
+        }
+      ]
+    };
+console.log('mockResponse.questions: ', mockResponse.questions);
+    // Pass the mock data to the onImport callback
+    onImport(mockResponse.questions);
+    setFile(null);
+    
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Failed to import questions");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm" ref={containerRef}>

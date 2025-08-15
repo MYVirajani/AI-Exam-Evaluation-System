@@ -74,7 +74,7 @@ interface QuizFormData {
   instructions: string[];
   questions: Question[];
   maxMarks: number | null;
-  maxQuestions: number | null;
+  // maxQuestions: number | null;
   shuffleQuestions: boolean;
   autoGrade: boolean;
   backNavigation: boolean;
@@ -111,7 +111,7 @@ export default function QuizFormPage() {
     instructions: [""],
     questions: [],
     maxMarks: null,
-    maxQuestions: null,
+    // maxQuestions: null,
     shuffleQuestions: true,
     autoGrade: false,
     backNavigation: true,
@@ -184,7 +184,7 @@ export default function QuizFormPage() {
           maxMarks: enrichedAssessment.max_marks
             ? Number(enrichedAssessment.max_marks)
             : null,
-          maxQuestions: enrichedAssessment.question_count || null,
+          // maxQuestions: enrichedAssessment.question_count || null,
           autoGrade: enrichedAssessment.auto_grade ?? false,
           backNavigation: enrichedAssessment.back_navigation ?? true,
           caseSensitive: enrichedAssessment.case_sensitive_evaluation ?? false,
@@ -354,23 +354,23 @@ export default function QuizFormPage() {
   // ---- VALIDATION (with time window + deadline rules) ----
   const validateForm = () => {
     if (!formData.title.trim()) return "Quiz title is required";
-    if (formData.questions.length === 0)
-      return "At least one question is required";
+    // if (formData.questions.length === 0)
+    //   return "At least one question is required";
 
     if (formData.maxMarks && formData.maxMarks <= 0)
       return "Max marks must be greater than 0";
     if (formData.maxMarks && formData.maxMarks > calculateTotalMarks())
       return "Max marks cannot exceed total marks from all questions";
 
-    if (formData.maxQuestions && formData.maxQuestions <= 0)
-      return "Max questions must be greater than 0";
+    // if (formData.maxQuestions && formData.maxQuestions <= 0)
+    //   return "Max questions must be greater than 0";
     if (formData.password && formData.password.length < 6)
       return "If a password is set, it must be at least 6 characters";
-    if (
-      formData.maxQuestions &&
-      formData.maxQuestions > formData.questions.length
-    )
-      return "Max questions cannot exceed total created questions";
+    // if (
+    //   formData.maxQuestions &&
+    //   formData.maxQuestions > formData.questions.length
+    // )
+    //   return "Max questions cannot exceed total created questions";
 
     const { openAt, closeAt, deadline, duration } = formData;
     const hasOpen = !!openAt;
@@ -497,7 +497,7 @@ export default function QuizFormPage() {
         caseSensitive: formData.caseSensitive,
         maxMarks: formData.maxMarks,
         maxAttempts: formData.maxAttempts,
-        questionCount: formData.maxQuestions,
+        // questionCount: formData.maxQuestions,
         openAt: formData.openAt || null,
         closeAt: formData.closeAt || null,
         totalMarks: calculateTotalMarks(),
@@ -630,10 +630,7 @@ export default function QuizFormPage() {
                       <span className="font-medium">Questions:</span>
                     </div>
                     <span className="font-bold text-gray-900">
-                      {formData.maxQuestions &&
-                      formData.maxQuestions !== formData.questions.length
-                        ? `${formData.maxQuestions}/${formData.questions.length}`
-                        : formData.questions.length}
+                      {formData.questions.length}
                     </span>
                   </div>
 
@@ -730,10 +727,7 @@ export default function QuizFormPage() {
                   <div className="flex items-center space-x-1">
                     <BookOpen className="w-4 h-4 text-blue-600" />
                     <span className="font-bold">
-                      {formData.maxQuestions &&
-                      formData.maxQuestions !== formData.questions.length
-                        ? `${formData.maxQuestions}/${formData.questions.length}`
-                        : formData.questions.length}
+                     { formData.questions.length}
                     </span>
                   </div>
                   <div className="w-px h-4 bg-gray-300"></div>
@@ -1295,7 +1289,7 @@ export default function QuizFormPage() {
                 </div>
               </div>
 
-              {formData.maxQuestions && (
+              {/* {formData.maxQuestions && (
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center">
                     <Target className="w-6 h-6 text-orange-600" />
@@ -1309,7 +1303,7 @@ export default function QuizFormPage() {
                     </p>
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
 
             {/* Buttons */}

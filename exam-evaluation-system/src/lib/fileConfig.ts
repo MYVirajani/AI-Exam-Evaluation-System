@@ -20,8 +20,11 @@ export const FILE_CONFIG = {
     types: [".pdf", ".docx", ".pptx", ".xlsx"],
     maxSizeMB: 20,
   },
+  Q_PARSER: {
+    types: [".xlsx", ".xls", ".docx", ".xml", ".xhtml", ".html", ".htm"],
+    maxSizeMB: 10, // Larger size for multi-format question files
+  },
 };
-
 
 export const getMaxSizeInBytes = (mb: number) => mb * 1024 * 1024;
 export const getAcceptedExtensions = (types: string[]) =>

@@ -153,7 +153,7 @@ export default function QuizSection({
     
     // Process unique questions (no conflicts)
     const newQuestions: Question[] = unique.map((q, i) => ({
-      question_id: `imported_${Date.now()}_${i}`,
+      question_id: `imported_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${i}`,
       assessment_id: assessmentId,
       type: q.type === "MCQ" ? "MCQ" : "SHORT" as "MCQ" | "SHORT",
       question_number: String(questions.length + i + 1),
@@ -189,7 +189,7 @@ export default function QuizSection({
           
           // Add similar questions with "(Copy)" suffix
           const similarQuestions: Question[] = similar.map((q, i) => ({
-            question_id: `imported_similar_${Date.now()}_${i}`,
+            question_id: `imported_similar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${i}`,
             assessment_id: assessmentId,
             type: q.type === "MCQ" ? "MCQ" : "SHORT" as "MCQ" | "SHORT",
             question_number: String(questions.length + unique.length + i + 1),
@@ -226,70 +226,88 @@ export default function QuizSection({
     console.log('duplicates skipped: ', duplicatesCount);
     console.log('similar questions modified: ', similarCount);
 
+    // Ensure unique question_ids and question_numbers
+    const processedQuestions = newQuestions.map((q, index) => ({
+      ...q,
+      question_id: `imported_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
+      question_number: String(questions.length + index + 1),
+    }));
+
     // Use the bulk add function if available, otherwise fall back to individual adds
     if (onBulkAddQuestions) {
-      onBulkAddQuestions(newQuestions);
+      onBulkAddQuestions(processedQuestions);
       
       // Show success toast
-      toast.success(`Successfully imported ${newQuestions.length} question(s)!`, {
+      toast.success(`Successfully imported ${processedQuestions.length} question(s)!`, {
         duration: 4000,
       });
       
       if (duplicatesCount > 0) {
         toast(`${duplicatesCount} duplicate(s) were skipped`, {
-          icon: '⚠️',
           duration: 3000,
         });
       }
       
       if (similarCount > 0) {
         toast(`${similarCount} similar question(s) added with "(Copy)" suffix`, {
-          icon: '📝',
           duration: 3000,
         });
       }
     } else {
-      // Fallback method - add questions one by one
+      // Fallback method - THIS IS LIKELY THE ISSUE
+      console.warn('onBulkAddQuestions not available, this may cause issues');
+      
       toast.promise(
-        new Promise<void>((resolve) => {
-          newQuestions.forEach(() => {
-            onAddQuestion();
-          });
-          
-          // Then update each question after they've been added
-          setTimeout(() => {
-            newQuestions.forEach((q, i) => {
-              const index = questions.length + i;
-              onUpdateQuestion(index, "question_id", q.question_id);
-              onUpdateQuestion(index, "assessment_id", q.assessment_id);
-              onUpdateQuestion(index, "type", q.type);
-              onUpdateQuestion(index, "question_number", q.question_number);
-              onUpdateQuestion(index, "question", q.question);
-              onUpdateQuestion(index, "model_answer", q.model_answer);
-              onUpdateQuestion(index, "marks_allowed", q.marks_allowed);
-              
-              if (q.type === "MCQ" && q.mcq_answer_options.length > 0) {
-                q.mcq_answer_options.forEach((opt: string, optIndex: number) => {
-                  if (optIndex === 0 || optIndex === 1) {
-                    // First two options should already exist
-                    onUpdateMCQOption(index, optIndex, opt);
-                  } else {
-                    // Add additional options
-                    onAddMCQOption(index);
-                    setTimeout(() => {
-                      onUpdateMCQOption(index, optIndex, opt);
-                    }, 50);
+        new Promise<void>((resolve, reject) => {
+          try {
+            // Add empty questions first
+            for (let i = 0; i < processedQuestions.length; i++) {
+              onAddQuestion();
+            }
+            
+            // Wait for the questions to be added to the state
+            setTimeout(() => {
+              try {
+                processedQuestions.forEach((q, i) => {
+                  const questionIndex = questions.length + i;
+                  
+                  // Update all fields for the new question
+                  onUpdateQuestion(questionIndex, "question_id", q.question_id);
+                  onUpdateQuestion(questionIndex, "assessment_id", q.assessment_id);
+                  onUpdateQuestion(questionIndex, "type", q.type);
+                  onUpdateQuestion(questionIndex, "question_number", q.question_number);
+                  onUpdateQuestion(questionIndex, "question", q.question);
+                  onUpdateQuestion(questionIndex, "model_answer", q.model_answer);
+                  onUpdateQuestion(questionIndex, "marks_allowed", q.marks_allowed);
+                  
+                  if (q.type === "MCQ" && q.mcq_answer_options.length > 0) {
+                    q.mcq_answer_options.forEach((opt: string, optIndex: number) => {
+                      if (optIndex < 2) {
+                        // Update existing options
+                        onUpdateMCQOption(questionIndex, optIndex, opt);
+                      } else {
+                        // Add additional options
+                        onAddMCQOption(questionIndex);
+                        setTimeout(() => {
+                          onUpdateMCQOption(questionIndex, optIndex, opt);
+                        }, 50 * (optIndex - 1));
+                      }
+                    });
                   }
                 });
+                
+                resolve();
+              } catch (error) {
+                reject(error);
               }
-            });
-            
-            resolve();
-          }, 100);
+            }, 500);
+          } catch (error) {
+            reject(error);
+          }
         }),
         {
           loading: 'Importing questions...',
-          success: `Successfully imported ${newQuestions.length} question(s)!`,
+          success: `Successfully imported ${processedQuestions.length} question(s)!`,
           error: 'Failed to import questions',
         }
       );
@@ -298,7 +316,6 @@ export default function QuizSection({
       if (duplicatesCount > 0) {
         setTimeout(() => {
           toast(`${duplicatesCount} duplicate(s) were skipped`, {
-            icon: '⚠️',
             duration: 3000,
           });
         }, 1000);
@@ -307,7 +324,6 @@ export default function QuizSection({
       if (similarCount > 0) {
         setTimeout(() => {
           toast(`${similarCount} similar question(s) added with "(Copy)" suffix`, {
-            icon: '📝',
             duration: 3000,
           });
         }, 1000);
@@ -357,14 +373,17 @@ export default function QuizSection({
                   <Plus className="w-5 h-5" />
                   Add Your First Question
                 </Button>
-                <ImportQuestions onImport={handleImport} />
+                <ImportQuestions 
+                  onImport={handleImport} 
+                  assessmentId={assessmentId} 
+                />
               </div>
             </div>
           ) : (
             <div className="space-y-8">
               {questions.map((question, questionIndex) => (
                 <div
-                  key={question.question_id}
+                  key={`question-${questionIndex}-${question.question_id || Date.now()}`}
                   className="border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-blue-300 transition-colors"
                 >
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-4 border-b border-gray-200">
@@ -451,7 +470,7 @@ export default function QuizSection({
                           {question.mcq_answer_options.map(
                             (option, optionIndex) => (
                               <div
-                                key={optionIndex}
+                                key={`option-${questionIndex}-${optionIndex}`}
                                 className="flex items-center gap-4 group"
                               >
                                 <div className="flex items-center">
@@ -561,7 +580,10 @@ export default function QuizSection({
 
           {questions.length > 0 && (
             <div className="flex justify-between mt-6">
-              <ImportQuestions onImport={handleImport} />
+              <ImportQuestions 
+                onImport={handleImport} 
+                assessmentId={assessmentId} 
+              />
               <Button
                 onClick={onAddQuestion}
                 variant="primary"

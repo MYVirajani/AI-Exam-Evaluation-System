@@ -33,7 +33,11 @@ export async function GET(
         auto_grade: true,
         back_navigation: true,
         case_sensitive_evaluation: true,
-        password: true, // <-- fetch password but don't expose value
+        password: true, // used only for boolean check
+        questions: {
+          select: { question_id: true }, // lightweight check for presence
+          take: 1, // we just need to know if any exist
+        },
         module: {
           select: {
             module_code: true,
@@ -93,7 +97,8 @@ export async function GET(
         auto_grade: assessment.auto_grade,
         back_navigation: assessment.back_navigation,
         case_sensitive_evaluation: assessment.case_sensitive_evaluation,
-        has_password: !!assessment.password, 
+        has_password: !!assessment.password, // ✅ already added
+        has_questions: assessment.questions.length > 0, // ✅ new field
       },
       question_paper: assessment.question_paper || null,
       submissions: assessment.submissions.map((sub) => ({

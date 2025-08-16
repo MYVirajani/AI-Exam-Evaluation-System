@@ -5,7 +5,6 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { 
   Clock, 
   BookOpen, 
-  Calendar, 
   FileText, 
   Play, 
   CheckCircle, 
@@ -35,10 +34,12 @@ interface AssessmentData {
   shuffle_questions: boolean; 
   max_attempts?: number | null; 
   auto_grade: boolean; 
-  password?: string | null; 
-  question_count?: number | null; 
+  has_password?: boolean | false; 
+  has_questions?: boolean | false; 
   total_marks?: number | null;
   max_marks?: number | null; 
+  back_navigation?: boolean;
+  case_sensitive_evaluation?: boolean;
 }
 
 interface Grade {
@@ -69,10 +70,10 @@ interface QuizData {
   question_paper?: {
     file_url: string;
     created_on: string;
-  } | null; // Can be null
+  } | null; 
   submissions: Submission[];
-  attempts_remaining: number | null; // Can be null (unlimited)
-  last_attempt_grade?: Grade | null; // Can be null
+  attempts_remaining: number | null; 
+  last_attempt_grade?: Grade | null; 
 }
 
 const StudentQuizPage: React.FC = () => {
@@ -118,7 +119,7 @@ const StudentQuizPage: React.FC = () => {
     fetchQuizData();
   }, [assessmentId, studentId, moduleId, router]);
 
-  // Update countdown timer with new logic
+
   useEffect(() => {
     if (!quizData?.assessment_data) return;
 
@@ -195,8 +196,41 @@ const StudentQuizPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [quizData]);
 
-  const handleAttemptQuiz = () => {
-    setShowPasswordPopup(true);
+  const handleAttemptQuiz = async () => {
+    // Check if quiz has password protection
+    if (quizData?.assessment_data.has_password) {
+      setShowPasswordPopup(true);
+    } else {
+      // Create submission without password verification
+      try {
+        const response = await fetch('/api/student/quiz/create-submission', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            assessmentId: assessmentId,
+            studentId: studentId,
+            moduleId: moduleId,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create submission');
+        }
+
+        const data = await response.json();
+        
+        // Navigate to attempt page with submission ID
+        router.push(
+          `/student/quiz/attempt/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}&submissionId=${data.submissionId}`
+        );
+      } catch (error: any) {
+        console.error('Error creating submission:', error);
+        toast.error(error.message || 'Failed to start quiz');
+      }
+    }
   };
 
   const handlePasswordSuccess = (submissionId: string) => {
@@ -244,7 +278,6 @@ const StudentQuizPage: React.FC = () => {
 
   const hasSubmissions = quizData.submissions && quizData.submissions.length > 0;
   const isGraded = quizData.last_attempt_grade !== null && quizData.last_attempt_grade !== undefined;
-  const hasQuestions = quizData.assessment_data.question_count && quizData.assessment_data.question_count > 0;
   
   // Check if quiz is within the open/close window
   const openAt = quizData.assessment_data.open_at ? new Date(quizData.assessment_data.open_at) : null;
@@ -253,6 +286,8 @@ const StudentQuizPage: React.FC = () => {
   const isAfterCloseTime = closeAt && now > closeAt;
   const isWithinTimeWindow = !isBeforeOpenTime && !isAfterCloseTime;
   
+  // Fixed: Use the correct property name from the API response
+  const hasQuestions = quizData.assessment_data.has_questions;
   const canAttempt = !isExpired && hasQuestions && isWithinTimeWindow && (quizData.attempts_remaining === null || quizData.attempts_remaining > 0);
   const isUnlimitedAttempts = quizData.assessment_data.max_attempts === null || quizData.assessment_data.max_attempts === undefined;
   
@@ -632,7 +667,6 @@ const StudentQuizPage: React.FC = () => {
             {canAttempt && (
               <Button
                 variant="primary"
-                size="lg"
                 onClick={handleAttemptQuiz}
                 className="flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
               >
@@ -644,7 +678,6 @@ const StudentQuizPage: React.FC = () => {
             {hasSubmissions && isGraded && (
               <Button
                 variant="secondary"
-                size="lg"
                 onClick={handleViewResults}
                 className="flex items-center justify-center"
               >
@@ -758,12 +791,7 @@ const StudentQuizPage: React.FC = () => {
                     <span className="text-sm text-gray-700">Time limit: {formatDuration(quizData.assessment_data.duration)}</span>
                   </div>
                 )}
-                {quizData.assessment_data.question_count && (
-                  <div className="flex items-start">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-sm text-gray-700">Questions: {quizData.assessment_data.question_count}</span>
-                  </div>
-                )}
+               
                 {openAt && (
                   <div className="flex items-start">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>

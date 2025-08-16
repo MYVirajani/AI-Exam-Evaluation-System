@@ -27,11 +27,13 @@ export async function GET(
         deadline: true,
         open_at: true,
         close_at: true,
-        question_count:true,
         max_marks: true,
         shuffle_questions: true,
         max_attempts: true,
         auto_grade: true,
+        back_navigation: true,
+        case_sensitive_evaluation: true,
+        password: true, // <-- fetch password but don't expose value
         module: {
           select: {
             module_code: true,
@@ -84,12 +86,14 @@ export async function GET(
         deadline: assessment.deadline,
         instructions: assessment.instructions,
         duration: assessment.duration,
-        question_count:assessment.question_count,
         open_at: assessment.open_at,
         close_at: assessment.close_at,
         shuffle_questions: assessment.shuffle_questions,
         max_attempts: assessment.max_attempts,
         auto_grade: assessment.auto_grade,
+        back_navigation: assessment.back_navigation,
+        case_sensitive_evaluation: assessment.case_sensitive_evaluation,
+        has_password: !!assessment.password, 
       },
       question_paper: assessment.question_paper || null,
       submissions: assessment.submissions.map((sub) => ({
@@ -124,7 +128,8 @@ export async function GET(
           }
         : null,
     };
-console.log('response: ', response);
+
+    console.log("response: ", response);
     return NextResponse.json(response);
   } catch (error) {
     console.error("Failed to fetch assessment details:", error);

@@ -1,7 +1,7 @@
 // src/app/api/educator/[educatorId]/dashboard/route.ts
 
 import { NextResponse } from "next/server";
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
@@ -25,7 +25,9 @@ export async function GET(
       console.warn(`${logPrefix} - Educator not found`);
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    console.info(`${logPrefix} - Educator found: educator_id=${educator.educator_id}`);
+    console.info(
+      `${logPrefix} - Educator found: educator_id=${educator.educator_id}`
+    );
 
     // Get modules with enrollment count
     console.debug(`${logPrefix} - Fetching modules for educator...`);
@@ -60,6 +62,8 @@ export async function GET(
         title: true,
         description: true,
         deadline: true,
+        open_at: true,
+        close_at: true,
         module_id: true,
         _count: {
           select: {
@@ -67,18 +71,31 @@ export async function GET(
           },
         },
       },
-      orderBy: { deadline: 'asc' },
+      orderBy: [
+        {
+          close_at: {
+            sort: "asc",
+            nulls: "last", // puts assessments with close_at first
+          },
+        },
+        {
+          deadline: "asc", // fallback if close_at is null
+        },
+      ],
     });
-    console.info(`${logPrefix} - Assessments fetched: count=${assessments.length}`);
+
+    console.info(
+      `${logPrefix} - Assessments fetched: count=${assessments.length}`
+    );
 
     // Format modules
-    const formattedModules = modules.map(mod => ({
+    const formattedModules = modules.map((mod) => ({
       ...mod,
       number_of_enrollments: mod._count.enrollments,
     }));
 
     // Format assessments with module_id
-    const formattedAssessments = assessments.map(asm => ({
+    const formattedAssessments = assessments.map((asm) => ({
       assessment_id: asm.assessment_id,
       type: asm.type,
       title: asm.title,
@@ -89,9 +106,11 @@ export async function GET(
     }));
 
     console.info(
-      `${logPrefix} - Successfully processed request in ${Date.now() - startTime}ms`
+      `${logPrefix} - Successfully processed request in ${
+        Date.now() - startTime
+      }ms`
     );
-    console.log('formattedAssessments', formattedAssessments);
+    console.log("formattedAssessments", formattedAssessments);
 
     return NextResponse.json({
       modules: formattedModules,

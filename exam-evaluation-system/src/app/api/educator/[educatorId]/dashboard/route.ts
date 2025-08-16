@@ -52,7 +52,7 @@ export async function GET(
     });
     console.info(`${logPrefix} - Modules fetched: count=${modules.length}`);
 
-    // Get assessments with submission count and module_id
+    // Get assessments with unique student submission count
     console.debug(`${logPrefix} - Fetching assessments for educator...`);
     const assessments = await prisma.assessment.findMany({
       where: { created_by: educatorId },
@@ -65,24 +65,36 @@ export async function GET(
         open_at: true,
         close_at: true,
         module_id: true,
-        _count: {
-          select: {
-            submissions: true,
-          },
-        },
       },
       orderBy: [
         {
           close_at: {
             sort: "asc",
-            nulls: "last", // puts assessments with close_at first
+            nulls: "last",
           },
         },
         {
-          deadline: "asc", // fallback if close_at is null
+          deadline: "asc",
         },
       ],
     });
+
+    // For each assessment, count distinct student submissions
+    const assessmentIds = assessments.map((a) => a.assessment_id);
+
+    const submissionCounts = await prisma.submission.groupBy({
+      by: ["assessment_id", "student_id"], // group by assessment + student
+      where: {
+        assessment_id: { in: assessmentIds },
+      },
+      _count: { student_id: true }, // just a dummy count
+    });
+
+    // Reduce to { assessment_id: uniqueStudentCount }
+    const submissionCountMap = submissionCounts.reduce((acc, row) => {
+      acc[row.assessment_id] = (acc[row.assessment_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
     console.info(
       `${logPrefix} - Assessments fetched: count=${assessments.length}`
@@ -102,7 +114,7 @@ export async function GET(
       description: asm.description,
       deadline: asm.deadline,
       module_id: asm.module_id,
-      number_of_submissions: asm._count.submissions,
+      number_of_submissions: submissionCountMap[asm.assessment_id] || 0,
     }));
 
     console.info(

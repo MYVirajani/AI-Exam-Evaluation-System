@@ -183,7 +183,7 @@ export default function EducatorHomePage() {
       id: newEvent.assessment_id,
       title: newEvent.title,
       module: relatedModule?.title || "",
-      uploads: `0/${relatedModule?.maxEnrollments || 0}`,
+      uploads: `0/${relatedModule?.number_of_enrollments || 0}`,
       deadline: newEvent.deadline,
       openAt: newEvent.open_at,
       closeAt: newEvent.close_at,

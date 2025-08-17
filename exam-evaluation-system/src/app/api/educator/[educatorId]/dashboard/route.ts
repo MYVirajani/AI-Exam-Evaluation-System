@@ -23,9 +23,9 @@ export async function GET(
       console.warn(`${logPrefix} - Educator not found`);
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    console.info(
-      `${logPrefix} - Educator found: educator_id=${educator.educator_id}`
-    );
+    // console.info(
+    //   `${logPrefix} - Educator found: educator_id=${educator.educator_id}`
+    // );
 
     console.debug(`${logPrefix} - Fetching modules for educator...`);
     const modules = await prisma.module.findMany({

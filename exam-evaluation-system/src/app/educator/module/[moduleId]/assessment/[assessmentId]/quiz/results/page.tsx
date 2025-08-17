@@ -2,7 +2,7 @@
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ArrowLeft, Download, RefreshCw, Users, TrendingUp, Award, Clock } from "lucide-react";
+import { ArrowLeft, Download, RefreshCw, Users, TrendingUp, Award, Clock, Eye } from "lucide-react";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
@@ -93,6 +93,20 @@ export default function QuizResultsPage() {
   const handleGoBack = () => {
     router.push(
       `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
+    );
+  };
+
+  // Navigate to student assessment summary
+  const handleStudentClick = (studentId: string) => {
+    const queryParams = new URLSearchParams({
+      assessmentId,
+      studentId,
+      educatorId: educatorId || "",
+      moduleId
+    });
+    
+    router.push(
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/results/student?${queryParams.toString()}`
     );
   };
 
@@ -341,7 +355,7 @@ export default function QuizResultsPage() {
               Student Results
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              {grades.length} submission{grades.length !== 1 ? 's' : ''} found
+              {grades.length} submission{grades.length !== 1 ? 's' : ''} found • Click on a student to view detailed results
             </p>
           </div>
 
@@ -368,19 +382,24 @@ export default function QuizResultsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Graded At
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {grades.map((grade, index) => (
                     <tr 
                       key={grade.submission_id}
-                      className={`hover:bg-gray-50 transition-colors ${
+                      className={`hover:bg-blue-50 transition-colors duration-200 cursor-pointer ${
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                       }`}
+                      onClick={() => handleStudentClick(grade.student_id)}
+                      title="Click to view detailed student results"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors">
                             {grade.student_name || "Unknown Student"}
                           </div>
                           <div className="text-sm text-gray-500">
@@ -445,6 +464,19 @@ export default function QuizResultsPage() {
                             })
                           : "-"
                         }
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row click when button is clicked
+                            handleStudentClick(grade.student_id);
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200"
+                          title="View detailed results"
+                        >
+                          <Eye className="w-3 h-3" />
+                          View Details
+                        </button>
                       </td>
                     </tr>
                   ))}

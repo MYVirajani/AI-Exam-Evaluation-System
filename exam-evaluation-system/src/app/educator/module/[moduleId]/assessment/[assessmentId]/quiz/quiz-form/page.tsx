@@ -25,7 +25,7 @@ import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
 import { toast } from "react-hot-toast";
 import { formatDuration, formatOpenCloseTime } from "@/utils/date-time";
-import QuizSection from "./QuizSection"; 
+import QuizSection from "./QuizSection";
 
 interface Question {
   question_id: string;
@@ -229,7 +229,7 @@ export default function QuizFormPage() {
   };
 
   const removeInstruction = (index: number) => {
-    if (formData.instructions.length > 1) {
+    if (formData.instructions.length > 0) {
       setFormData((prev) => ({
         ...prev,
         instructions: prev.instructions.filter((_, i) => i !== index),
@@ -315,11 +315,14 @@ export default function QuizFormPage() {
       ...prev,
       questions: prev.questions.map((q, i) => {
         if (i === questionIndex) {
-          const newOptions = q.mcq_answer_options.filter((_, idx) => idx !== optionIndex);
+          const newOptions = q.mcq_answer_options.filter(
+            (_, idx) => idx !== optionIndex
+          );
           // If the removed option was the model answer, clear the model answer
           const removedOption = q.mcq_answer_options[optionIndex];
-          const newModelAnswer = q.model_answer === removedOption ? "" : q.model_answer;
-          
+          const newModelAnswer =
+            q.model_answer === removedOption ? "" : q.model_answer;
+
           return {
             ...q,
             mcq_answer_options: newOptions,
@@ -351,126 +354,143 @@ export default function QuizFormPage() {
     return parseFloat(total.toFixed(2));
   };
 
- // Add this helper function to check if all questions have complete answers
-const checkAllQuestionsComplete = (): { isComplete: boolean; missingAnswers: string[] } => {
-  const missingAnswers: string[] = [];
-  
-  formData.questions.forEach((question, index) => {
-    const questionNumber = index + 1;
-    
-    if (question.type === "MCQ") {
-      // Check if there are at least 2 non-empty options
-      const validOptions = question.mcq_answer_options.filter(opt => opt.trim() !== "");
-      if (validOptions.length < 2) {
-        missingAnswers.push(`Question ${questionNumber}: At least 2 answer options required`);
+  // Add this helper function to check if all questions have complete answers
+  const checkAllQuestionsComplete = (): {
+    isComplete: boolean;
+    missingAnswers: string[];
+  } => {
+    const missingAnswers: string[] = [];
+
+    formData.questions.forEach((question, index) => {
+      const questionNumber = index + 1;
+
+      if (question.type === "MCQ") {
+        // Check if there are at least 2 non-empty options
+        const validOptions = question.mcq_answer_options.filter(
+          (opt) => opt.trim() !== ""
+        );
+        if (validOptions.length < 2) {
+          missingAnswers.push(
+            `Question ${questionNumber}: At least 2 answer options required`
+          );
+        }
+
+        // Check if a correct answer is selected
+        if (
+          !question.model_answer.trim() ||
+          !question.mcq_answer_options.some(
+            (opt) => opt.trim() === question.model_answer.trim()
+          )
+        ) {
+          missingAnswers.push(
+            `Question ${questionNumber}: No correct answer selected`
+          );
+        }
+      } else if (question.type === "SHORT") {
+        // Check if model answer is provided
+        if (!question.model_answer.trim()) {
+          missingAnswers.push(
+            `Question ${questionNumber}: Model answer required`
+          );
+        }
       }
-      
-      // Check if a correct answer is selected
-      if (!question.model_answer.trim() || 
-          !question.mcq_answer_options.some(opt => opt.trim() === question.model_answer.trim())) {
-        missingAnswers.push(`Question ${questionNumber}: No correct answer selected`);
+
+      // Check if question text is provided
+      if (!question.question.trim()) {
+        missingAnswers.push(
+          `Question ${questionNumber}: Question text required`
+        );
       }
-    } else if (question.type === "SHORT") {
-      // Check if model answer is provided
-      if (!question.model_answer.trim()) {
-        missingAnswers.push(`Question ${questionNumber}: Model answer required`);
+
+      // Check if marks are provided
+      if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) {
+        missingAnswers.push(`Question ${questionNumber}: Valid marks required`);
       }
-    }
-    
-    // Check if question text is provided
-    if (!question.question.trim()) {
-      missingAnswers.push(`Question ${questionNumber}: Question text required`);
-    }
-    
-    // Check if marks are provided
-    if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) {
-      missingAnswers.push(`Question ${questionNumber}: Valid marks required`);
-    }
-  });
-  
-  return {
-    isComplete: missingAnswers.length === 0,
-    missingAnswers
+    });
+
+    return {
+      isComplete: missingAnswers.length === 0,
+      missingAnswers,
+    };
   };
-};
 
-// Update the validateForm function to use the new check
-const validateForm = () => {
-  if (!formData.title.trim()) return "Quiz title is required";
-  
-  // Check if there are any questions
-  if (formData.questions.length === 0) {
-    return "At least one question is required";
-  }
-  
-  // Check if all questions are complete
-  const { isComplete, missingAnswers } = checkAllQuestionsComplete();
-  if (!isComplete) {
-    return `Please complete all questions:\n${missingAnswers.join('\n')}`;
-  }
+  // Update the validateForm function to use the new check
+  const validateForm = () => {
+    if (!formData.title.trim()) return "Quiz title is required";
 
-  if (formData.maxMarks && formData.maxMarks <= 0)
-    return "Max marks must be greater than 0";
-  if (formData.maxMarks && formData.maxMarks > calculateTotalMarks())
-    return "Max marks cannot exceed total marks from all questions";
-
-  if (formData.password && formData.password.length < 6)
-    return "If a password is set, it must be at least 6 characters";
-
-  const { openAt, closeAt, deadline, duration } = formData;
-  const hasOpen = !!openAt;
-  const hasClose = !!closeAt;
-  const hasDeadline = !!deadline;
-
-  if (hasOpen !== hasClose) {
-    return "Please provide both 'Opens at' and 'Closes at' times.";
-  }
-
-  if (hasOpen && hasClose) {
-    const openD = new Date(openAt);
-    const closeD = new Date(closeAt);
-
-    if (isNaN(openD.getTime()) || isNaN(closeD.getTime()))
-      return "Invalid open/close time.";
-
-    if (openD >= closeD) return "Open time must be before close time.";
-
-    const durMin = Number(duration);
-    if (!Number.isFinite(durMin) || durMin <= 0)
-      return "Duration must be a positive number of minutes.";
-    const diffMs = closeD.getTime() - openD.getTime();
-    const minGapMs = durMin * 60 * 1000;
-    if (diffMs < minGapMs) {
-      return `Open and close times must be at least the quiz duration apart (${durMin} minute${
-        durMin === 1 ? "" : "s"
-      }).`;
+    // Check if there are any questions
+    if (formData.questions.length === 0) {
+      return "At least one question is required";
     }
 
-    if (!hasDeadline)
-      return "Deadline is required when open/close times are set.";
+    // Check if all questions are complete
+    const { isComplete, missingAnswers } = checkAllQuestionsComplete();
+    if (!isComplete) {
+      return `Please complete all questions:\n${missingAnswers.join("\n")}`;
+    }
 
-    const deadlineD = new Date(deadline);
-    if (isNaN(deadlineD.getTime())) return "Invalid deadline.";
-  }
+    if (formData.maxMarks && formData.maxMarks <= 0)
+      return "Max marks must be greater than 0";
+    if (formData.maxMarks && formData.maxMarks > calculateTotalMarks())
+      return "Max marks cannot exceed total marks from all questions";
 
-  return null;
-};
+    if (formData.password && formData.password.length < 6)
+      return "If a password is set, it must be at least 6 characters";
 
-// Add a helper to check if save should be disabled
-const isSaveDisabled = (): boolean => {
-  // Basic checks
-  if (!formData.title.trim()) return true;
-  if (formData.questions.length === 0) return true;
-  
-  // Check if all questions are complete
-  const { isComplete } = checkAllQuestionsComplete();
-  if (!isComplete) return true;
-  
-  // Check if currently saving
-  if (saving) return true;
-  
-  return false;
-};
+    const { openAt, closeAt, deadline, duration } = formData;
+    const hasOpen = !!openAt;
+    const hasClose = !!closeAt;
+    const hasDeadline = !!deadline;
+
+    if (hasOpen !== hasClose) {
+      return "Please provide both 'Opens at' and 'Closes at' times.";
+    }
+
+    if (hasOpen && hasClose) {
+      const openD = new Date(openAt);
+      const closeD = new Date(closeAt);
+
+      if (isNaN(openD.getTime()) || isNaN(closeD.getTime()))
+        return "Invalid open/close time.";
+
+      if (openD >= closeD) return "Open time must be before close time.";
+
+      const durMin = Number(duration);
+      if (!Number.isFinite(durMin) || durMin <= 0)
+        return "Duration must be a positive number of minutes.";
+      const diffMs = closeD.getTime() - openD.getTime();
+      const minGapMs = durMin * 60 * 1000;
+      if (diffMs < minGapMs) {
+        return `Open and close times must be at least the quiz duration apart (${durMin} minute${
+          durMin === 1 ? "" : "s"
+        }).`;
+      }
+
+      if (!hasDeadline)
+        return "Deadline is required when open/close times are set.";
+
+      const deadlineD = new Date(deadline);
+      if (isNaN(deadlineD.getTime())) return "Invalid deadline.";
+    }
+
+    return null;
+  };
+
+  // Add a helper to check if save should be disabled
+  const isSaveDisabled = (): boolean => {
+    // Basic checks
+    if (!formData.title.trim()) return true;
+    if (formData.questions.length === 0) return true;
+
+    // Check if all questions are complete
+    const { isComplete } = checkAllQuestionsComplete();
+    if (!isComplete) return true;
+
+    // Check if currently saving
+    if (saving) return true;
+
+    return false;
+  };
   const handleSave = async () => {
     const validationError = validateForm();
     if (validationError) {
@@ -769,7 +789,7 @@ const isSaveDisabled = (): boolean => {
                   <div className="flex items-center space-x-1">
                     <BookOpen className="w-4 h-4 text-blue-600" />
                     <span className="font-bold">
-                     { formData.questions.length}
+                      {formData.questions.length}
                     </span>
                   </div>
                   <div className="w-px h-4 bg-gray-300"></div>
@@ -850,36 +870,39 @@ const isSaveDisabled = (): boolean => {
                 />
               </div>
 
-             <div>
-  <label className="block text-sm font-semibold text-gray-800 mb-3">
-    <Clock className="w-4 h-4 inline mr-2 text-gray-600" />
-    Duration (minutes)
-  </label>
-  <input
-    type="number"
-    value={formData.duration}
-    onChange={(e) =>
-      setFormData((prev) => ({
-        ...prev,
-        duration: parseInt(e.target.value) || 0,
-      }))
-    }
-    min="1"
-    max="300"
-    className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-    placeholder="60"
-  />
-  <p className="text-xs text-gray-500 mt-2">
-    <span className="font-medium">Duration:</span> {formatDuration(formData.duration)} • 
-    <span className="ml-2">Recommended: 1-2 minutes per question</span>
-    {formData.duration > 180 && (
-      <span className="ml-2 text-amber-600 flex items-center mt-1">
-        <AlertCircle className="w-3 h-3 mr-1" />
-        Long duration may affect student focus
-      </span>
-    )}
-  </p>
-</div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <Clock className="w-4 h-4 inline mr-2 text-gray-600" />
+                  Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  value={formData.duration}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      duration: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  min="1"
+                  max="300"
+                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                  placeholder="60"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  <span className="font-medium">Duration:</span>{" "}
+                  {formatDuration(formData.duration)} •
+                  <span className="ml-2">
+                    Recommended: 1-2 minutes per question
+                  </span>
+                  {formData.duration > 180 && (
+                    <span className="ml-2 text-amber-600 flex items-center mt-1">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      Long duration may affect student focus
+                    </span>
+                  )}
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
@@ -911,7 +934,7 @@ const isSaveDisabled = (): boolean => {
                     Quiz Instructions
                   </label>
                   <p className="text-xs text-gray-500 mt-1">
-                    Add instructions to guide students during the quiz
+                    Add additional instructions to guide students during the quiz(system provides instructions automatically  based on quiz settings)
                   </p>
                 </div>
               </div>
@@ -931,8 +954,7 @@ const isSaveDisabled = (): boolean => {
                         className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
                         placeholder="Enter an instruction for students..."
                       />
-                      {formData.instructions.length > 1 && (
-                        <Button
+                     <Button
                           onClick={() => removeInstruction(index)}
                           variant="outline"
                           size="sm"
@@ -940,7 +962,6 @@ const isSaveDisabled = (): boolean => {
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -1195,7 +1216,7 @@ const isSaveDisabled = (): boolean => {
                   After this time, students cannot access the quiz
                 </p>
               </div>
-              
+
               {/* Password Input - Now spans full width at the top */}
               <div className="lg:col-span-2">
                 <PasswordInput
@@ -1267,133 +1288,142 @@ const isSaveDisabled = (): boolean => {
           assessmentId={assessmentId}
         />
         {/* Action Buttons (with inline error & scroll ref) */}
-       {/* Action Buttons (with inline error & scroll ref) */}
-<div
-  ref={actionBarRef}
-  className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
->
-  {/* Inline error above quick stats */}
-  {error && (
-    <div className="mb-6 p-4 rounded-lg border border-red-200 bg-red-50 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="flex-shrink-0">
-          <AlertCircle className="w-5 h-5 text-red-500" />
-        </div>
-        <div className="flex-1">
-          <h4 className="text-sm font-medium text-red-800 mb-1">
-            Error
-          </h4>
-          <p className="text-sm text-red-700 whitespace-pre-line">{error}</p>
-        </div>
-      </div>
-    </div>
-  )}
+        {/* Action Buttons (with inline error & scroll ref) */}
+        <div
+          ref={actionBarRef}
+          className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
+        >
+          {/* Inline error above quick stats */}
+          {error && (
+            <div className="mb-6 p-4 rounded-lg border border-red-200 bg-red-50 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-red-800 mb-1">
+                    Error
+                  </h4>
+                  <p className="text-sm text-red-700 whitespace-pre-line">
+                    {error}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-  {/* Warning for incomplete questions */}
-  {(() => {
-    const { isComplete, missingAnswers } = checkAllQuestionsComplete();
-    return !isComplete && formData.questions.length > 0 && (
-      <div className="mb-6 p-4 rounded-lg border border-amber-200 bg-amber-50 shadow-sm">
-        <div className="flex items-start gap-3">
-          <div className="flex-shrink-0">
-            <AlertCircle className="w-5 h-5 text-amber-500" />
+          {/* Warning for incomplete questions */}
+          {(() => {
+            const { isComplete, missingAnswers } = checkAllQuestionsComplete();
+            return (
+              !isComplete &&
+              formData.questions.length > 0 && (
+                <div className="mb-6 p-4 rounded-lg border border-amber-200 bg-amber-50 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <AlertCircle className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-amber-800 mb-2">
+                        Questions Need Completion
+                      </h4>
+                      <ul className="text-sm text-amber-700 space-y-1">
+                        {missingAnswers.slice(0, 5).map((issue, index) => (
+                          <li key={index}>• {issue}</li>
+                        ))}
+                        {missingAnswers.length > 5 && (
+                          <li className="italic">
+                            ... and {missingAnswers.length - 5} more issues
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )
+            );
+          })()}
+
+          <div className="flex items-center justify-between">
+            {/* Quick Stats */}
+            <div className="flex items-center space-x-8">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
+                  <BookOpen className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Questions
+                  </p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formData.questions.length}
+                  </p>
+                </div>
+              </div>
+
+              {/* Completion Status */}
+              {/* <CompletionIndicator /> */}
+
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center">
+                  <Award className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    {formData.maxMarks ? "Max Marks" : "Total Marks"}
+                  </p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formData.maxMarks || calculateTotalMarks()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Duration</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formData.duration}min
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex items-center gap-4">
+              <Button onClick={handleGoBack} variant="outline" className="">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={isSaveDisabled()}
+                className={`${
+                  isSaveDisabled() ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                variant="primary"
+                title={
+                  isSaveDisabled()
+                    ? "Please complete all questions before saving"
+                    : "Save quiz"
+                }
+              >
+                {saving ? (
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    <span>Saving Quiz...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Save className="w-5 h-5" />
+                    <span>Save Quiz</span>
+                  </div>
+                )}
+              </Button>
+            </div>
           </div>
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-amber-800 mb-2">
-              Questions Need Completion
-            </h4>
-            <ul className="text-sm text-amber-700 space-y-1">
-              {missingAnswers.slice(0, 5).map((issue, index) => (
-                <li key={index}>• {issue}</li>
-              ))}
-              {missingAnswers.length > 5 && (
-                <li className="italic">... and {missingAnswers.length - 5} more issues</li>
-              )}
-            </ul>
-          </div>
         </div>
-      </div>
-    );
-  })()}
-
-  <div className="flex items-center justify-between">
-    {/* Quick Stats */}
-    <div className="flex items-center space-x-8">
-      <div className="flex items-center space-x-3">
-        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
-          <BookOpen className="w-6 h-6 text-blue-600" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-600">
-            Total Questions
-          </p>
-          <p className="text-2xl font-bold text-blue-600">
-            {formData.questions.length}
-          </p>
-        </div>
-      </div>
-
-      {/* Completion Status */}
-      {/* <CompletionIndicator /> */}
-
-      <div className="flex items-center space-x-3">
-        <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center">
-          <Award className="w-6 h-6 text-green-600" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-600">
-            {formData.maxMarks ? "Max Marks" : "Total Marks"}
-          </p>
-          <p className="text-2xl font-bold text-green-600">
-            {formData.maxMarks || calculateTotalMarks()}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center space-x-3">
-        <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
-          <Clock className="w-6 h-6 text-purple-600" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-600">Duration</p>
-          <p className="text-2xl font-bold text-purple-600">
-            {formData.duration}min
-          </p>
-        </div>
-      </div>
-    </div>
-
-    {/* Buttons */}
-    <div className="flex items-center gap-4">
-      <Button
-        onClick={handleGoBack}
-        variant="outline"
-        className=""
-      >
-        Cancel
-      </Button>
-      <Button
-        onClick={handleSave}
-        disabled={isSaveDisabled()}
-        className={`${isSaveDisabled() ? 'opacity-50 cursor-not-allowed' : ''}`}
-        variant="primary"
-        title={isSaveDisabled() ? 'Please complete all questions before saving' : 'Save quiz'}
-      >
-        {saving ? (
-          <div className="flex items-center gap-3">
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-            <span>Saving Quiz...</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Save className="w-5 h-5" />
-            <span>Save Quiz</span>
-          </div>
-        )}
-      </Button>
-    </div>
-  </div>
-</div>
       </div>
     </div>
   );

@@ -66,6 +66,7 @@ model Module {
   module_image_url    String?
   created_by          String
   created_on          DateTime @default(now()) @db.Timestamptz(6)
+  last_updated_at     DateTime @default(now()) @db.Timestamptz(6)
 
   educator    Educator     @relation(fields: [created_by], references: [user_id])
   assessments Assessment[]
@@ -126,6 +127,9 @@ model Assessment {
   shuffle_questions Boolean        @default(false) // Whether to shuffle questions
   max_attempts      Int?
   auto_grade        Boolean        @default(false)
+  back_navigation   Boolean @default(true)
+  case_sensitive_evaluation Boolean        @default(false)
+
 
   module             Module              @relation(fields: [module_id], references: [module_id])
   educator           Educator            @relation(fields: [created_by], references: [user_id])

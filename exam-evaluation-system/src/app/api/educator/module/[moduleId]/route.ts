@@ -1,6 +1,6 @@
-// /api/educator/module/${moduleId}
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+// /api/educator/module/[moduleId]/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
@@ -24,7 +24,7 @@ export async function GET(
               },
             },
           },
-          orderBy: { created_on: 'asc' },
+          orderBy: { created_on: "asc" },
         },
         assessments: {
           select: {
@@ -32,13 +32,15 @@ export async function GET(
             title: true,
             description: true,
             deadline: true,
+            open_at: true,
+            close_at: true,
             type: true,
             created_by: true,
             _count: {
               select: { submissions: true },
             },
           },
-          orderBy: { deadline: 'asc' },
+          // ⚠️ remove orderBy here — we’ll sort manually
         },
         enrollments: {
           select: {
@@ -49,10 +51,20 @@ export async function GET(
     });
 
     if (!moduleData) {
-      return NextResponse.json({ error: 'Module not found' }, { status: 404 });
+      return NextResponse.json({ error: "Module not found" }, { status: 404 });
     }
 
-    const formattedAssessments = moduleData.assessments.map((assessment) => ({
+    // Sort assessments by close_at if available, else deadline
+    const effectiveTs = (a: { close_at: Date | null; deadline: Date | null }) => {
+      const d = a.close_at ?? a.deadline;
+      return d ? new Date(d).getTime() : Number.POSITIVE_INFINITY;
+    };
+
+    const sortedAssessments = [...moduleData.assessments].sort(
+      (a, b) => effectiveTs(a) - effectiveTs(b)
+    );
+
+    const formattedAssessments = sortedAssessments.map((assessment) => ({
       ...assessment,
       submissionsCount: assessment._count.submissions,
     }));
@@ -67,12 +79,14 @@ export async function GET(
       enrollmentsCount: moduleData.enrollments.length,
     };
 
-    // ✅ Log the full response object
-    console.log('[MODULE_DATA_RESPONSE]', response);
+    console.log("[MODULE_DATA_RESPONSE]", response);
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('[MODULE_FETCH_ERROR]', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("[MODULE_FETCH_ERROR]", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

@@ -4,7 +4,7 @@ import { getRandomGradient, type GradientColor } from '../../../constants/gradie
 
 interface Assessment {
   title: string;
-  due_date: string;
+  // due_date: string;
 }
 
 interface StudentModuleCardProps {
@@ -93,9 +93,9 @@ const StudentModuleCard: React.FC<StudentModuleCardProps> = ({ title, image, ass
                     <p className="text-sm text-blue-800 group-hover:text-blue-900 font-medium line-clamp-1">
                       {assessment.title}
                     </p>
-                    <p className="text-xs text-blue-600 group-hover:text-blue-800 mt-1">
+                    {/* <p className="text-xs text-blue-600 group-hover:text-blue-800 mt-1">
                       {assessment.due_date}
-                    </p>
+                    </p> */}
                   </div>
                 ))}
                 {assessments.length > 3 && (

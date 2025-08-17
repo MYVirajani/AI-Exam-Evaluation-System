@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { FiChevronLeft, FiChevronRight, FiCalendar, FiBook,  FiTrendingUp, FiPlus, FiFileText } from "react-icons/fi";
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiCalendar,
+  FiBook,
+  FiTrendingUp,
+  FiPlus,
+  FiFileText,
+} from "react-icons/fi";
 import { Toaster } from "react-hot-toast";
 import EducatorEventCard from "@/components/EducatorEventCard";
 import EducatorModuleCard from "./EducatorModuleCard";
@@ -12,9 +20,8 @@ import EventCreationForm, {
 import Link from "next/link";
 import Button from "@/components/Button";
 import LoadingAnimation from "@/components/LoadingAnimation";
-import { assessmentType } from "@/generated/prisma";
 
-interface ModuleAPI {
+interface Module {
   module_id: string;
   module_code: string;
   module_name: string;
@@ -24,21 +31,45 @@ interface ModuleAPI {
   number_of_enrollments: number;
 }
 
-interface AssessmentAPI {
+interface Assessment {
   assessment_id: string;
   type: "assignment" | "quiz" | "endExam" | "midExam";
   title: string;
   deadline: string;
+  open_at: string | null;
+  close_at: string | null;
   module_id: string;
   number_of_submissions: number;
+}
+
+interface ModuleCard {
+  id: string;
+  title: string;
+  image: string | null;
+  enrolled: string;
+  number_of_enrollments: number;
+  maxEnrollments: number;
+}
+
+interface EventCard {
+  id: string;
+  title: string;
+  module: string;
+  uploads: string;
+  deadline: string;
+  openAt?: string;
+  closeAt?: string;
+  moduleId: string;
+  assessmentType: string;
 }
 
 export default function EducatorHomePage() {
   const moduleScrollRef = useRef<HTMLDivElement>(null);
   const eventScrollRef = useRef<HTMLDivElement>(null);
 
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
-  const [createdModules, setCreatedModules] = useState<any[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<EventCard[]>([]);
+  const [createdModules, setCreatedModules] = useState<ModuleCard[]>([]);
+
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -52,15 +83,19 @@ export default function EducatorHomePage() {
   const updateScrollButtons = () => {
     const moduleEl = moduleScrollRef.current;
     const eventEl = eventScrollRef.current;
-    
+
     if (moduleEl) {
       setCanScrollLeft(moduleEl.scrollLeft > 10);
-      setCanScrollRight(moduleEl.scrollLeft + moduleEl.clientWidth < moduleEl.scrollWidth - 10);
+      setCanScrollRight(
+        moduleEl.scrollLeft + moduleEl.clientWidth < moduleEl.scrollWidth - 10
+      );
     }
-    
+
     if (eventEl) {
       setCanScrollEventLeft(eventEl.scrollLeft > 10);
-      setCanScrollEventRight(eventEl.scrollLeft + eventEl.clientWidth < eventEl.scrollWidth - 10);
+      setCanScrollEventRight(
+        eventEl.scrollLeft + eventEl.clientWidth < eventEl.scrollWidth - 10
+      );
     }
   };
 
@@ -99,7 +134,10 @@ export default function EducatorHomePage() {
       id: newModule.module_id,
       title: `${newModule.module_code}: ${newModule.module_name}`,
       image: newModule.module_image_url || null,
-      enrolled: `0/${newModule.max_enrollments}`,
+      enrolled: `${newModule.number_of_enrollments ?? 0}/${
+        newModule.max_enrollments
+      }`,
+      number_of_enrollments: newModule.number_of_enrollments ?? 0,
       maxEnrollments: newModule.max_enrollments,
     };
 
@@ -125,8 +163,8 @@ export default function EducatorHomePage() {
       form.append("questionPaper", data.questionPaper[0]);
     if (data.modelAnswerPaper?.length)
       form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
-    if (data.markingScheme?.length)
-      form.append("markingScheme", data.markingScheme[0]);
+    // if (data.markingScheme?.length)
+    //   form.append("markingScheme", data.markingScheme[0]);
 
     const res = await fetch("/api/educator/assessment", {
       method: "POST",
@@ -145,9 +183,12 @@ export default function EducatorHomePage() {
       id: newEvent.assessment_id,
       title: newEvent.title,
       module: relatedModule?.title || "",
-      uploads: `0/${relatedModule?.maxEnrollments || 0}`,
-      date: new Date(newEvent.deadline).toLocaleString(),
-      label: newEvent.type === "assignment" ? "Due on:" : "Scheduled on:",
+      uploads: `0/${relatedModule?.number_of_enrollments || 0}`,
+      deadline: newEvent.deadline,
+      openAt: newEvent.open_at,
+      closeAt: newEvent.close_at,
+      moduleId: newEvent.module_id,
+      assessmentType: newEvent.type,
     };
 
     setUpcomingEvents((prev) => [...prev, newCard]);
@@ -177,7 +218,7 @@ export default function EducatorHomePage() {
         const {
           modules,
           assessments,
-        }: { modules: ModuleAPI[]; assessments: AssessmentAPI[] } =
+        }: { modules: Module[]; assessments: Assessment[] } =
           await res.json();
 
         const mappedModules = modules.map((m) => ({
@@ -196,16 +237,6 @@ export default function EducatorHomePage() {
           const moduleTitle = mod
             ? `${mod.module_code} ${mod.module_name}`
             : "";
-          const label = a.type === "assignment" ? "Due on:" : "Scheduled on:";
-          const formattedDate = new Date(a.deadline).toLocaleString("en-US", {
-            year: "numeric",
-            month: "numeric",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: true,
-          });
 
           return {
             id: a.assessment_id,
@@ -214,10 +245,11 @@ export default function EducatorHomePage() {
             uploads: `${a.number_of_submissions}/${
               mod?.number_of_enrollments ?? 0
             }`,
-            date: formattedDate,
-            label,
+            deadline: a.deadline,
+            openAt: a.open_at || undefined, // Convert null to undefined for consistency
+            closeAt: a.close_at || undefined, // Convert null to undefined for consistency
             moduleId: mod?.module_id || "",
-            assessmentType:a.type,
+            assessmentType: a.type,
           };
         });
 
@@ -236,14 +268,14 @@ export default function EducatorHomePage() {
     updateScrollButtons();
     const moduleEl = moduleScrollRef.current;
     const eventEl = eventScrollRef.current;
-    
+
     const handleScroll = () => updateScrollButtons();
     const handleResize = () => updateScrollButtons();
-    
+
     if (moduleEl) moduleEl.addEventListener("scroll", handleScroll);
     if (eventEl) eventEl.addEventListener("scroll", handleScroll);
     window.addEventListener("resize", handleResize);
-    
+
     return () => {
       if (moduleEl) moduleEl.removeEventListener("scroll", handleScroll);
       if (eventEl) eventEl.removeEventListener("scroll", handleScroll);
@@ -269,12 +301,22 @@ export default function EducatorHomePage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-              <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              <svg
+                className="w-4 h-4 text-red-600"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-red-800">Error Loading Dashboard</h3>
+              <h3 className="text-lg font-semibold text-red-800">
+                Error Loading Dashboard
+              </h3>
               <p className="text-red-600 mt-1">{error}</p>
             </div>
           </div>
@@ -292,36 +334,32 @@ export default function EducatorHomePage() {
   }
 
   const scrollModuleLeft = () => {
-    moduleScrollRef.current?.scrollBy({ 
-      left: -400, 
-      behavior: "smooth" 
+    moduleScrollRef.current?.scrollBy({
+      left: -400,
+      behavior: "smooth",
     });
   };
-  
+
   const scrollModuleRight = () => {
-    moduleScrollRef.current?.scrollBy({ 
-      left: 400, 
-      behavior: "smooth" 
+    moduleScrollRef.current?.scrollBy({
+      left: 400,
+      behavior: "smooth",
     });
   };
 
   const scrollEventLeft = () => {
-    eventScrollRef.current?.scrollBy({ 
-      left: -350, 
-      behavior: "smooth" 
-    });
-  };
-  
-  const scrollEventRight = () => {
-    eventScrollRef.current?.scrollBy({ 
-      left: 350, 
-      behavior: "smooth" 
+    eventScrollRef.current?.scrollBy({
+      left: -350,
+      behavior: "smooth",
     });
   };
 
-  // Calculate total students across all modules
-  const totalStudents = createdModules.reduce((acc, mod) => acc + mod.number_of_enrollments, 0);
-  const totalCapacity = createdModules.reduce((acc, mod) => acc + mod.maxEnrollments, 0);
+  const scrollEventRight = () => {
+    eventScrollRef.current?.scrollBy({
+      left: 350,
+      behavior: "smooth",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -334,12 +372,11 @@ export default function EducatorHomePage() {
           display: none;
         }
       `}</style>
-      
+
       <Toaster position="top-right" />
 
       {/* Main Content Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
         {/* Hero Section */}
         <div className="relative overflow-hidden">
           <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 rounded-3xl p-8 md:p-12 text-white relative">
@@ -355,7 +392,8 @@ export default function EducatorHomePage() {
                     Welcome to Your Dashboard
                   </h1>
                   <p className="text-blue-100 text-lg md:text-xl max-w-2xl">
-                    Manage your educational modules, track student progress, and create engaging assessments.
+                    Manage your educational modules, track student progress, and
+                    create engaging assessments.
                   </p>
                 </div>
                 <div className="hidden lg:block">
@@ -365,7 +403,7 @@ export default function EducatorHomePage() {
                 </div>
               </div>
             </div>
-            
+
             {/* Decorative Elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/10 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-white/5 to-transparent rounded-full translate-y-24 -translate-x-24"></div>
@@ -377,15 +415,19 @@ export default function EducatorHomePage() {
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Created Modules</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{createdModules.length}</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Created Modules
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {createdModules.length}
+                </p>
               </div>
               <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <FiBook className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </div>
-{/*           
+          {/*           
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
@@ -401,8 +443,12 @@ export default function EducatorHomePage() {
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Upcoming Events</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{upcomingEvents.length}</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Upcoming Events
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {upcomingEvents.length}
+                </p>
               </div>
               <div className="h-12 w-12 bg-orange-100 rounded-xl flex items-center justify-center">
                 <FiCalendar className="h-6 w-6 text-orange-600" />
@@ -433,8 +479,12 @@ export default function EducatorHomePage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Create New Module</h3>
-                <p className="text-gray-600 text-sm">Set up a new course module for your students</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Create New Module
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Set up a new course module for your students
+                </p>
               </div>
               <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                 <FiPlus className="h-6 w-6 text-blue-600" />
@@ -448,8 +498,12 @@ export default function EducatorHomePage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Create Assessment</h3>
-                <p className="text-gray-600 text-sm">Add a new assignment, quiz, or exam</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Create Assessment
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Add a new assignment, quiz, or exam
+                </p>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition-colors">
                 <FiCalendar className="h-6 w-6 text-green-600" />
@@ -461,8 +515,12 @@ export default function EducatorHomePage() {
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-left group h-full">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">View Results</h3>
-                  <p className="text-gray-600 text-sm">Check student performance and analytics</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    View Results
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    Check student performance and analytics
+                  </p>
                 </div>
                 <div className="h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
                   <FiFileText className="h-6 w-6 text-purple-600" />
@@ -477,8 +535,12 @@ export default function EducatorHomePage() {
           <div className="px-6 py-5 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Upcoming Events</h2>
-                <p className="text-gray-600 mt-1">Track your upcoming assessments and deadlines</p>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Upcoming Events
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  Track your upcoming assessments and deadlines
+                </p>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
@@ -510,16 +572,19 @@ export default function EducatorHomePage() {
               </div>
             </div>
           </div>
-          
+
           <div className="p-6">
             {upcomingEvents.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FiCalendar className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No upcoming events</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No upcoming events
+                </h3>
                 <p className="text-gray-600 max-w-sm mx-auto mb-6">
-                  Create your first assessment to get started with tracking student progress.
+                  Create your first assessment to get started with tracking
+                  student progress.
                 </p>
                 <Button
                   variant="primary"
@@ -541,8 +606,9 @@ export default function EducatorHomePage() {
                     title={evt.title}
                     module={evt.module}
                     uploads={evt.uploads}
-                    date={evt.date}
-                    label={evt.label}
+                    deadline={evt.deadline}
+                    openAt={evt.openAt}
+                    closeAt={evt.closeAt}
                     assessmentId={evt.id}
                     assessmentType={evt.assessmentType}
                     moduleId={evt.moduleId}
@@ -558,8 +624,12 @@ export default function EducatorHomePage() {
           <div className="px-6 py-5 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Created Modules</h2>
-                <p className="text-gray-600 mt-1">Manage your educational modules and enrollments</p>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Created Modules
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  Manage your educational modules and enrollments
+                </p>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
@@ -591,16 +661,19 @@ export default function EducatorHomePage() {
               </div>
             </div>
           </div>
-          
+
           <div className="p-6">
             {createdModules.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FiBook className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No modules created</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No modules created
+                </h3>
                 <p className="text-gray-600 max-w-sm mx-auto mb-6">
-                  Create your first module to start building your educational content and engaging with students.
+                  Create your first module to start building your educational
+                  content and engaging with students.
                 </p>
                 <Button
                   variant="primary"

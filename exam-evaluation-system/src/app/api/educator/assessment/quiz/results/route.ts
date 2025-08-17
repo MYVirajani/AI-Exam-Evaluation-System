@@ -1,13 +1,11 @@
-// src/app/api/assessment/grades/route.ts
+// src/app/api/educator/quiz/results/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 /**
- * GET /api/assessment/grades?assessmentId=xxxx
+ * GET /api/educator/quiz/results?assessmentId=xxxx
  *
- * Returns the list of submissions for the assessment with per-student overall grade.
- * - Includes student registration_number
- * - If Assessment_Grade is missing, falls back to sum of Question_Grade entries
+ * Returns per-student highest scoring submission for the assessment.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -21,7 +19,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Pull all submissions for this assessment with student + grade + q_grades
     const submissions = await prisma.submission.findMany({
       where: { assessment_id: assessmentId },
       include: {
@@ -61,11 +58,9 @@ export async function GET(req: NextRequest) {
       orderBy: { submission_start_at: "asc" },
     });
 
-    // Helper to convert Prisma Decimal | number | string -> number
     const toNum = (v: unknown): number | null => {
       if (v === null || v === undefined) return null;
       if (typeof v === "number") return v;
-      // Prisma Decimal has toString(); strings can be parsed too
       const n = Number(v.toString());
       return Number.isFinite(n) ? n : null;
     };
@@ -75,19 +70,16 @@ export async function GET(req: NextRequest) {
         ? `${s.student.user.first_name} ${s.student.user.last_name}`.trim()
         : null;
 
-      // Prefer overall Assessment_Grade if present
       let marksAwarded = toNum(s.grade?.marks_awarded);
       let maxMarks = toNum(s.grade?.max_marks);
       let gradedAt = s.grade?.graded_at ?? null;
       let autoGraded = s.grade?.auto_graded ?? null;
 
-      // Fallback: sum Question_Grade when overall grade is not present
       if (marksAwarded == null && s.q_grades && s.q_grades.length > 0) {
         const sumAwarded = s.q_grades.reduce((acc, q) => acc + (toNum(q.marks_awarded) ?? 0), 0);
         const sumMax = s.q_grades.reduce((acc, q) => acc + (toNum(q.max_marks) ?? 0), 0);
         marksAwarded = sumAwarded;
         maxMarks = sumMax || null;
-        // gradedAt/autoGraded remain null in fallback
       }
 
       const percentage =
@@ -103,32 +95,44 @@ export async function GET(req: NextRequest) {
         student_name: studentName || null,
         username: s.student?.user?.username ?? null,
         email: s.student?.user?.email ?? null,
-
-        // Overall grade (or computed fallback)
         marks_awarded: marksAwarded,
         max_marks: maxMarks,
         percentage,
         graded_at: gradedAt,
         auto_graded: autoGraded,
-
-        // Metadata about the grade origin
         grade_id: s.grade?.grade_id ?? null,
         educator_id: s.grade?.educator_id ?? null,
         model_id: s.grade?.model_id ?? null,
-
-        // Whether this submission has an explicit Assessment_Grade
         has_overall_grade: Boolean(s.grade),
       };
     });
 
-    // Sort by registration number when available; otherwise keep existing order
-    rows.sort((a, b) => {
+    // Group by student_id and pick the highest % score
+    const highestPerStudent: Record<string, typeof rows[0]> = {};
+
+    for (const r of rows) {
+      const key = String(r.student_id);
+      if (!highestPerStudent[key]) {
+        highestPerStudent[key] = r;
+      } else {
+        const existing = highestPerStudent[key];
+        const existingPct = existing.percentage ?? -1;
+        const thisPct = r.percentage ?? -1;
+        if (thisPct > existingPct) {
+          highestPerStudent[key] = r;
+        }
+      }
+    }
+
+    const result = Object.values(highestPerStudent);
+
+    result.sort((a, b) => {
       const ra = a.registration_number || "";
       const rb = b.registration_number || "";
       return ra.localeCompare(rb, undefined, { numeric: true, sensitivity: "base" });
     });
 
-    return NextResponse.json({ success: true, count: rows.length, data: rows }, { status: 200 });
+    return NextResponse.json({ success: true, count: result.length, data: result }, { status: 200 });
   } catch (err) {
     console.error("[GET /api/assessment/grades] error:", err);
     return NextResponse.json(

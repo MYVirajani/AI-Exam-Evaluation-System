@@ -84,23 +84,23 @@ export async function GET(
     }
 
     // Debug logging for questions
-    console.log("Fetched Questions:");
-    assessment.questions.forEach((q, index) => {
-      console.log(`  Q${index + 1}:`);
-      console.log(`    ID: ${q.question_id}`);
-      console.log(`    Type: ${q.type}`);
-      console.log(`    Question Number: ${q.question_number}`);
-      console.log(`    Question Text: ${q.question}`);
-      console.log(`    Marks Allowed: ${q.marks_allowed}`);
-      console.log(`    Model Answer: ${q.model_answer}`);
-      console.log(`    MCQ Options: ${JSON.stringify(q.mcq_answer_options)}`);
-    });
+    // console.log("Fetched Questions:");
+    // assessment.questions.forEach((q, index) => {
+    //   console.log(`  Q${index + 1}:`);
+    //   console.log(`    ID: ${q.question_id}`);
+    //   console.log(`    Type: ${q.type}`);
+    //   console.log(`    Question Number: ${q.question_number}`);
+    //   console.log(`    Question Text: ${q.question}`);
+    //   console.log(`    Marks Allowed: ${q.marks_allowed}`);
+    //   console.log(`    Model Answer: ${q.model_answer}`);
+    //   console.log(`    MCQ Options: ${JSON.stringify(q.mcq_answer_options)}`);
+    // });
 
     // Build response with all assessment fields
     const responseData = {
       module: moduleData,
       enrollmentCount,
-      assessment, // includes all fields + relations
+      assessment, 
     };
 
     console.log("Assessment response data (full):", JSON.stringify(responseData, null, 2));

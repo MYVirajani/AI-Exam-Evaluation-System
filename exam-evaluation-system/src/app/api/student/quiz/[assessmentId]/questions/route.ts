@@ -8,7 +8,7 @@ import {
   findSubsetBySum,
   normalizeWithCents,
   stripHelperField,
-} from "@/lib/quiz-utils";
+} from "@/utils/quiz-utils";
 
 export async function GET(req: NextRequest, { params }: { params: { assessmentId: string } }) {
   try {
@@ -85,8 +85,7 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       selected = subset;
     }
 
-    // 2) Shuffle AFTER selection if requested.
-    const finalQuestions = assessment.shuffle_questions ? shuffleArray(selected) : selected;
+const finalQuestions = assessment.shuffle_questions ? shuffleArray(selected) : selected;
 
     const cleanedQuestions = stripHelperField(finalQuestions);
 
@@ -98,9 +97,8 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
       module_name: assessment.module.module_name,
       started_at: submission.submission_start_at,
       shuffle_questions: assessment.shuffle_questions,
+      back_navigation: assessment.back_navigation,
       max_marks: assessment.max_marks,
-      // question_count intentionally ignored for selection; included here only for visibility
-      question_count: assessment.question_count,
       questions: cleanedQuestions,
     };
 

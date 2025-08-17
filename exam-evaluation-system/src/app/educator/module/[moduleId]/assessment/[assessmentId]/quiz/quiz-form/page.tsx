@@ -26,6 +26,8 @@ import PasswordInput from "@/components/PasswordInput";
 import { toast } from "react-hot-toast";
 import { formatDuration, formatOpenCloseTime } from "@/utils/date-time";
 import QuizSection from "./QuizSection";
+import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 interface Question {
   question_id: string;
@@ -74,7 +76,6 @@ interface QuizFormData {
   instructions: string[];
   questions: Question[];
   maxMarks: number | null;
-  // maxQuestions: number | null;
   shuffleQuestions: boolean;
   autoGrade: boolean;
   backNavigation: boolean;
@@ -111,7 +112,6 @@ export default function QuizFormPage() {
     instructions: [""],
     questions: [],
     maxMarks: null,
-    // maxQuestions: null,
     shuffleQuestions: true,
     autoGrade: false,
     backNavigation: true,
@@ -184,7 +184,6 @@ export default function QuizFormPage() {
           maxMarks: enrichedAssessment.max_marks
             ? Number(enrichedAssessment.max_marks)
             : null,
-          // maxQuestions: enrichedAssessment.question_count || null,
           autoGrade: enrichedAssessment.auto_grade ?? false,
           backNavigation: enrichedAssessment.back_navigation ?? true,
           caseSensitive: enrichedAssessment.case_sensitive_evaluation ?? false,
@@ -205,6 +204,22 @@ export default function QuizFormPage() {
 
     fetchAssessment();
   }, [moduleId, assessmentId, educatorId]);
+
+  // Generate breadcrumbs after assessment is loaded
+  const breadcrumbs = assessment
+    ? getAssessmentBreadcrumbs(
+        assessment.module.module_code,
+        moduleId,
+        `${assessment.title} - Form`,
+        assessmentId,
+        "educator"
+      )
+    : [
+        { label: "Dashboard", href: "/educator/dashboard" },
+        { label: "Loading...", href: "#" },
+        { label: "Loading...", href: "#" },
+        { label: "Quiz Form", current: true },
+      ];
 
   const handleGoBack = () => {
     router.push(
@@ -293,7 +308,6 @@ export default function QuizFormPage() {
     }));
   };
 
-  // NEW: Add MCQ option function
   const addMCQOption = (questionIndex: number) => {
     setFormData((prev) => ({
       ...prev,
@@ -309,7 +323,6 @@ export default function QuizFormPage() {
     }));
   };
 
-  // NEW: Remove MCQ option function
   const removeMCQOption = (questionIndex: number, optionIndex: number) => {
     setFormData((prev) => ({
       ...prev,
@@ -318,7 +331,6 @@ export default function QuizFormPage() {
           const newOptions = q.mcq_answer_options.filter(
             (_, idx) => idx !== optionIndex
           );
-          // If the removed option was the model answer, clear the model answer
           const removedOption = q.mcq_answer_options[optionIndex];
           const newModelAnswer =
             q.model_answer === removedOption ? "" : q.model_answer;
@@ -354,7 +366,6 @@ export default function QuizFormPage() {
     return parseFloat(total.toFixed(2));
   };
 
-  // Add this helper function to check if all questions have complete answers
   const checkAllQuestionsComplete = (): {
     isComplete: boolean;
     missingAnswers: string[];
@@ -365,7 +376,6 @@ export default function QuizFormPage() {
       const questionNumber = index + 1;
 
       if (question.type === "MCQ") {
-        // Check if there are at least 2 non-empty options
         const validOptions = question.mcq_answer_options.filter(
           (opt) => opt.trim() !== ""
         );
@@ -375,7 +385,6 @@ export default function QuizFormPage() {
           );
         }
 
-        // Check if a correct answer is selected
         if (
           !question.model_answer.trim() ||
           !question.mcq_answer_options.some(
@@ -387,7 +396,6 @@ export default function QuizFormPage() {
           );
         }
       } else if (question.type === "SHORT") {
-        // Check if model answer is provided
         if (!question.model_answer.trim()) {
           missingAnswers.push(
             `Question ${questionNumber}: Model answer required`
@@ -395,14 +403,12 @@ export default function QuizFormPage() {
         }
       }
 
-      // Check if question text is provided
       if (!question.question.trim()) {
         missingAnswers.push(
           `Question ${questionNumber}: Question text required`
         );
       }
 
-      // Check if marks are provided
       if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) {
         missingAnswers.push(`Question ${questionNumber}: Valid marks required`);
       }
@@ -414,16 +420,13 @@ export default function QuizFormPage() {
     };
   };
 
-  // Update the validateForm function to use the new check
   const validateForm = () => {
     if (!formData.title.trim()) return "Quiz title is required";
 
-    // Check if there are any questions
     if (formData.questions.length === 0) {
       return "At least one question is required";
     }
 
-    // Check if all questions are complete
     const { isComplete, missingAnswers } = checkAllQuestionsComplete();
     if (!isComplete) {
       return `Please complete all questions:\n${missingAnswers.join("\n")}`;
@@ -476,21 +479,18 @@ export default function QuizFormPage() {
     return null;
   };
 
-  // Add a helper to check if save should be disabled
   const isSaveDisabled = (): boolean => {
-    // Basic checks
     if (!formData.title.trim()) return true;
     if (formData.questions.length === 0) return true;
 
-    // Check if all questions are complete
     const { isComplete } = checkAllQuestionsComplete();
     if (!isComplete) return true;
 
-    // Check if currently saving
     if (saving) return true;
 
     return false;
   };
+
   const handleSave = async () => {
     const validationError = validateForm();
     if (validationError) {
@@ -559,7 +559,6 @@ export default function QuizFormPage() {
         caseSensitive: formData.caseSensitive,
         maxMarks: formData.maxMarks,
         maxAttempts: formData.maxAttempts,
-        // questionCount: formData.maxQuestions,
         openAt: formData.openAt || null,
         closeAt: formData.closeAt || null,
         totalMarks: calculateTotalMarks(),
@@ -646,6 +645,13 @@ export default function QuizFormPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      {/* Breadcrumbs Section - Properly positioned */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <Breadcrumbs items={breadcrumbs} />
+        </div>
+      </div>
+
       {/* Header Section */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-6">
@@ -934,7 +940,9 @@ export default function QuizFormPage() {
                     Quiz Instructions
                   </label>
                   <p className="text-xs text-gray-500 mt-1">
-                    Add additional instructions to guide students during the quiz(system provides instructions automatically  based on quiz settings)
+                    Add additional instructions to guide students during the
+                    quiz (system provides instructions automatically based on
+                    quiz settings)
                   </p>
                 </div>
               </div>
@@ -954,19 +962,18 @@ export default function QuizFormPage() {
                         className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
                         placeholder="Enter an instruction for students..."
                       />
-                     <Button
-                          onClick={() => removeInstruction(index)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-300 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity mt-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                      <Button
+                        onClick={() => removeInstruction(index)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 border-red-300 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity mt-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
 
-                {/* Plus button positioned at bottom right */}
                 <div className="flex justify-end mt-4">
                   <Button
                     onClick={addInstruction}
@@ -1217,7 +1224,7 @@ export default function QuizFormPage() {
                 </p>
               </div>
 
-              {/* Password Input - Now spans full width at the top */}
+              {/* Password Input */}
               <div className="lg:col-span-2">
                 <PasswordInput
                   label="Quiz Password (Optional)"
@@ -1287,8 +1294,8 @@ export default function QuizFormPage() {
           onRemoveQuestion={removeQuestion}
           assessmentId={assessmentId}
         />
-        {/* Action Buttons (with inline error & scroll ref) */}
-        {/* Action Buttons (with inline error & scroll ref) */}
+
+        {/* Action Buttons */}
         <div
           ref={actionBarRef}
           className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
@@ -1361,9 +1368,6 @@ export default function QuizFormPage() {
                 </div>
               </div>
 
-              {/* Completion Status */}
-              {/* <CompletionIndicator /> */}
-
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center">
                   <Award className="w-6 h-6 text-green-600" />
@@ -1393,7 +1397,7 @@ export default function QuizFormPage() {
 
             {/* Buttons */}
             <div className="flex items-center gap-4">
-              <Button onClick={handleGoBack} variant="outline" className="">
+              <Button onClick={handleGoBack} variant="outline">
                 Cancel
               </Button>
               <Button

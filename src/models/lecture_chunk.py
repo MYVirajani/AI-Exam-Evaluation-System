@@ -3,6 +3,7 @@ from typing import Optional
 
 @dataclass
 class LectureChunk:
+    assessment_id: str      
     module_code: str               
     source_file: str               
     chunk_id: int                   

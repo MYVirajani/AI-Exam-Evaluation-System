@@ -93,7 +93,7 @@ export default function QuizAssessmentPage() {
   const [selectedDownloadFormat, setSelectedDownloadFormat] = useState("PDF");
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const downloadOptions = ["PDF", "DOCX", "Excel"];
+  const downloadOptions = ["PDF", "Excel"];
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {

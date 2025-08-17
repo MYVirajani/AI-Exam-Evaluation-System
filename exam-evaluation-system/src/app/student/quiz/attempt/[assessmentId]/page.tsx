@@ -333,72 +333,81 @@ const QuizAttemptPage = () => {
    *   but only if it has a marked answer (autoSave skips empty).
    * - Then submit all collected answers (only those the student interacted with).
    */
-  const handleSubmit = async (isAuto = false) => {
-    if (!studentId || !submissionId || !quizData) {
-      toast.error("Missing student or submission ID");
-      return;
-    }
-    if (submitLockRef.current || isSubmitted || isSubmitting) return;
-    
-    submitLockRef.current = true;
-    setIsSubmitting(true);
+ const handleSubmit = async (isAuto = false) => {
+  if (!studentId || !submissionId || !quizData) {
+    toast.error("Missing student or submission ID");
+    return;
+  }
+  if (submitLockRef.current || isSubmitted || isSubmitting) return;
 
-    // 1) Try autosaving the *current* answer first, but only if it's actually filled
-    const currentQuestion = quizData.questions[currentIndex];
-    if (currentQuestion) {
-      const latestAnswer = answers[currentQuestion.question_id] || "";
-      await autoSave(currentQuestion.question_id, latestAnswer);
-    }
+  submitLockRef.current = true;
+  setIsSubmitting(true);
 
+  // 1) Try autosaving the *current* answer first
+  const currentQuestion = quizData.questions[currentIndex];
+  if (currentQuestion) {
+    const latestAnswer = answers[currentQuestion.question_id] || "";
+    await autoSave(currentQuestion.question_id, latestAnswer);
+  }
+
+  try {
+    // 2) Submit all answers we have
+    const formattedAnswers = Object.entries(answers)
+      .filter(([, v]) => typeof v === "string")
+      .map(([question_id, student_answer]) => ({
+        question_id,
+        student_answer,
+      }));
+
+    // 🔹 Get IP (via ipify API)
+    let ip_address = "unknown";
     try {
-      // 2) Submit all answers we have (keys present in state)
-      const formattedAnswers = Object.entries(answers)
-        .filter(([, v]) => typeof v === "string") // sanity
-        .map(([question_id, student_answer]) => ({
-          question_id,
-          student_answer,
-        }));
-
-      const res = await fetch(`/api/student/quiz/${assessmentId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          submissionId,
-          studentId,
-          answers: formattedAnswers,
-        }),
-      });
-
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.message || "Submission failed");
-
-      // Mark as submitted to disable further interactions
-      setIsSubmitted(true);
-
-      toast.success(
-        isAuto
-          ? "Submitted automatically. Time up!"
-          : "Quiz submitted successfully!"
-      );
-
-      // Clear the history state restrictions
-      if (!quizData.back_navigation) {
-        // Remove the beforeunload listener by setting isSubmitted
-        // The useEffect will handle cleanup
-      }
-
-      // 3) Navigate to results/summary page after a short delay
-      setTimeout(() => {
-        router.push(
-          `/student/quiz/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`
-        );
-      }, 1500);
-    } catch (error: any) {
-      submitLockRef.current = false; // Reset lock on error
-      setIsSubmitting(false); // Reset submitting state on error
-      toast.error(error.message || "Failed to submit quiz");
+      const ipRes = await fetch("https://api.ipify.org?format=json");
+      const { ip } = await ipRes.json();
+      ip_address = ip;
+    } catch (err) {
+      console.warn("⚠️ Could not fetch public IP:", err);
     }
-  };
+
+    // 🔹 Get device info
+    const device_info = `${navigator.platform} | ${navigator.userAgent}`;
+
+    const res = await fetch(`/api/student/quiz/${assessmentId}/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submissionId,
+        studentId,
+        answers: formattedAnswers,
+        ip_address,
+        device_info,
+      }),
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || "Submission failed");
+
+    setIsSubmitted(true);
+
+    toast.success(
+      isAuto ? "Submitted automatically. Time up!" : "Quiz submitted successfully!"
+    );
+
+    if (!quizData.back_navigation) {
+      // cleanup listener if needed
+    }
+
+    setTimeout(() => {
+      router.push(
+        `/student/quiz/${assessmentId}?studentId=${studentId}&moduleId=${moduleId}`
+      );
+    }, 1500);
+  } catch (error: any) {
+    submitLockRef.current = false;
+    setIsSubmitting(false);
+    toast.error(error.message || "Failed to submit quiz");
+  }
+};
 
   if (loading) {
     return (

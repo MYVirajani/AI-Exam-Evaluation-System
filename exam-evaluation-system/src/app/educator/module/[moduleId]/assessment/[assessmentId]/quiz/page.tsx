@@ -12,11 +12,14 @@ import {
   Zap,
   ArrowLeft,
   Type,
+  Download,
 } from "lucide-react";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import Dropdown from "@/components/Dropdown";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
 import { formatOpenCloseTime, formatDuration } from "@/utils/date-time";
+import { downloadQuestionPaper } from "@/utils/questionPaperExport";
 
 interface User {
   first_name: string;
@@ -87,6 +90,10 @@ export default function QuizAssessmentPage() {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDownloadFormat, setSelectedDownloadFormat] = useState("PDF");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadOptions = ["PDF", "DOCX", "Excel"];
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {
@@ -143,6 +150,26 @@ export default function QuizAssessmentPage() {
     router.push(
       `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/results?educatorId=${educatorId}`
     );
+  };
+
+  const handleDownloadQuestionPaper = async () => {
+    if (!assessment?.questions || assessment.questions.length === 0) {
+      alert("No questions available to download");
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      await downloadQuestionPaper(
+        assessment,
+        selectedDownloadFormat.toLowerCase() as 'pdf' | 'docx' | 'excel'
+      );
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download question paper. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const calculateTotalMarks = () => {
@@ -230,6 +257,8 @@ export default function QuizAssessmentPage() {
   const shortAnswerCount = getShortAnswerCount();
   const hasSubmissions =
     assessment.submissions && assessment.submissions.length > 0;
+  const hasQuestions = assessment.questions && assessment.questions.length > 0;
+
   // Generate breadcrumbs
   const breadcrumbs = assessment
     ? getAssessmentBreadcrumbs(
@@ -350,27 +379,48 @@ export default function QuizAssessmentPage() {
 
         {/* Quiz Content Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <h2 className="text-lg font-semibold text-gray-900">
               Quiz Questions
             </h2>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Download Question Paper Section */}
+              {hasQuestions && (
+                <div className="flex items-center gap-2">
+                  <Dropdown
+                    options={downloadOptions}
+                    selectedOption={selectedDownloadFormat}
+                    onSelect={setSelectedDownloadFormat}
+                    className="w-20"
+                  />
+                  <Button
+                    onClick={handleDownloadQuestionPaper}
+                    variant="outline"
+                    className="flex items-center gap-2 whitespace-nowrap"
+                    disabled={isDownloading}
+                  >
+                    <Download className="w-4 h-4" />
+                    {isDownloading ? "Downloading..." : "Download"}
+                  </Button>
+                </div>
+              )}
+
               {hasSubmissions && (
                 <Button
                   onClick={handleViewResults}
                   variant="primary"
-                  className=""
+                  className="flex items-center gap-2"
                 >
                   <BarChart3 className="w-4 h-4" />
                   View Results
                 </Button>
               )}
 
-              {assessment.questions && assessment.questions.length > 0 && (
+              {hasQuestions && (
                 <Button
                   onClick={handleEditQuiz}
                   variant="primary"
-                  className=""
+                  className="flex items-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
                   Edit Quiz
@@ -379,7 +429,7 @@ export default function QuizAssessmentPage() {
             </div>
           </div>
 
-          {assessment.questions && assessment.questions.length > 0 ? (
+          {hasQuestions ? (
             <div className="space-y-6">
               {/* Quiz Statistics */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">

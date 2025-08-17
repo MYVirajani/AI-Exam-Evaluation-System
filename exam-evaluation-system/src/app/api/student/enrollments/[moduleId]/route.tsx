@@ -15,18 +15,6 @@ export async function GET(req: NextRequest, { params }: { params: { moduleId: st
       return NextResponse.json({ error: 'Missing studentId or moduleId' }, { status: 400 });
     }
 
-    // const enrollment = await prisma.enrollment.findUnique({
-    //   where: {
-    //     student_id_module_id: {
-    //       student_id: studentId,
-    //       module_id: moduleId,
-    //     },
-    //   },
-    // });
-
-    // if (!enrollment) {
-    //   return NextResponse.json({ error: 'Student is not enrolled in this module' }, { status: 403 });
-    // }
 
     const moduleData = await prisma.module.findUnique({
       where: { module_id: moduleId },
@@ -59,8 +47,10 @@ export async function GET(req: NextRequest, { params }: { params: { moduleId: st
         assessment_id: true,
         title: true,
         type: true,
-        description: true,
+        duration: true,
         deadline: true,
+        open_at:true,
+        close_at:true,
       },
       orderBy: { deadline: 'asc' },
     });

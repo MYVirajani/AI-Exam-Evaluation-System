@@ -8,8 +8,9 @@ export async function POST(req: NextRequest) {
   try {
     console.log("📥 Incoming quiz submission for auto-grading...");
 
-    const { submissionId } = await req.json();
-    console.log("🔍 Received submissionId:", submissionId);
+    // ⬇️ Extract ip_address and device_info as well
+    const { submissionId, ip_address, device_info } = await req.json();
+    console.log("🔍 Received submissionId:", submissionId, "📡 IP:", ip_address, "💻 Device:", device_info);
 
     if (!submissionId) {
       console.warn("❌ Missing submissionId in request.");
@@ -41,8 +42,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("✅ Fetched submission:", submissionId);
-    console.log("📋 Number of answers:", submission.answers.length);
-    console.log("📚 Number of assessment questions:", submission.assessment.questions.length);
 
     const questionMap = new Map(
       submission.assessment.questions.map((q) => [q.question_id, q])
@@ -65,8 +64,6 @@ export async function POST(req: NextRequest) {
 
         const marks_awarded = isCorrect ? question.marks_allowed : new Decimal(0);
         totalMarksAwarded = totalMarksAwarded.plus(marks_awarded);
-
-        console.log(`🧾 Q${index + 1}: ${isCorrect ? '✔️ Correct' : '❌ Incorrect'} → Marks: ${marks_awarded}`);
 
         await prisma.student_Answer.update({
           where: {
@@ -96,13 +93,10 @@ export async function POST(req: NextRequest) {
     );
 
     const validGrades = questionGrades.filter((g) => g !== null);
-    console.log(`📊 Total valid question grades: ${validGrades.length}`);
-    console.log(`🧮 Total marks awarded: ${totalMarksAwarded.toFixed(1)}`);
 
     await prisma.question_Grade.createMany({
       data: validGrades as any[],
     });
-    console.log("✅ Question grades inserted into DB");
 
     await prisma.assessment_Grade.create({
       data: {
@@ -115,16 +109,18 @@ export async function POST(req: NextRequest) {
         auto_graded: true,
       },
     });
-    console.log("✅ Assessment grade created");
 
+    // ⬇️ Update with ip_address + device_info
     await prisma.submission.update({
       where: { submission_id: submissionId },
       data: {
         is_graded: true,
-        submission_start_at: now,
+        submission_end_at: now,
+        ip_address: ip_address ?? req.headers.get("x-forwarded-for") ?? "unknown",
+        device_info: device_info ?? "unknown",
       },
     });
-    console.log("✅ Submission status updated as graded");
+    console.log("✅ Submission status updated with IP & device info");
 
     return NextResponse.json({ message: 'Quiz submitted and auto-graded successfully.' });
   } catch (error) {

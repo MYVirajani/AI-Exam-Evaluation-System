@@ -30,6 +30,8 @@ interface Assessment {
   title: string;
   description: string;
   deadline: string;
+  openAt:string;
+  closeAt:string;
   type: string;
   submissionsCount: number;
 }
@@ -99,6 +101,8 @@ export default function ModulePage({ params }: ModulePageProps) {
             title: a.title,
             description: a.description,
             deadline: a.deadline,
+            openAt:a.open_at,
+            closeAt:a.close_at,
             type: a.type,
             submissionsCount: Number(a.submissionsCount) || 0,
           })),
@@ -321,18 +325,9 @@ export default function ModulePage({ params }: ModulePageProps) {
                       title={assess.title}
                       module={moduleName}
                       uploads={`${assess.submissionsCount}/${moduleData.enrollmentsCount}`}
-                      date={new Date(assess.deadline).toLocaleString("en-US", {
-                        year: "numeric",
-                        month: "numeric",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                        second: "2-digit",
-                        hour12: true,
-                      })}
-                      label={
-                        assess.type === "assignment" ? "Due on:" : "Scheduled on:"
-                      }
+                      deadline={assess.deadline}
+                      openAt={assess.openAt}
+                      closeAt={assess.closeAt}
                       assessmentId={assess.assessment_id}
                       moduleId={moduleData.moduleId}
                       assessmentType={assess.type}

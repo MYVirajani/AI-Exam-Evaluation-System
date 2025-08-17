@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { formatOpenCloseTime } from '@/utils/date-time'; 
 
 interface EducatorEventCardProps {
   title: string;
   module: string;
-  uploads: string; // Format: "submissions/enrollments"
-  date: string;
-  label: string; // "Due on:" or "Scheduled on:"
+  uploads: string; 
+  deadline: string;
+  openAt?: string;
+  closeAt?: string;
   moduleId: string;
   assessmentId: string;
   assessmentType: string;
@@ -19,8 +21,9 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
   title,
   module,
   uploads,
-  date,
-  label,
+  deadline,
+  openAt,
+  closeAt,
   moduleId,
   assessmentId,
   assessmentType,
@@ -52,7 +55,7 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
   };
 
   const educatorId = getEducatorId();
-  console.log('assessmentType: ',assessmentType);
+  console.log('assessmentType: ', assessmentType);
 
   const navigationUrl =
     assessmentType === 'quiz'
@@ -81,27 +84,82 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
   const { submissions: submissionCount, enrollments: totalEnrollments } = parseUploadsData();
   const progressPercentage = totalEnrollments > 0 ? Math.min((submissionCount / totalEnrollments) * 100, 100) : 0;
 
-  const parseDate = (dateString: string) => {
-    const clean = dateString.replace(/^\w+\s+/, '');
-    return new Date(clean);
-  };
+  // Get formatted date string using the utility function
+  const formattedDateInfo = formatOpenCloseTime(openAt, closeAt, deadline);
 
-  const getDeadlineInfo = () => {
-    try {
-      const deadline = parseDate(date);
-      const today = new Date();
-      const daysDiff = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 3600 * 24));
+  // Determine status and styling based on dates
+  const getStatusInfo = () => {
+    const now = new Date();
+    const hasOpen = !!openAt;
+    const hasClose = !!closeAt;
+    const hasDeadline = !!deadline;
 
-      if (daysDiff < 0) return { status: 'past', text: 'Deadline Passed', color: 'blue' };
-      if (daysDiff <= 1) return { status: 'today', text: 'Due Today', color: 'amber' };
-      if (daysDiff <= 3) return { status: 'soon', text: 'Due Soon', color: 'orange' };
-      return { status: 'upcoming', text: 'Upcoming', color: 'green' };
-    } catch {
-      return { status: 'upcoming', text: 'Upcoming', color: 'green' };
+    const openDate = hasOpen ? new Date(openAt!) : null;
+    const closeDate = hasClose ? new Date(closeAt!) : null;
+    const deadlineDate = hasDeadline ? new Date(deadline!) : null;
+
+    // If we have open/close times, use those for status
+    if (hasOpen || hasClose) {
+      if (hasOpen && openDate! > now) {
+        return {
+          label: 'UPCOMING',
+          color: 'blue',
+          text: 'Not yet started'
+        };
+      } else if (hasClose && closeDate! < now) {
+        return {
+          label: 'CLOSED',
+          color: 'gray',
+          text: 'Assessment ended'
+        };
+      } else {
+        return {
+          label: 'ACTIVE',
+          color: 'green',
+          text: 'Currently available'
+        };
+      }
     }
+    
+    // Fallback to deadline if no open/close times
+    if (hasDeadline && deadlineDate) {
+      const daysUntilDeadline = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntilDeadline < 0) {
+        return {
+          label: 'OVERDUE',
+          color: 'red',
+          text: 'Past deadline'
+        };
+      } else if (daysUntilDeadline <= 2) {
+        return {
+          label: 'DUE SOON',
+          color: 'orange',
+          text: `Due in ${daysUntilDeadline} day${daysUntilDeadline === 1 ? '' : 's'}`
+        };
+      } else if (daysUntilDeadline <= 7) {
+        return {
+          label: 'DUE THIS WEEK',
+          color: 'amber',
+          text: `Due in ${daysUntilDeadline} days`
+        };
+      } else {
+        return {
+          label: 'UPCOMING',
+          color: 'blue',
+          text: `Due in ${daysUntilDeadline} days`
+        };
+      }
+    }
+
+    return {
+      label: 'NO DEADLINE',
+      color: 'gray',
+      text: 'No time limit set'
+    };
   };
 
-  const deadlineInfo = getDeadlineInfo();
+  const statusInfo = getStatusInfo();
 
   const handleExtendDeadline = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -168,40 +226,50 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
           </div>
 
           {/* Date & Status */}
-          <div className="mb-4">
-            <p className={`text-xs font-semibold uppercase tracking-wide ${isHovered ? 'text-gray-700' : 'text-gray-600'}`}>
-              {label}
-            </p>
-            <div className={`
-              inline-flex items-center px-3 py-1.5 rounded-lg mt-2 font-medium text-sm border transition-all
-              ${
-                deadlineInfo.color === 'blue'
-                  ? 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-150'
-                  : deadlineInfo.color === 'amber'
-                  ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-150'
-                  : deadlineInfo.color === 'orange'
-                  ? 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-150'
-                  : 'bg-green-100 text-green-800 border-green-200 hover:bg-green-150'
-              }
-              ${isHovered ? 'shadow-md scale-105' : ''}
-            `}>
-              <div className={`w-2 h-2 rounded-full mr-2 ${
-                deadlineInfo.color === 'blue' ? 'bg-blue-500'
-                : deadlineInfo.color === 'amber' ? 'bg-amber-500'
-                : deadlineInfo.color === 'orange' ? 'bg-orange-500'
-                : 'bg-green-500'
-              }`} />
-              {date}
+          {formattedDateInfo && (
+            <div className="mb-4">
+              <p className={`text-xs font-semibold uppercase tracking-wide ${isHovered ? 'text-gray-700' : 'text-gray-600'}`}>
+                {statusInfo.label}
+              </p>
+              <div className={`
+                inline-flex items-center px-3 py-1.5 rounded-lg mt-2 font-medium text-sm border transition-all
+                ${
+                  statusInfo.color === 'blue'
+                    ? 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-150'
+                    : statusInfo.color === 'amber'
+                    ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-150'
+                    : statusInfo.color === 'orange'
+                    ? 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-150'
+                    : statusInfo.color === 'red'
+                    ? 'bg-red-100 text-red-800 border-red-200 hover:bg-red-150'
+                    : statusInfo.color === 'green'
+                    ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-150'
+                    : 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-150'
+                }
+                ${isHovered ? 'shadow-md scale-105' : ''}
+              `}>
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  statusInfo.color === 'blue' ? 'bg-blue-500'
+                  : statusInfo.color === 'amber' ? 'bg-amber-500'
+                  : statusInfo.color === 'orange' ? 'bg-orange-500'
+                  : statusInfo.color === 'red' ? 'bg-red-500'
+                  : statusInfo.color === 'green' ? 'bg-green-500'
+                  : 'bg-gray-500'
+                }`} />
+                {statusInfo.text}
+              </div>
+              <p className={`text-xs font-medium mt-2 px-2 py-1 rounded bg-gray-50 ${
+                statusInfo.color === 'blue' ? 'text-blue-600'
+                : statusInfo.color === 'amber' ? 'text-amber-600'
+                : statusInfo.color === 'orange' ? 'text-orange-600'
+                : statusInfo.color === 'red' ? 'text-red-600'
+                : statusInfo.color === 'green' ? 'text-green-600'
+                : 'text-gray-600'
+              }`}>
+                {formattedDateInfo}
+              </p>
             </div>
-            <p className={`text-xs font-medium mt-1 ${
-              deadlineInfo.color === 'blue' ? 'text-blue-600'
-              : deadlineInfo.color === 'amber' ? 'text-amber-600'
-              : deadlineInfo.color === 'orange' ? 'text-orange-600'
-              : 'text-green-600'
-            }`}>
-              {deadlineInfo.text}
-            </p>
-          </div>
+          )}
 
           {/* Progress */}
           <div className="mt-4 pt-4 border-t border-blue-100/50">

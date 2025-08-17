@@ -2,10 +2,24 @@
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { FileText, Plus, Edit, BarChart3, Shield, Shuffle, Zap } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Edit,
+  BarChart3,
+  Shield,
+  Shuffle,
+  Zap,
+  ArrowLeft,
+  Type,
+  Download,
+} from "lucide-react";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs"
+import Dropdown from "@/components/Dropdown";
+import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
+import { formatOpenCloseTime, formatDuration } from "@/utils/date-time";
+import { downloadQuestionPaper } from "@/utils/questionPaperExport";
 
 interface User {
   first_name: string;
@@ -30,6 +44,8 @@ interface Assessment {
   title: string;
   description?: string;
   deadline: string;
+  open_at?: string;
+  close_at?: string;
   duration?: number;
   total_marks?: number;
   max_marks?: number;
@@ -37,6 +53,8 @@ interface Assessment {
   questions?: Question[];
   auto_grade?: boolean;
   shuffle_questions?: boolean;
+  back_navigation?: boolean;
+  case_sensitive_evaluation?: boolean;
   password?: string | null;
   submissions: {
     submission_id: string;
@@ -72,6 +90,10 @@ export default function QuizAssessmentPage() {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDownloadFormat, setSelectedDownloadFormat] = useState("PDF");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadOptions = ["PDF", "Excel"];
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {
@@ -80,47 +102,47 @@ export default function QuizAssessmentPage() {
       return;
     }
 
- const fetchAssessment = async () => {
-  try {
-    const res = await fetch(
-      `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
-    );
-    if (!res.ok) throw new Error("Failed to fetch assessment");
+    const fetchAssessment = async () => {
+      try {
+        const res = await fetch(
+          `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch assessment");
 
-    const data = await res.json();
+        const data = await res.json();
 
-    if (!data || !data.assessment) {
-      throw new Error("Assessment not found");
-    }
+        if (!data || !data.assessment) {
+          throw new Error("Assessment not found");
+        }
 
-    const enrichedAssessment = {
-      ...data.assessment, // new API: assessment is an object, not array
-      module: data.module, // changed from moduleData → module
-      enrollmentCount: data.enrollmentCount,
+        const enrichedAssessment = {
+          ...data.assessment,
+          module: data.module,
+          enrollmentCount: data.enrollmentCount,
+        };
+
+        setAssessment(enrichedAssessment);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch assessment"
+        );
+      } finally {
+        setLoading(false);
+      }
     };
-
-    setAssessment(enrichedAssessment);
-  } catch (err) {
-    setError(
-      err instanceof Error ? err.message : "Failed to fetch assessment"
-    );
-  } finally {
-    setLoading(false);
-  }
-};
 
     fetchAssessment();
   }, [moduleId, assessmentId, educatorId]);
 
   const handleCreateQuiz = () => {
     router.push(
-      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?educatorId=${educatorId}`
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/quiz-form?educatorId=${educatorId}`
     );
   };
 
   const handleEditQuiz = () => {
     router.push(
-      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz-form?edit=true&educatorId=${educatorId}`
+      `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/quiz-form?edit=true&educatorId=${educatorId}`
     );
   };
 
@@ -128,6 +150,26 @@ export default function QuizAssessmentPage() {
     router.push(
       `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/results?educatorId=${educatorId}`
     );
+  };
+
+  const handleDownloadQuestionPaper = async () => {
+    if (!assessment?.questions || assessment.questions.length === 0) {
+      alert("No questions available to download");
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      await downloadQuestionPaper(
+        assessment,
+        selectedDownloadFormat.toLowerCase() as 'pdf' | 'docx' | 'excel'
+      );
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download question paper. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const calculateTotalMarks = () => {
@@ -213,31 +255,31 @@ export default function QuizAssessmentPage() {
   const maxMarks = getMaxMarks();
   const mcqCount = getMCQCount();
   const shortAnswerCount = getShortAnswerCount();
-  const hasSubmissions = assessment.submissions && assessment.submissions.length > 0;
-    // Generate breadcrumbs
-    const breadcrumbs = assessment 
-      ? getAssessmentBreadcrumbs(
-          assessment.module.module_code, 
-          moduleId, 
-          assessment.title, 
-          assessmentId, 
-          'educator'
-        )
-      : [
-          { label: 'Dashboard', href: '/educator/dashboard' }, 
-          { label: 'Module', href: `/educator/module/${moduleId}` }, 
-          { label: 'Assessment', current: true }
-        ];
+  const hasSubmissions =
+    assessment.submissions && assessment.submissions.length > 0;
+  const hasQuestions = assessment.questions && assessment.questions.length > 0;
+
+  // Generate breadcrumbs
+  const breadcrumbs = assessment
+    ? getAssessmentBreadcrumbs(
+        assessment.module.module_code,
+        moduleId,
+        assessment.title,
+        assessmentId,
+        "educator"
+      )
+    : [
+        { label: "Dashboard", href: "/educator/dashboard" },
+        { label: "Module", href: `/educator/module/${moduleId}` },
+        { label: "Assessment", current: true },
+      ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-8">
-          {/* Breadcrumbs */}
+        {/* Breadcrumbs */}
         <div className="mb-6">
-          <Breadcrumbs 
-            items={breadcrumbs} 
-            className=""
-          />
+          <Breadcrumbs items={breadcrumbs} className="" />
         </div>
         {/* Header Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -261,7 +303,13 @@ export default function QuizAssessmentPage() {
               <div className="text-sm text-gray-600">
                 <span className="font-medium">Submissions: </span>
                 <span className="text-blue-600">
-                  {assessment.submissions?.length ?? 0}
+                  {
+                    new Set(
+                      assessment.submissions?.map(
+                        (sub) => sub.student.student_id
+                      )
+                    ).size
+                  }
                 </span>
                 <span className="mx-1">/</span>
                 <span>{assessment.enrollmentCount ?? 0} enrolled</span>
@@ -276,33 +324,23 @@ export default function QuizAssessmentPage() {
           )}
 
           {/* Quiz Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            {assessment.duration && (
+          {assessment.open_at && assessment.close_at && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm mb-4">
               <div>
-                <span className="font-medium text-gray-700">Duration:</span>
-                <span className="ml-2 text-gray-600">
-                  {assessment.duration} minutes
+                <span className="font-medium text-gray-800">
+                  {formatOpenCloseTime(assessment.open_at, assessment.close_at)}
                 </span>
               </div>
-            )}
-            <div>
-              <span className="font-medium text-gray-700">Max Marks:</span>
-              <span className="ml-2 text-gray-600 font-semibold text-blue-600">
-                {maxMarks}
-              </span>
-              {maxMarks !== totalMarks && (
-                <span className="ml-1 text-gray-500">
-                  / {totalMarks} max
-                </span>
+              {assessment.duration && (
+                <div className="flex-shrink-0">
+                  <span className="font-medium text-gray-700">Duration:</span>
+                  <span className="ml-2 text-gray-600">
+                    {formatDuration(assessment.duration)}
+                  </span>
+                </div>
               )}
             </div>
-            <div>
-              <span className="font-medium text-gray-700">Questions:</span>
-              <span className="ml-2 text-gray-600">
-                {assessment.questions?.length || 0}
-              </span>
-            </div>
-          </div>
+          )}
 
           {/* Assessment Features */}
           <div className="mt-4 flex flex-wrap gap-2">
@@ -318,6 +356,18 @@ export default function QuizAssessmentPage() {
                 Shuffle Questions
               </div>
             )}
+            {!assessment.back_navigation && (
+              <div className="flex items-center gap-1 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-medium">
+                <ArrowLeft className="w-3 h-3" />
+                No Back Nav
+              </div>
+            )}
+            {assessment.case_sensitive_evaluation && (
+              <div className="flex items-center gap-1 bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">
+                <Type className="w-3 h-3" />
+                Case Sensitive
+              </div>
+            )}
             {assessment.password && (
               <div className="flex items-center gap-1 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-medium">
                 <Shield className="w-3 h-3" />
@@ -329,25 +379,47 @@ export default function QuizAssessmentPage() {
 
         {/* Quiz Content Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <h2 className="text-lg font-semibold text-gray-900">
               Quiz Questions
             </h2>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Download Question Paper Section */}
+              {hasQuestions && (
+                <div className="flex items-center gap-2">
+                  <Dropdown
+                    options={downloadOptions}
+                    selectedOption={selectedDownloadFormat}
+                    onSelect={setSelectedDownloadFormat}
+                    className="w-20"
+                  />
+                  <Button
+                    onClick={handleDownloadQuestionPaper}
+                    variant="outline"
+                    className="flex items-center gap-2 whitespace-nowrap"
+                    disabled={isDownloading}
+                  >
+                    <Download className="w-4 h-4" />
+                    {isDownloading ? "Downloading..." : "Download"}
+                  </Button>
+                </div>
+              )}
+
               {hasSubmissions && (
                 <Button
                   onClick={handleViewResults}
-                  variant="outline"
+                  variant="primary"
                   className="flex items-center gap-2"
                 >
                   <BarChart3 className="w-4 h-4" />
                   View Results
                 </Button>
               )}
-              {assessment.questions && assessment.questions.length > 0 && (
+
+              {hasQuestions && (
                 <Button
                   onClick={handleEditQuiz}
-                  variant="outline"
+                  variant="primary"
                   className="flex items-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
@@ -357,7 +429,7 @@ export default function QuizAssessmentPage() {
             </div>
           </div>
 
-          {assessment.questions && assessment.questions.length > 0 ? (
+          {hasQuestions ? (
             <div className="space-y-6">
               {/* Quiz Statistics */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
@@ -396,7 +468,9 @@ export default function QuizAssessmentPage() {
                       )}
                     </div>
                     <div className="text-gray-600 font-medium">
-                      {maxMarks !== totalMarks ? "Max/Total Marks" : "Total Marks"}
+                      {maxMarks !== totalMarks
+                        ? "Max/Total Marks"
+                        : "Total Marks"}
                     </div>
                   </div>
                 </div>

@@ -18,10 +18,16 @@ import {
   Calendar,
   Users,
   Target,
+  Lock,
+  Type,
 } from "lucide-react";
 import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
-import {  toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
+import { formatDuration, formatOpenCloseTime } from "@/utils/date-time";
+import QuizSection from "./QuizSection";
+import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 interface Question {
   question_id: string;
@@ -57,7 +63,9 @@ interface Assessment {
   open_at?: string;
   close_at?: string;
   question_count?: number;
-  auto_grade?:boolean;
+  auto_grade?: boolean;
+  back_navigation?: boolean;
+  case_sensitive_evaluation?: boolean;
 }
 
 interface QuizFormData {
@@ -68,9 +76,10 @@ interface QuizFormData {
   instructions: string[];
   questions: Question[];
   maxMarks: number | null;
-  maxQuestions: number | null;
   shuffleQuestions: boolean;
   autoGrade: boolean;
+  backNavigation: boolean;
+  caseSensitive: boolean;
   password?: string;
   openAt: string;
   closeAt: string;
@@ -92,9 +101,8 @@ export default function QuizFormPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-
-  // for scrolling to the save area on error
   const actionBarRef = useRef<HTMLDivElement | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
 
   const [formData, setFormData] = useState<QuizFormData>({
     title: "",
@@ -104,9 +112,10 @@ export default function QuizFormPage() {
     instructions: [""],
     questions: [],
     maxMarks: null,
-    maxQuestions: null,
     shuffleQuestions: true,
     autoGrade: false,
+    backNavigation: true,
+    caseSensitive: false,
     password: "",
     openAt: "",
     closeAt: "",
@@ -175,10 +184,11 @@ export default function QuizFormPage() {
           maxMarks: enrichedAssessment.max_marks
             ? Number(enrichedAssessment.max_marks)
             : null,
-          maxQuestions: enrichedAssessment.question_count || null,
           autoGrade: enrichedAssessment.auto_grade ?? false,
+          backNavigation: enrichedAssessment.back_navigation ?? true,
+          caseSensitive: enrichedAssessment.case_sensitive_evaluation ?? false,
           shuffleQuestions: enrichedAssessment.shuffle_questions ?? true,
-          password: "",
+          password: enrichedAssessment.password || "",
           openAt: formatDateTimeForInput(enrichedAssessment.open_at),
           closeAt: formatDateTimeForInput(enrichedAssessment.close_at),
           maxAttempts: enrichedAssessment.max_attempts || 1,
@@ -194,6 +204,22 @@ export default function QuizFormPage() {
 
     fetchAssessment();
   }, [moduleId, assessmentId, educatorId]);
+
+  // Generate breadcrumbs after assessment is loaded
+  const breadcrumbs = assessment
+    ? getAssessmentBreadcrumbs(
+        assessment.module.module_code,
+        moduleId,
+        `${assessment.title} - Form`,
+        assessmentId,
+        "educator"
+      )
+    : [
+        { label: "Dashboard", href: "/educator/dashboard" },
+        { label: "Loading...", href: "#" },
+        { label: "Loading...", href: "#" },
+        { label: "Quiz Form", current: true },
+      ];
 
   const handleGoBack = () => {
     router.push(
@@ -218,7 +244,7 @@ export default function QuizFormPage() {
   };
 
   const removeInstruction = (index: number) => {
-    if (formData.instructions.length > 1) {
+    if (formData.instructions.length > 0) {
       setFormData((prev) => ({
         ...prev,
         instructions: prev.instructions.filter((_, i) => i !== index),
@@ -234,7 +260,7 @@ export default function QuizFormPage() {
       question_number: String(formData.questions.length + 1),
       question: "",
       model_answer: "",
-      mcq_answer_options: ["", "", "", ""],
+      mcq_answer_options: ["", ""],
       marks_allowed: "1",
     };
 
@@ -254,7 +280,7 @@ export default function QuizFormPage() {
           if (field === "type" && value === "SHORT") {
             updatedQuestion.mcq_answer_options = [];
           } else if (field === "type" && value === "MCQ") {
-            updatedQuestion.mcq_answer_options = ["", "", "", ""];
+            updatedQuestion.mcq_answer_options = ["", ""];
           }
 
           return updatedQuestion;
@@ -282,6 +308,44 @@ export default function QuizFormPage() {
     }));
   };
 
+  const addMCQOption = (questionIndex: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      questions: prev.questions.map((q, i) => {
+        if (i === questionIndex) {
+          return {
+            ...q,
+            mcq_answer_options: [...q.mcq_answer_options, ""],
+          };
+        }
+        return q;
+      }),
+    }));
+  };
+
+  const removeMCQOption = (questionIndex: number, optionIndex: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      questions: prev.questions.map((q, i) => {
+        if (i === questionIndex) {
+          const newOptions = q.mcq_answer_options.filter(
+            (_, idx) => idx !== optionIndex
+          );
+          const removedOption = q.mcq_answer_options[optionIndex];
+          const newModelAnswer =
+            q.model_answer === removedOption ? "" : q.model_answer;
+
+          return {
+            ...q,
+            mcq_answer_options: newOptions,
+            model_answer: newModelAnswer,
+          };
+        }
+        return q;
+      }),
+    }));
+  };
+
   const removeQuestion = (index: number) => {
     setFormData((prev) => ({
       ...prev,
@@ -302,26 +366,79 @@ export default function QuizFormPage() {
     return parseFloat(total.toFixed(2));
   };
 
-  // ---- VALIDATION (with time window + deadline rules) ----
+  const checkAllQuestionsComplete = (): {
+    isComplete: boolean;
+    missingAnswers: string[];
+  } => {
+    const missingAnswers: string[] = [];
+
+    formData.questions.forEach((question, index) => {
+      const questionNumber = index + 1;
+
+      if (question.type === "MCQ") {
+        const validOptions = question.mcq_answer_options.filter(
+          (opt) => opt.trim() !== ""
+        );
+        if (validOptions.length < 2) {
+          missingAnswers.push(
+            `Question ${questionNumber}: At least 2 answer options required`
+          );
+        }
+
+        if (
+          !question.model_answer.trim() ||
+          !question.mcq_answer_options.some(
+            (opt) => opt.trim() === question.model_answer.trim()
+          )
+        ) {
+          missingAnswers.push(
+            `Question ${questionNumber}: No correct answer selected`
+          );
+        }
+      } else if (question.type === "SHORT") {
+        if (!question.model_answer.trim()) {
+          missingAnswers.push(
+            `Question ${questionNumber}: Model answer required`
+          );
+        }
+      }
+
+      if (!question.question.trim()) {
+        missingAnswers.push(
+          `Question ${questionNumber}: Question text required`
+        );
+      }
+
+      if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) {
+        missingAnswers.push(`Question ${questionNumber}: Valid marks required`);
+      }
+    });
+
+    return {
+      isComplete: missingAnswers.length === 0,
+      missingAnswers,
+    };
+  };
+
   const validateForm = () => {
     if (!formData.title.trim()) return "Quiz title is required";
-    if (formData.questions.length === 0)
+
+    if (formData.questions.length === 0) {
       return "At least one question is required";
+    }
+
+    const { isComplete, missingAnswers } = checkAllQuestionsComplete();
+    if (!isComplete) {
+      return `Please complete all questions:\n${missingAnswers.join("\n")}`;
+    }
 
     if (formData.maxMarks && formData.maxMarks <= 0)
       return "Max marks must be greater than 0";
     if (formData.maxMarks && formData.maxMarks > calculateTotalMarks())
       return "Max marks cannot exceed total marks from all questions";
 
-    if (formData.maxQuestions && formData.maxQuestions <= 0)
-      return "Max questions must be greater than 0";
     if (formData.password && formData.password.length < 6)
       return "If a password is set, it must be at least 6 characters";
-    if (
-      formData.maxQuestions &&
-      formData.maxQuestions > formData.questions.length
-    )
-      return "Max questions cannot exceed total created questions";
 
     const { openAt, closeAt, deadline, duration } = formData;
     const hasOpen = !!openAt;
@@ -357,32 +474,21 @@ export default function QuizFormPage() {
 
       const deadlineD = new Date(deadline);
       if (isNaN(deadlineD.getTime())) return "Invalid deadline.";
-
-      // if (openD > deadlineD)
-      //   return "Open time must be on or before the deadline.";
-      // if (closeD > deadlineD)
-      //   return "Close time must be on or before the deadline.";
-    }
-
-    for (let i = 0; i < formData.questions.length; i++) {
-      const q = formData.questions[i];
-      if (!q.question.trim()) return `Question ${i + 1} text is required`;
-      if (!q.marks_allowed || parseFloat(q.marks_allowed) <= 0)
-        return `Question ${i + 1} must have valid marks`;
-
-      if (q.type === "MCQ") {
-        const validOptions = q.mcq_answer_options.filter((opt) => opt.trim());
-        if (validOptions.length < 2)
-          return `Question ${i + 1} must have at least 2 answer options`;
-        if (!q.model_answer.trim())
-          return `Question ${i + 1} must have a correct answer selected`;
-      } else if (q.type === "SHORT") {
-        if (!q.model_answer.trim())
-          return `Question ${i + 1} must have a model answer`;
-      }
     }
 
     return null;
+  };
+
+  const isSaveDisabled = (): boolean => {
+    if (!formData.title.trim()) return true;
+    if (formData.questions.length === 0) return true;
+
+    const { isComplete } = checkAllQuestionsComplete();
+    if (!isComplete) return true;
+
+    if (saving) return true;
+
+    return false;
   };
 
   const handleSave = async () => {
@@ -434,7 +540,6 @@ export default function QuizFormPage() {
           question.type === "SHORT" ? question.model_answer : undefined,
       }));
 
-      // NOTE: keeping local times (no UTC conversion) as per your preference
       const quiz = {
         moduleId,
         type: "quiz",
@@ -443,18 +548,19 @@ export default function QuizFormPage() {
         duration: formData.duration,
         description: formData.description.trim(),
         instructions: formData.instructions.filter((inst) => inst.trim()),
-        deadline: formData.deadline || null, // ⬅️ no UTC conversion
+        deadline: formData.deadline || null,
         questions: sanitizedQuestions,
         createdBy: educatorId,
         totalQuestions: formData.questions.length,
         password: formData.password?.trim() ? formData.password.trim() : null,
         autoGrade: formData.autoGrade,
         shuffleQuestions: formData.shuffleQuestions,
+        backNavigation: formData.backNavigation,
+        caseSensitive: formData.caseSensitive,
         maxMarks: formData.maxMarks,
         maxAttempts: formData.maxAttempts,
-        questionCount: formData.maxQuestions,
-        openAt: formData.openAt || null, // ⬅️ no UTC conversion
-        closeAt: formData.closeAt || null, // ⬅️ no UTC conversion
+        openAt: formData.openAt || null,
+        closeAt: formData.closeAt || null,
         totalMarks: calculateTotalMarks(),
       };
 
@@ -539,8 +645,12 @@ export default function QuizFormPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Toasts */}
-      {/* <Toaster position="bottom-right" /> */}
+      {/* Breadcrumbs Section - Properly positioned */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <Breadcrumbs items={breadcrumbs} />
+        </div>
+      </div>
 
       {/* Header Section */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
@@ -578,21 +688,17 @@ export default function QuizFormPage() {
               </div>
             </div>
 
-            {/* Structured Quick Stats */}
+            {/* Quick Stats Display */}
             <div className="hidden lg:block">
               <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  {/* Row 1 */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-gray-600">
                       <BookOpen className="w-4 h-4 text-blue-600" />
                       <span className="font-medium">Questions:</span>
                     </div>
                     <span className="font-bold text-gray-900">
-                      {formData.maxQuestions &&
-                      formData.maxQuestions !== formData.questions.length
-                        ? `${formData.maxQuestions}/${formData.questions.length}`
-                        : formData.questions.length}
+                      {formData.questions.length}
                     </span>
                   </div>
 
@@ -612,14 +718,13 @@ export default function QuizFormPage() {
                     </span>
                   </div>
 
-                  {/* Row 2 */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-gray-600">
                       <Clock className="w-4 h-4 text-purple-600" />
                       <span className="font-medium">Duration:</span>
                     </div>
                     <span className="font-bold text-gray-900">
-                      {formData.duration} min
+                      {formatDuration(formData.duration)}
                     </span>
                   </div>
 
@@ -633,122 +738,49 @@ export default function QuizFormPage() {
                     </span>
                   </div>
 
-                  {/* Row 3: Status Indicators */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {formData.autoGrade && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Auto Grade
-                        </span>
-                      )}
-                      {formData.shuffleQuestions && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          <Shuffle className="w-3 h-3 mr-1" />
-                          Shuffle
-                        </span>
-                      )}
-                      {/* {formData.password && formData.password.trim() && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                          <Lock className="w-3 h-3 mr-1" />
-                          Protected
-                        </span>
-                      )} */}
-                    </div>
+                  <div className="col-span-2 flex items-center gap-2 flex-wrap">
+                    {formData.autoGrade && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Auto Grade
+                      </span>
+                    )}
+                    {formData.shuffleQuestions && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <Shuffle className="w-3 h-3 mr-1" />
+                        Shuffle
+                      </span>
+                    )}
+                    {!formData.backNavigation && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        <ArrowLeft className="w-3 h-3 mr-1" />
+                        No Back Nav
+                      </span>
+                    )}
+                    {formData.caseSensitive && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        <Type className="w-3 h-3 mr-1" />
+                        Case Sensitive
+                      </span>
+                    )}
+                    {formData.password && formData.password.trim() && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        <Lock className="w-3 h-3 mr-1" />
+                        Protected
+                      </span>
+                    )}
                   </div>
 
-                  {/* Row 4: Time Window */}
                   {(formData.openAt ||
                     formData.closeAt ||
                     formData.deadline) && (
                     <div className="col-span-2">
                       <span className="text-gray-700">
-                        {(() => {
-                          const dateOpts: Intl.DateTimeFormatOptions = {
-                            year: "numeric",
-                            month: "short",
-                            day: "2-digit",
-                          };
-                          const timeOpts: Intl.DateTimeFormatOptions = {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          };
-
-                          const hasOpen = !!formData.openAt;
-                          const hasClose = !!formData.closeAt;
-                          const hasDeadline = !!formData.deadline;
-
-                          const openD = hasOpen
-                            ? new Date(formData.openAt!)
-                            : null;
-                          const closeD = hasClose
-                            ? new Date(formData.closeAt!)
-                            : null;
-                          const deadlineD = hasDeadline
-                            ? new Date(formData.deadline!)
-                            : null;
-
-                          const sameDay =
-                            hasOpen &&
-                            hasClose &&
-                            openD!.toDateString() === closeD!.toDateString();
-
-                          const parts: string[] = [];
-
-                          if (hasOpen && hasClose) {
-                            if (sameDay) {
-                              parts.push(
-                                `Opens at ${openD!.toLocaleTimeString(
-                                  [],
-                                  timeOpts
-                                )} and closes at ${closeD!.toLocaleTimeString(
-                                  [],
-                                  timeOpts
-                                )} on ${openD!.toLocaleDateString(
-                                  [],
-                                  dateOpts
-                                )}`
-                              );
-                            } else {
-                              parts.push(
-                                `Opens at ${openD!.toLocaleTimeString(
-                                  [],
-                                  timeOpts
-                                )} on ${openD!.toLocaleDateString(
-                                  [],
-                                  dateOpts
-                                )} and closes at ${closeD!.toLocaleTimeString(
-                                  [],
-                                  timeOpts
-                                )} on ${closeD!.toLocaleDateString(
-                                  [],
-                                  dateOpts
-                                )}`
-                              );
-                            }
-                          } else if (hasOpen) {
-                            parts.push(
-                              `Opens at ${openD!.toLocaleTimeString(
-                                [],
-                                timeOpts
-                              )} on ${openD!.toLocaleDateString([], dateOpts)}`
-                            );
-                          } else if (hasClose) {
-                            parts.push(
-                              `Closes at ${closeD!.toLocaleTimeString(
-                                [],
-                                timeOpts
-                              )} on ${closeD!.toLocaleDateString([], dateOpts)}`
-                            );
-                          }
-
-                          // If you want to show deadline too, uncomment:
-                          // if (hasDeadline) {
-                          //   parts.push(`Deadline: ${deadlineD!.toLocaleDateString([], dateOpts)}`);
-                          // }
-
-                          return parts.join(" · ") + ".";
-                        })()}
+                        {formatOpenCloseTime(
+                          formData.openAt,
+                          formData.closeAt,
+                          formData.deadline
+                        )}
                       </span>
                     </div>
                   )}
@@ -763,10 +795,7 @@ export default function QuizFormPage() {
                   <div className="flex items-center space-x-1">
                     <BookOpen className="w-4 h-4 text-blue-600" />
                     <span className="font-bold">
-                      {formData.maxQuestions &&
-                      formData.maxQuestions !== formData.questions.length
-                        ? `${formData.maxQuestions}/${formData.questions.length}`
-                        : formData.questions.length}
+                      {formData.questions.length}
                     </span>
                   </div>
                   <div className="w-px h-4 bg-gray-300"></div>
@@ -789,7 +818,7 @@ export default function QuizFormPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Success message (kept) */}
+        {/* Success message */}
         {saveMessage && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -867,7 +896,17 @@ export default function QuizFormPage() {
                   placeholder="60"
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  Recommended: 1-2 minutes per question
+                  <span className="font-medium">Duration:</span>{" "}
+                  {formatDuration(formData.duration)} •
+                  <span className="ml-2">
+                    Recommended: 1-2 minutes per question
+                  </span>
+                  {formData.duration > 180 && (
+                    <span className="ml-2 text-amber-600 flex items-center mt-1">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      Long duration may affect student focus
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -901,7 +940,9 @@ export default function QuizFormPage() {
                     Quiz Instructions
                   </label>
                   <p className="text-xs text-gray-500 mt-1">
-                    Add instructions to guide students during the quiz
+                    Add additional instructions to guide students during the
+                    quiz (system provides instructions automatically based on
+                    quiz settings)
                   </p>
                 </div>
               </div>
@@ -921,27 +962,23 @@ export default function QuizFormPage() {
                         className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
                         placeholder="Enter an instruction for students..."
                       />
-                      {formData.instructions.length > 1 && (
-                        <Button
-                          onClick={() => removeInstruction(index)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-300 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity mt-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <Button
+                        onClick={() => removeInstruction(index)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 border-red-300 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity mt-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
 
-                {/* Plus button positioned at bottom right */}
                 <div className="flex justify-end mt-4">
                   <Button
                     onClick={addInstruction}
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
-                    className="flex items-center gap-2 text-blue-600 border-blue-300 bg-indigo-50 hover:bg-indigo-100"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -965,68 +1002,130 @@ export default function QuizFormPage() {
 
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Auto Grading and Shuffle Questions Toggles */}
-              <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Auto Grading, Shuffle Questions, Back Navigation, and Case Sensitive Toggles */}
+              <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                 {/* Auto Grading Toggle */}
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
+                <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-green-100 rounded-lg">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-sm">
                         Auto Grading
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        Automatically grade and show results after quiz
-                      </p>
                     </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.autoGrade}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            autoGrade: e.target.checked,
+                          }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
+                    </label>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.autoGrade}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          autoGrade: e.target.checked,
-                        }))
-                      }
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
+                  <p className="text-xs text-gray-600">
+                    Automatically grade and show results to students after quiz
+                  </p>
                 </div>
 
                 {/* Shuffle Questions Toggle */}
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Shuffle className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-blue-100 rounded-lg">
+                        <Shuffle className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-sm">
                         Shuffle Questions
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        Randomize the order of questions for each student
-                      </p>
                     </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.shuffleQuestions}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            shuffleQuestions: e.target.checked,
+                          }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.shuffleQuestions}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          shuffleQuestions: e.target.checked,
-                        }))
-                      }
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
+                  <p className="text-xs text-gray-600">
+                    Randomize the order of questions for each student
+                  </p>
+                </div>
+
+                {/* Back Navigation Toggle */}
+                <div className="p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl border border-purple-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-purple-100 rounded-lg">
+                        <ArrowLeft className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-sm">
+                        Back Navigation
+                      </h3>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.backNavigation}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            backNavigation: e.target.checked,
+                          }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    Allow students to navigate back to previous questions
+                  </p>
+                </div>
+
+                {/* Case Sensitive Toggle */}
+                <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-orange-100 rounded-lg">
+                        <Type className="w-4 h-4 text-orange-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-sm">
+                        Case Sensitive
+                      </h3>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.caseSensitive}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            caseSensitive: e.target.checked,
+                          }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-600"></div>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    Make text answers case sensitive during evaluation
+                  </p>
                 </div>
               </div>
 
@@ -1058,34 +1157,6 @@ export default function QuizFormPage() {
                 </p>
               </div>
 
-              {/* Max Questions */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3">
-                  <BookOpen className="w-4 h-4 inline mr-2 text-gray-600" />
-                  Max Questions (Optional)
-                </label>
-                <input
-                  type="number"
-                  value={formData.maxQuestions || ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      maxQuestions: e.target.value
-                        ? parseInt(e.target.value)
-                        : null,
-                    }))
-                  }
-                  min="1"
-                  max={formData.questions.length}
-                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                  placeholder={`Max ${formData.questions.length}`}
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Leave empty to show all questions. System will randomly select
-                  questions.
-                </p>
-              </div>
-
               {/* Max Attempts */}
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
@@ -1109,22 +1180,6 @@ export default function QuizFormPage() {
                 <p className="text-xs text-gray-500 mt-2">
                   Number of attempts allowed per student
                 </p>
-              </div>
-
-              {/* Password (Optional) */}
-              <div>
-                <PasswordInput
-                  label=" Quiz Password (Optional)"
-                  value={ formData.password ||""}
-                  onChange={(value) =>
-                    setFormData((prev) => ({ ...prev, password: value }))
-                  }
-                  placeholder="Leave empty to allow access without a password"
-                  required={false}
-                  helperText="If set, students must enter this password to start the quiz. You can add or change it anytime."
-                  className=""
-                  id="quiz-password"
-                />
               </div>
 
               {/* Open At */}
@@ -1168,6 +1223,23 @@ export default function QuizFormPage() {
                   After this time, students cannot access the quiz
                 </p>
               </div>
+
+              {/* Password Input */}
+              <div className="lg:col-span-2">
+                <PasswordInput
+                  label="Quiz Password (Optional)"
+                  value={passwordInput}
+                  onChange={(value) => {
+                    setPasswordInput(value);
+                    setFormData((prev) => ({ ...prev, password: value }));
+                  }}
+                  placeholder="Leave empty to allow access without a password"
+                  required={false}
+                  helperText="If set, students must enter this password to start the quiz. You can add or change it anytime."
+                  className=""
+                  id="quiz-password"
+                />
+              </div>
             </div>
 
             {/* Advanced Settings Info Panel */}
@@ -1189,12 +1261,16 @@ export default function QuizFormPage() {
                       questions up to this mark limit
                     </li>
                     <li>
-                      • <strong>Max Questions:</strong> System will show only
-                      this many questions per student
-                    </li>
-                    <li>
                       • <strong>Shuffle Questions:</strong> Each student will
                       see questions in different order
+                    </li>
+                    <li>
+                      • <strong>Back Navigation:</strong> Controls whether
+                      students can go back to previous questions
+                    </li>
+                    <li>
+                      • <strong>Case Sensitive:</strong> Text answers will be
+                      evaluated with exact case matching
                     </li>
                     <li>
                       • <strong>Open/Close Times:</strong> Control when students
@@ -1208,242 +1284,18 @@ export default function QuizFormPage() {
         </div>
 
         {/* Questions Section */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-8">
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-indigo-600" />
-                  Quiz Questions ({formData.questions.length})
-                </h2>
-                <p className="text-gray-600 text-sm mt-1">
-                  Create and manage your quiz questions
-                </p>
-              </div>
-            </div>
-          </div>
+        <QuizSection
+          questions={formData.questions}
+          onAddQuestion={addQuestion}
+          onUpdateQuestion={updateQuestion}
+          onUpdateMCQOption={updateMCQOption}
+          onAddMCQOption={addMCQOption}
+          onRemoveMCQOption={removeMCQOption}
+          onRemoveQuestion={removeQuestion}
+          assessmentId={assessmentId}
+        />
 
-          <div className="p-6">
-            <div className="space-y-8">
-              {formData.questions.map((question, questionIndex) => (
-                <div
-                  key={question.question_id}
-                  className="border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-blue-300 transition-colors"
-                >
-                  {/* Question Header */}
-                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-4 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-lg">
-                          {questionIndex + 1}
-                        </div>
-                        <div>
-                          <select
-                            value={question.type}
-                            onChange={(e) =>
-                              updateQuestion(
-                                questionIndex,
-                                "type",
-                                e.target.value
-                              )
-                            }
-                            className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                          >
-                            <option value="MCQ">
-                              Multiple Choice Question
-                            </option>
-                            <option value="SHORT">Short Answer Question</option>
-                          </select>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Choose the question type
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Marks
-                          </label>
-                          <input
-                            type="number"
-                            value={question.marks_allowed}
-                            onChange={(e) =>
-                              updateQuestion(
-                                questionIndex,
-                                "marks_allowed",
-                                e.target.value
-                              )
-                            }
-                            min="0.00"
-                            step="0.5"
-                            className="w-20 px-3 py-2 text-center bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                          />
-                        </div>
-                        <Button
-                          onClick={() => removeQuestion(questionIndex)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    {/* Question Text */}
-                    <div className="mb-6">
-                      <label className="block text-sm font-semibold text-gray-800 mb-3">
-                        Question Text <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={question.question}
-                        onChange={(e) =>
-                          updateQuestion(
-                            questionIndex,
-                            "question",
-                            e.target.value
-                          )
-                        }
-                        rows={3}
-                        className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
-                        placeholder="Enter your question here. Be clear and specific..."
-                      />
-                    </div>
-
-                    {/* MCQ Options */}
-                    {question.type === "MCQ" && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-semibold text-gray-800 mb-4">
-                          Answer Options <span className="text-red-500">*</span>
-                        </label>
-                        <div className="space-y-4">
-                          {question.mcq_answer_options.map(
-                            (option, optionIndex) => (
-                              <div
-                                key={optionIndex}
-                                className="flex items-center gap-4 group"
-                              >
-                                <div className="flex items-center">
-                                  <input
-                                    type="radio"
-                                    name={`correct_answer_${questionIndex}`}
-                                    checked={
-                                      question.model_answer === option &&
-                                      option.trim() !== ""
-                                    }
-                                    onChange={() =>
-                                      updateQuestion(
-                                        questionIndex,
-                                        "model_answer",
-                                        option
-                                      )
-                                    }
-                                    className="w-5 h-5 text-green-600 focus:ring-green-500 focus:ring-2"
-                                    disabled={option.trim() === ""}
-                                  />
-                                  <span className="ml-3 w-8 h-8 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center font-bold text-sm">
-                                    {String.fromCharCode(65 + optionIndex)}
-                                  </span>
-                                </div>
-                                <input
-                                  type="text"
-                                  value={option}
-                                  onChange={(e) =>
-                                    updateMCQOption(
-                                      questionIndex,
-                                      optionIndex,
-                                      e.target.value
-                                    )
-                                  }
-                                  className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                                  placeholder={`Enter option ${String.fromCharCode(
-                                    65 + optionIndex
-                                  )}...`}
-                                />
-                              </div>
-                            )
-                          )}
-                        </div>
-                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                          <p className="text-xs text-amber-800 flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4" />
-                            Select the radio button next to the correct answer.
-                            Students will see these options in random order.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Short Answer Model Answer */}
-                    {question.type === "SHORT" && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-semibold text-gray-800 mb-3">
-                          Model Answer <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          value={question.model_answer}
-                          onChange={(e) =>
-                            updateQuestion(
-                              questionIndex,
-                              "model_answer",
-                              e.target.value
-                            )
-                          }
-                          rows={3}
-                          className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
-                          placeholder="Enter the expected answer or key points that should be included..."
-                        />
-                        <p className="text-xs text-gray-500 mt-2">
-                          This will be used as a reference for manual grading.
-                          Include key points or the exact answer expected.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {formData.questions.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <BookOpen className="w-10 h-10 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    No Questions Added Yet
-                  </h3>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Start building your quiz by adding your first question. You
-                    can create multiple choice or short answer questions.
-                  </p>
-                  <Button
-                    onClick={addQuestion}
-                    className="flex items-center gap-2 mx-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Add Your First Question
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Add Question Button - Bottom Right */}
-            {formData.questions.length > 0 && (
-              <div className="flex justify-end mt-6">
-                <Button
-                  onClick={addQuestion}
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Question
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons (with inline error & scroll ref) */}
+        {/* Action Buttons */}
         <div
           ref={actionBarRef}
           className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
@@ -1459,11 +1311,45 @@ export default function QuizFormPage() {
                   <h4 className="text-sm font-medium text-red-800 mb-1">
                     Error
                   </h4>
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-sm text-red-700 whitespace-pre-line">
+                    {error}
+                  </p>
                 </div>
               </div>
             </div>
           )}
+
+          {/* Warning for incomplete questions */}
+          {(() => {
+            const { isComplete, missingAnswers } = checkAllQuestionsComplete();
+            return (
+              !isComplete &&
+              formData.questions.length > 0 && (
+                <div className="mb-6 p-4 rounded-lg border border-amber-200 bg-amber-50 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <AlertCircle className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-amber-800 mb-2">
+                        Questions Need Completion
+                      </h4>
+                      <ul className="text-sm text-amber-700 space-y-1">
+                        {missingAnswers.slice(0, 5).map((issue, index) => (
+                          <li key={index}>• {issue}</li>
+                        ))}
+                        {missingAnswers.length > 5 && (
+                          <li className="italic">
+                            ... and {missingAnswers.length - 5} more issues
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )
+            );
+          })()}
 
           <div className="flex items-center justify-between">
             {/* Quick Stats */}
@@ -1507,37 +1393,25 @@ export default function QuizFormPage() {
                   </p>
                 </div>
               </div>
-
-              {formData.maxQuestions && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center">
-                    <Target className="w-6 h-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Shown Questions
-                    </p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {formData.maxQuestions}
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Buttons */}
             <div className="flex items-center gap-4">
-              <Button
-                onClick={handleGoBack}
-                variant="outline"
-                className="px-6 py-3 border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
+              <Button onClick={handleGoBack} variant="outline">
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={saving}
-                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                disabled={isSaveDisabled()}
+                className={`${
+                  isSaveDisabled() ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                variant="primary"
+                title={
+                  isSaveDisabled()
+                    ? "Please complete all questions before saving"
+                    : "Save quiz"
+                }
               >
                 {saving ? (
                   <div className="flex items-center gap-3">

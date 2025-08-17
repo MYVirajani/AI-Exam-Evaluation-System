@@ -108,28 +108,27 @@ model LectureMaterial {
 }
 
 model Assessment {
-  assessment_id     String         @id
-  module_id         String
-  created_by        String
-  created_on        DateTime       @default(now()) @db.Timestamptz(6)
-  type              assessmentType
-  title             String
-  description       String
-  instructions      String[]
-  duration          Int?
-  deadline          DateTime       @db.Timestamptz(6)
-  open_at           DateTime?      @db.Timestamptz(6)
-  close_at          DateTime?      @db.Timestamptz(6)
-  total_marks       Decimal?       @db.Decimal(5, 2) //total marks calculated by all questions of assessment
-  max_marks         Decimal?       @db.Decimal(5, 2) //max marks a student can allocate by assessment
-  password          String? // For quiz access
-  question_count    Int? // Number of questions to show (for quizzes)
-  shuffle_questions Boolean        @default(false) // Whether to shuffle questions
-  max_attempts      Int?
-  auto_grade        Boolean        @default(false)
-  back_navigation   Boolean @default(true)
+  assessment_id             String         @id
+  module_id                 String
+  created_by                String
+  created_on                DateTime       @default(now()) @db.Timestamptz(6)
+  type                      assessmentType
+  title                     String
+  description               String
+  instructions              String[]
+  duration                  Int?
+  deadline                  DateTime       @db.Timestamptz(6)
+  open_at                   DateTime?      @db.Timestamptz(6)
+  close_at                  DateTime?      @db.Timestamptz(6)
+  total_marks               Decimal?       @db.Decimal(5, 2) //total marks calculated by all questions of assessment
+  max_marks                 Decimal?       @db.Decimal(5, 2) //max marks a student can allocate by assessment
+  password                  String? // For quiz access
+  question_count            Int? // Number of questions to show (for quizzes)
+  shuffle_questions         Boolean        @default(false) // Whether to shuffle questions
+  max_attempts              Int?
+  auto_grade                Boolean        @default(false)
+  back_navigation           Boolean        @default(true)
   case_sensitive_evaluation Boolean        @default(false)
-
 
   module             Module              @relation(fields: [module_id], references: [module_id])
   educator           Educator            @relation(fields: [created_by], references: [user_id])

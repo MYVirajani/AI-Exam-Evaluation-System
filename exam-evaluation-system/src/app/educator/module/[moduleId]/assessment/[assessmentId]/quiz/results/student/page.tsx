@@ -246,7 +246,7 @@ const StudentAssessmentSummaryPage: React.FC = () => {
   // Generate breadcrumbs
   const breadcrumbs = [
     { label: "Dashboard", href: "/educator/dashboard" },
-    { label: "Module", href: `/educator/module/${moduleId}` },
+    { label: summary.module_code, href: `/educator/module/${moduleId}` },
     { label: summary.assessment_title, href: `/educator/module/${moduleId}/assessment/${params.assessmentId}` },
     { label: "Results", href: `/educator/module/${moduleId}/assessment/${params.assessmentId}/quiz/results?educatorId=${educatorId}` },
     { label: summary.student_registration_number, current: true }

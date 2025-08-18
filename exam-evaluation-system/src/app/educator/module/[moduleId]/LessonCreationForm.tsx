@@ -221,7 +221,7 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
                 <FiUpload className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Create Learning Materials</h2>
+                <h2 className="text-2xl font-bold">Create Lecture Materials</h2>
                 <p className="text-blue-100 text-sm">Upload resources for your lesson</p>
               </div>
             </div>
@@ -258,7 +258,7 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
             {/* File Upload Area */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Learning Materials
+                Lecture Materials
               </label>
               
               {/* Drag & Drop Zone */}
@@ -321,7 +321,7 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
                         <FiPaperclip className="w-8 h-8 text-blue-600" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                        Upload Learning Materials
+                        Upload Lecture Materials
                       </h3>
                       <p className="text-gray-500 text-sm mb-4">
                         Drag and drop files here, or click to browse
@@ -381,7 +381,7 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a brief description of the learning materials..."
+                placeholder="Add a brief description of the lecture materials..."
                 disabled={loading}
               />
             </div>

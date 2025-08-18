@@ -355,7 +355,7 @@ export default function ModulePage({ params }: ModulePageProps) {
                 disabled={creatingEvent}
                 className="w-full sm:w-auto"
               >
-                + Learning Materials
+                + Lecture Materials
               </Button>
             </div>
 

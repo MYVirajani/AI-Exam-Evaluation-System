@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import EducatorEventCard from "@/components/EducatorEventCard";
 import Button from "@/components/Button";
 import EventCreationForm, {
@@ -58,7 +58,35 @@ export default function ModulePage({ params }: ModulePageProps) {
   const [educatorId, setEducatorId] = useState<string | null>(null);
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [showScrollButtons, setShowScrollButtons] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  // Check scroll position and update button states
+  const checkScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+      setShowScrollButtons(scrollWidth > clientWidth);
+    }
+  };
+
+  // Handle scroll button clicks
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -121,57 +149,74 @@ export default function ModulePage({ params }: ModulePageProps) {
     fetchData();
   }, [moduleId]);
 
+  // Check scroll after assessments change
+  useEffect(() => {
+    if (moduleData?.assessments) {
+      setTimeout(checkScroll, 100);
+      window.addEventListener('resize', checkScroll);
+      return () => window.removeEventListener('resize', checkScroll);
+    }
+  }, [moduleData?.assessments]);
+
   const handleCreateEvent = async (data: EventFormData) => {
-    if (!educatorId) {
-      setError("Cannot create event. Educator ID not found.");
-      return;
+  if (!educatorId) {
+    setError("Cannot create event. Educator ID not found.");
+    return;
+  }
+
+  try {
+    setCreatingEvent(true);
+    setError(null);
+
+    const form = new FormData();
+    form.append("type", data.type);
+    form.append("title", data.title);
+    form.append("description", data.description || "");
+    form.append("deadline", data.deadline);
+    form.append("moduleId", moduleData?.moduleId || data.moduleId);
+    form.append("createdBy", educatorId);
+
+    if (data.questionPaper?.length)
+      form.append("questionPaper", data.questionPaper[0]);
+    if (data.modelAnswerPaper?.length)
+      form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
+
+    const res = await fetch("/api/educator/assessment", {
+      method: "POST",
+      body: form,
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json.error || "Failed to create event");
     }
 
-    try {
-      setCreatingEvent(true);
-      setError(null);
+    // Add submissionsCount with default value 0 to the new assessment
+    const newAssessment = {
+      ...json.assessment,
+      submissionsCount: 0, // Default value for new assessment
+      openAt: json.assessment.open_at || json.assessment.openAt || "",
+      closeAt: json.assessment.close_at || json.assessment.closeAt || "",
+    };
 
-      const form = new FormData();
-      form.append("type", data.type);
-      form.append("title", data.title);
-      form.append("description", data.description || "");
-      form.append("deadline", data.deadline);
-      form.append("moduleId", moduleData?.moduleId || data.moduleId);
-      form.append("createdBy", educatorId);
+    setModuleData((prev) =>
+      prev
+        ? {
+            ...prev,
+            assessments: [...prev.assessments, newAssessment],
+          }
+        : prev
+    );
 
-      if (data.questionPaper?.length)
-        form.append("questionPaper", data.questionPaper[0]);
-      if (data.modelAnswerPaper?.length)
-        form.append("modelAnswerPaper", data.modelAnswerPaper[0]);
-
-      const res = await fetch("/api/educator/assessment", {
-        method: "POST",
-        body: form,
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.error || "Failed to create event");
-      }
-
-      setModuleData((prev) =>
-        prev
-          ? {
-              ...prev,
-              assessments: [...prev.assessments, json.assessment],
-            }
-          : prev
-      );
-
-      setIsEventModalOpen(false);
-    } catch (err: any) {
-      console.error("Create Event Error:", err.message);
-      setError(err.message);
-    } finally {
-      setCreatingEvent(false);
-    }
-  };
+    setIsEventModalOpen(false);
+  } catch (err: any) {
+    console.error("Create Event Error:", err.message);
+    setError(err.message);
+  } finally {
+    setCreatingEvent(false);
+  }
+};
 
   const handleDeleteLesson = (lessonId: string) => {
     setModuleData((prev) => {
@@ -287,7 +332,7 @@ export default function ModulePage({ params }: ModulePageProps) {
 
         {/* Assessments Section */}
         <div className="mb-12 sm:mb-16">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-full mx-auto">
             
             {/* Section Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
@@ -318,22 +363,68 @@ export default function ModulePage({ params }: ModulePageProps) {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-                {assessments.map((assess) => (
-                  <div key={assess.assessment_id} className="w-full sm:w-auto sm:max-w-sm">
-                    <EducatorEventCard
-                      title={assess.title}
-                      module={moduleName}
-                      uploads={`${assess.submissionsCount}/${moduleData.enrollmentsCount}`}
-                      deadline={assess.deadline}
-                      openAt={assess.openAt}
-                      closeAt={assess.closeAt}
-                      assessmentId={assess.assessment_id}
-                      moduleId={moduleData.moduleId}
-                      assessmentType={assess.type}
-                    />
-                  </div>
-                ))}
+              <div className="relative">
+                {/* Scroll Navigation Buttons */}
+                {showScrollButtons && (
+                  <>
+                    <button
+                      onClick={scrollLeft}
+                      disabled={!canScrollLeft}
+                      className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center transition-all duration-200 ${
+                        canScrollLeft 
+                          ? 'text-blue-600 hover:bg-blue-50 hover:border-blue-300' 
+                          : 'text-gray-300 cursor-not-allowed'
+                      }`}
+                      aria-label="Scroll left"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    
+                    <button
+                      onClick={scrollRight}
+                      disabled={!canScrollRight}
+                      className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center transition-all duration-200 ${
+                        canScrollRight 
+                          ? 'text-blue-600 hover:bg-blue-50 hover:border-blue-300' 
+                          : 'text-gray-300 cursor-not-allowed'
+                      }`}
+                      aria-label="Scroll right"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </>
+                )}
+
+                {/* Scrollable Container */}
+                <div 
+                  ref={scrollContainerRef}
+                  className="flex gap-3 overflow-x-auto scrollbar-hide pb-4 px-12 sm:px-0"
+                  onScroll={checkScroll}
+                  style={{
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                  }}
+                >
+                  {assessments.map((assess) => (
+                    <div key={assess.assessment_id} className="flex-shrink-0 w-80 sm:w-72">
+                      <EducatorEventCard
+                        title={assess.title}
+                        module={moduleName}
+                        uploads={`${assess.submissionsCount}/${moduleData.enrollmentsCount}`}
+                        deadline={assess.deadline}
+                        openAt={assess.openAt}
+                        closeAt={assess.closeAt}
+                        assessmentId={assess.assessment_id}
+                        moduleId={moduleData.moduleId}
+                        assessmentType={assess.type}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -420,6 +511,12 @@ export default function ModulePage({ params }: ModulePageProps) {
           );
         }}
       />
+
+      <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }

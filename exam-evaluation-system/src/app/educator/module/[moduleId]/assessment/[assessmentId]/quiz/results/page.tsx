@@ -222,7 +222,7 @@ export default function QuizResultsPage() {
     : [
         { label: 'Dashboard', href: '/educator/dashboard' }, 
         { label: 'Module', href: `/educator/module/${moduleId}` }, 
-        { label: 'Assessment', href: `/educator/module/${moduleId}/assessment/${assessmentId}` },
+        { label: 'Assessment', href: `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}` },
         { label: 'Results', current: true }
       ];
 

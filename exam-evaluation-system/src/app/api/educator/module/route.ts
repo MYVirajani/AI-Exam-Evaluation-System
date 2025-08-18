@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
@@ -61,6 +61,8 @@ export async function POST(request: Request) {
         enrollment_key: formData.get("enrollmentKey") as string | null,
         module_image_url: imageUrl,
         created_by: createdBy,
+        last_updated_at: new Date(),
+        created_on: new Date(),
       },
     });
 

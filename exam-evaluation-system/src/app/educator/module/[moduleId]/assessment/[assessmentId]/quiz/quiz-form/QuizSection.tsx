@@ -388,10 +388,10 @@ export default function QuizSection({
   return (
     <>
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-8">
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-4 sm:px-6 py-4 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-indigo-600" />
                 Quiz Questions ({questions.length})
               </h2>
@@ -402,35 +402,50 @@ export default function QuizSection({
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {questions.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <BookOpen className="w-10 h-10 text-blue-600" />
+            <div className="text-center py-12 sm:py-16">
+              <div className="w-16 sm:w-20 h-16 sm:h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <BookOpen className="w-8 sm:w-10 h-8 sm:h-10 text-blue-600" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
                 No Questions Added Yet
               </h3>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              <p className="text-gray-600 mb-8 max-w-md mx-auto text-sm sm:text-base px-4">
                 Start building your quiz by adding your first question. You can
                 create multiple choice or short answer questions.
               </p>
-              <div className="flex justify-center gap-4">
+              
+              {/* Primary Action Button */}
+              <div className="mb-6 px-4">
                 <Button
                   onClick={onAddQuestion}
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-6 py-3 h-auto text-sm sm:text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mx-auto"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                   Add Your First Question
                 </Button>
-                <ImportQuestions 
-                  onImport={handleImport} 
-                  assessmentId={assessmentId} 
-                />
+              </div>
+              
+              {/* Divider */}
+              <div className="flex items-center gap-4 mb-6 px-8">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-xs text-gray-500 font-medium">OR</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
+              </div>
+              
+              {/* Import Option */}
+              <div className="flex justify-center px-4">
+                <div className="w-full sm:w-auto max-w-sm">
+                  <ImportQuestions 
+                    onImport={handleImport} 
+                    assessmentId={assessmentId} 
+                  />
+                </div>
               </div>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {questions.map((question, questionIndex) => (
                 <div
                   key={`question-${questionIndex}-${question.question_id || Date.now()}`}
@@ -440,26 +455,26 @@ export default function QuizSection({
                       : 'border-amber-200 hover:border-amber-300 bg-amber-50/30'
                   }`}
                 >
-                  <div className={`px-6 py-4 border-b ${
+                  <div className={`px-4 sm:px-6 py-4 border-b ${
                     isQuestionComplete(question)
                       ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
                       : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
                   }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg text-white relative ${
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold text-base sm:text-lg text-white relative flex-shrink-0 ${
                           isQuestionComplete(question) 
                             ? 'bg-gradient-to-r from-green-600 to-green-700' 
                             : 'bg-gradient-to-r from-amber-600 to-orange-600'
                         }`}>
                           {questionIndex + 1}
                           {isQuestionComplete(question) && (
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                              <CheckCircle className="w-3 h-3 text-white" />
+                            <div className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-green-500 rounded-full flex items-center justify-center">
+                              <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
                             </div>
                           )}
                         </div>
-                        <div className="w-auto">
+                        <div className="min-w-0 flex-1 max-w-xs sm:max-w-none">
                           <Dropdown
                             options={questionTypeOptions}
                             selectedOption={getQuestionTypeLabel(question.type)}
@@ -474,8 +489,8 @@ export default function QuizSection({
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
+                      <div className="flex items-center gap-3 sm:gap-4 justify-between sm:justify-end">
+                        <div className="text-left sm:text-right">
                           <label className="block text-xs font-medium text-gray-600 mb-1">
                             Marks
                           </label>
@@ -491,14 +506,14 @@ export default function QuizSection({
                             }
                             min="0.00"
                             step="0.5"
-                            className="w-20 px-3 py-2 text-center bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                            className="w-16 sm:w-20 px-2 sm:px-3 py-2 text-center bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
                           />
                         </div>
                         <Button
                           onClick={() => onRemoveQuestion(questionIndex)}
                           variant="outline"
                           size="sm"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
+                          className="text-red-600 border-red-300 hover:bg-red-50 h-auto px-2 py-2"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -507,16 +522,16 @@ export default function QuizSection({
                     
                     {/* Add completion status indicator */}
                     {!isQuestionComplete(question) && (
-                      <div className="mt-3 flex items-center gap-2 text-sm text-amber-800 bg-amber-100 px-3 py-2 rounded-lg border border-amber-300">
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                        <span>
+                      <div className="mt-3 flex items-start gap-2 text-sm text-amber-800 bg-amber-100 px-3 py-2 rounded-lg border border-amber-300">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span className="break-words">
                           {getQuestionValidationIssues(question).join(" • ")}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <div className="mb-6">
                       <label className="block text-sm font-semibold text-gray-800 mb-3">
                         Question Text <span className="text-red-500">*</span>
@@ -531,7 +546,7 @@ export default function QuizSection({
                           )
                         }
                         rows={3}
-                        className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
+                        className="w-full px-3 sm:px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none text-sm sm:text-base"
                         placeholder="Enter your question here. Be clear and specific..."
                       />
                     </div>
@@ -543,14 +558,14 @@ export default function QuizSection({
                             Answer Options <span className="text-red-500">*</span>
                           </label>
                         </div>
-                        <div className="space-y-4">
+                        <div className="space-y-3 sm:space-y-4">
                           {question.mcq_answer_options.map(
                             (option, optionIndex) => (
                               <div
                                 key={`option-${questionIndex}-${optionIndex}`}
-                                className="flex items-center gap-4 group"
+                                className="flex items-center gap-2 sm:gap-4 group"
                               >
-                                <div className="flex items-center">
+                                <div className="flex items-center flex-shrink-0">
                                   <input
                                     type="radio"
                                     name={`correct_answer_${questionIndex}`}
@@ -565,10 +580,10 @@ export default function QuizSection({
                                         option
                                       )
                                     }
-                                    className="w-5 h-5 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                                    className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 focus:ring-blue-500 focus:ring-2"
                                     disabled={option.trim() === ""}
                                   />
-                                  <span className="ml-3 w-8 h-8 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center font-bold text-sm">
+                                  <span className="ml-2 sm:ml-3 w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm">
                                     {String.fromCharCode(65 + optionIndex)}
                                   </span>
                                 </div>
@@ -582,7 +597,7 @@ export default function QuizSection({
                                       e.target.value
                                     )
                                   }
-                                  className="flex-1 px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                                  className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm text-sm sm:text-base"
                                   placeholder={`Enter option ${String.fromCharCode(
                                     65 + optionIndex
                                   )}`}
@@ -594,7 +609,7 @@ export default function QuizSection({
                                     }
                                     variant="outline"
                                     size="sm"
-                                    className="text-red-600 border-red-300 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="text-red-600 border-red-300 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity h-auto px-2 py-2 flex-shrink-0"
                                   >
                                     <Minus className="w-4 h-4" />
                                   </Button>
@@ -603,23 +618,25 @@ export default function QuizSection({
                             )
                           )}
                         </div>
-                        <div className="mt-3 flex items-start gap-2">
-                          <div className="flex-1 p-3 w-auto bg-amber-50 border border-amber-200 rounded-lg">
-                            <p className="text-xs text-amber-800 flex items-center gap-2">
-                              <AlertCircle className="w-4 h-4" />
-                              Select the radio button next to the correct answer.
-                              Students will see these options in random order. You
-                              can add up to 8 options per question.
+                        <div className="mt-3 flex flex-col sm:flex-row sm:items-start gap-2">
+                          <div className="flex-1 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs text-amber-800 flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                              <span>
+                                Select the radio button next to the correct answer.
+                                Students will see these options in random order. You
+                                can add up to 8 options per question.
+                              </span>
                             </p>
                           </div>
                           <Button
                             onClick={() => onAddMCQOption(questionIndex)}
                             variant="primary"
                             size="sm"
-                            className=""
+                            className="h-auto px-3 py-2 self-start sm:self-center flex-shrink-0"
                             disabled={question.mcq_answer_options.length >= 8}
                           >
-                            <Plus className="w-5 h-5" />
+                            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                           </Button>
                         </div>
                       </div>
@@ -640,7 +657,7 @@ export default function QuizSection({
                             )
                           }
                           rows={3}
-                          className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none"
+                          className="w-full px-3 sm:px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm resize-none text-sm sm:text-base"
                           placeholder="Enter the expected answer or key points that should be included..."
                         />
                         <p className="text-xs text-gray-500 mt-2">
@@ -656,14 +673,17 @@ export default function QuizSection({
           )}
 
           {questions.length > 0 && (
-            <div className="flex justify-between mt-6">
-              <ImportQuestions 
-                onImport={handleImport} 
-                assessmentId={assessmentId} 
-              />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-6">
+              <div className="w-full sm:w-auto order-2 sm:order-1">
+                <ImportQuestions 
+                  onImport={handleImport} 
+                  assessmentId={assessmentId} 
+                />
+              </div>
               <Button
                 onClick={onAddQuestion}
                 variant="primary"
+                className="flex items-center justify-center gap-2 px-4 py-2 h-auto text-sm sm:text-base w-full sm:w-auto order-1 sm:order-2"
               >
                 <Plus className="w-4 h-4" />
                 Add Question

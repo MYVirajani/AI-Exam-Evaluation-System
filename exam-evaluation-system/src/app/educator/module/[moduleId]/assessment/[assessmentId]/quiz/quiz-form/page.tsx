@@ -423,9 +423,6 @@ export default function QuizFormPage() {
   const validateForm = () => {
     if (!formData.title.trim()) return "Quiz title is required";
 
-    if (formData.questions.length === 0) {
-      return "At least one question is required";
-    }
 
     const { isComplete, missingAnswers } = checkAllQuestionsComplete();
     if (!isComplete) {
@@ -481,7 +478,6 @@ export default function QuizFormPage() {
 
   const isSaveDisabled = (): boolean => {
     if (!formData.title.trim()) return true;
-    if (formData.questions.length === 0) return true;
 
     const { isComplete } = checkAllQuestionsComplete();
     if (!isComplete) return true;
@@ -1285,15 +1281,15 @@ export default function QuizFormPage() {
 
         {/* Questions Section */}
         <QuizSection
-          questions={formData.questions}
-          onAddQuestion={addQuestion}
-          onUpdateQuestion={updateQuestion}
-          onUpdateMCQOption={updateMCQOption}
-          onAddMCQOption={addMCQOption}
-          onRemoveMCQOption={removeMCQOption}
-          onRemoveQuestion={removeQuestion}
-          assessmentId={assessmentId}
-        />
+  questions={formData.questions}
+  onAddQuestion={addQuestion}
+  onUpdateQuestion={updateQuestion}
+  onUpdateMCQOption={updateMCQOption}
+  onAddMCQOption={addMCQOption}
+  onRemoveMCQOption={removeMCQOption}
+  onRemoveQuestion={removeQuestion}
+  assessmentId={assessmentId}
+/>
 
         {/* Action Buttons */}
         <div

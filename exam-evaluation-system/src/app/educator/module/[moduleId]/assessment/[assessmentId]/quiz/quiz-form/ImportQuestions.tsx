@@ -6,7 +6,6 @@ import Button from "@/components/Button";
 import { FILE_CONFIG, getMaxSizeInBytes, getAcceptedExtensions, getMaxSizeLabel } from "@/lib/fileConfig";
 import toast from "react-hot-toast";
 
-
 interface ImportQuestionsProps {
   onImport: (questions: any[]) => void;
   assessmentId: string;
@@ -54,59 +53,58 @@ export default function ImportQuestions({ onImport, assessmentId }: ImportQuesti
   };
 
   const handleImport = async () => {
-  if (!file) {
-    toast.error("Please select a file first");
-    return;
-  }
-
-  const validationError = validateFile(file);
-  if (validationError) {
-    toast.error(validationError);
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await fetch(
-      `/api/educator/assessment/${assessmentId}/q-parser`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to import questions");
+    if (!file) {
+      toast.error("Please select a file first");
+      return;
     }
 
-    // Show success toast
-    toast.success("Questions imported successfully!");
+    const validationError = validateFile(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
 
-    // Pass questions to parent component
-    onImport(data.questions || []);
-    setFile(null);
+    setIsLoading(true);
 
-  } catch (err) {
-    // Show error toast
-    toast.error(err instanceof Error ? err.message : "Something went wrong");
-  } finally {
-    setIsLoading(false);
-  }
-};
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
+      const response = await fetch(
+        `/api/educator/assessment/${assessmentId}/q-parser`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to import questions");
+      }
+
+      // Show success toast
+      toast.success("Questions imported successfully!");
+
+      // Pass questions to parent component
+      onImport(data.questions || []);
+      setFile(null);
+
+    } catch (err) {
+      // Show error toast
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-      <div className="flex items-center gap-2">
-        <label className="flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors px-3 py-2 rounded-lg border border-gray-300">
-          <Upload className="w-4 h-4 mr-2 text-gray-500" />
-          <span className="text-sm text-gray-500">Import Questions</span>
+    <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 shadow-sm w-full hover:bg-gray-100 transition-colors">
+      <div className="flex flex-col items-center gap-3">
+        <label className="flex items-center justify-center cursor-pointer bg-white hover:bg-gray-50 transition-colors px-4 py-2.5 rounded-lg border border-gray-300 shadow-sm w-full">
+          <Upload className="w-4 h-4 mr-2 text-gray-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Import Questions</span>
           <input 
             type="file" 
             className="hidden" 
@@ -116,38 +114,39 @@ export default function ImportQuestions({ onImport, assessmentId }: ImportQuesti
         </label>
         
         {file && (
-          <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-1.5 border border-blue-200">
-            <FileText className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-medium text-gray-900 truncate max-w-xs">
-              {file.name}
-            </span>
-            <button 
-              onClick={() => setFile(null)}
-              className="text-gray-500 hover:text-gray-700"
+          <>
+            <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2 border border-blue-200 w-full">
+              <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <span className="text-sm font-medium text-gray-900 truncate flex-1 text-center">
+                {file.name}
+              </span>
+              <button 
+                onClick={() => setFile(null)}
+                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <Button
+              onClick={handleImport}
+              disabled={isLoading}
+              size="sm"
+              variant="primary"
+              className="px-4 py-2 h-auto text-sm w-full"
             >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-        
-        {file && (
-          <Button
-            onClick={handleImport}
-            disabled={isLoading}
-            size="sm"
-            variant="primary"
-          >
-            {isLoading ? "Importing..." : "Import"}
-          </Button>
+              {isLoading ? "Importing..." : "Import"}
+            </Button>
+          </>
         )}
       </div>
       
-      <div className="mt-2 text-xs text-gray-500">
-        Supported formats: {acceptedExtensions} (Max: {getMaxSizeLabel(qParserConfig.maxSizeMB)})
+      <div className="mt-3 text-xs text-gray-500 text-center break-words">
+        Supported: {acceptedExtensions} (Max: {getMaxSizeLabel(qParserConfig.maxSizeMB)})
       </div>
       
       {error && (
-        <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-200 text-xs text-red-700">
+        <div className="mt-3 p-2 bg-red-50 rounded-lg border border-red-200 text-xs text-red-700 break-words text-center">
           {error}
         </div>
       )}

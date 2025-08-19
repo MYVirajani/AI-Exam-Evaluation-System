@@ -1463,6 +1463,481 @@
 #     self.cursor.execute(update_query, params)
 #     self.commit()
 
+# from .base_relational_db import BaseRelationalDB
+# from ...models.student_answer import StudentAnswer
+# from typing import Dict, Tuple, List
+# import json
+# import logging
+
+
+# class StudentAnswerService(BaseRelationalDB):
+#     def __init__(self, provider_suffix: str = ""):
+#         super().__init__()
+
+#         # Updated mapping to match embedder.get_table_suffix() values
+#         provider_table_map = {
+#             "openai": "student_answers_openai",
+#             "google_gemini": "student_answers_gemini",      # Allow snake_case
+#             "googlegemini": "student_answers_gemini",        # Support compact form
+#             "gemini": "student_answers_gemini"
+#         }
+
+#         normalized = provider_suffix.strip().lower()
+#         self.table_name = provider_table_map.get(normalized)
+
+#         if not self.table_name:
+#             raise ValueError(f"Invalid provider_suffix: {provider_suffix}")
+
+#         logging.info(f"[DB] Using table: {self.table_name}")
+#         print(f"⚙️ Using table: {self.table_name}")
+
+#     def initialize_table(self):
+#         """Initialize table with enhanced schema including submission and assessment tracking."""
+#         self.cursor.execute(f"""
+#         CREATE TABLE IF NOT EXISTS {self.table_name} (
+#             student_index VARCHAR,
+#             module_code VARCHAR,
+#             exam_year INT,
+#             exam_month VARCHAR,
+#             answers JSONB,
+#             assessment_id TEXT,
+#             submission_id TEXT,
+#             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+#             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+#             PRIMARY KEY (assessment_id, student_index, module_code, exam_year, exam_month)
+#         );
+#         """)
+        
+#         # Add indexes for better performance
+#         self.cursor.execute(f"""
+#         CREATE INDEX IF NOT EXISTS idx_{self.table_name.replace('student_answers_', '')}_assessment 
+#         ON {self.table_name} (assessment_id);
+#         """)
+        
+#         self.cursor.execute(f"""
+#         CREATE INDEX IF NOT EXISTS idx_{self.table_name.replace('student_answers_', '')}_submission 
+#         ON {self.table_name} (submission_id);
+#         """)
+        
+#         # Add columns to existing tables if they don't exist (migration support)
+#         self.cursor.execute(f"""
+#         DO $$ 
+#         BEGIN
+#             BEGIN
+#                 ALTER TABLE {self.table_name} ADD COLUMN assessment_id TEXT;
+#             EXCEPTION
+#                 WHEN duplicate_column THEN
+#                     -- Column already exists, do nothing
+#             END;
+#             BEGIN
+#                 ALTER TABLE {self.table_name} ADD COLUMN submission_id TEXT;
+#             EXCEPTION
+#                 WHEN duplicate_column THEN
+#                     -- Column already exists, do nothing
+#             END;
+#             BEGIN
+#                 ALTER TABLE {self.table_name} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+#             EXCEPTION
+#                 WHEN duplicate_column THEN
+#                     -- Column already exists, do nothing
+#             END;
+#             BEGIN
+#                 ALTER TABLE {self.table_name} ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+#             EXCEPTION
+#                 WHEN duplicate_column THEN
+#                     -- Column already exists, do nothing
+#             END;
+#         END $$;
+#         """)
+        
+#         self.commit()
+
+#     def save_answers(self, student_index: str, module_code: str, year: int, month: int, answers: List[StudentAnswer]):
+#         """Legacy method - now requires assessment_id."""
+#         raise NotImplementedError("This method requires assessment_id. Use save_answers_with_submission_tracking instead.")
+
+#     def save_answers_with_submission_tracking(self, student_index: str, module_code: str, year: int, month: int, 
+#                                             answers: List[StudentAnswer], submission_id: str, assessment_id: str):
+#         """Enhanced method with submission and assessment tracking."""
+#         answer_dict = {
+#             ans.full_question_id: ans.answer_text for ans in answers
+#         }
+
+#         self.cursor.execute(f"""
+#         INSERT INTO {self.table_name} (assessment_id, student_index, module_code, exam_year, exam_month, answers, submission_id)
+#         VALUES (%s, %s, %s, %s, %s, %s, %s)
+#         ON CONFLICT (assessment_id, student_index, module_code, exam_year, exam_month) DO UPDATE SET
+#         answers = EXCLUDED.answers,
+#         submission_id = EXCLUDED.submission_id,
+#         updated_at = CURRENT_TIMESTAMP
+#         """, (assessment_id, student_index, module_code, year, month, json.dumps(answer_dict), submission_id))
+#         self.commit()
+        
+#         print(f"💾 Saved to {self.table_name}: {student_index} | {module_code} | {year}-{month} | Assessment: {assessment_id} | Submission: {submission_id}")
+
+#     def check_submission_extracted(self, submission_id: str) -> bool:
+#         """Check if a specific submission has already been extracted."""
+#         try:
+#             self.cursor.execute(f"""
+#             SELECT EXISTS(
+#                 SELECT 1 FROM {self.table_name} 
+#                 WHERE submission_id = %s
+#             )
+#             """, (submission_id,))
+            
+#             result = self.cursor.fetchone()
+#             return result[0] if result else False
+            
+#         except Exception as e:
+#             logging.error(f"Error checking submission extraction status: {e}")
+#             return False
+
+#     def get_answers(self, student_index: str, module_code: str, year: int, month: int, assessment_id: str = None) -> dict:
+#         """Get answers for a specific student/module/year/month combination."""
+#         if assessment_id:
+#             self.cursor.execute(f"""
+#             SELECT answers FROM {self.table_name}
+#             WHERE assessment_id = %s AND student_index = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
+#             """, (assessment_id, student_index, module_code, year, month))
+#         else:
+#             self.cursor.execute(f"""
+#             SELECT answers FROM {self.table_name}
+#             WHERE student_index = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
+#             ORDER BY created_at DESC LIMIT 1
+#             """, (student_index, module_code, year, month))
+#         result = self.cursor.fetchone()
+#         return result[0] if result else {}
+
+#     def get_answers_by_assessment(self, assessment_id: str) -> List[dict]:
+#         """Get all answers for a specific assessment."""
+#         self.cursor.execute(f"""
+#         SELECT student_index, module_code, exam_year, exam_month, answers, submission_id
+#         FROM {self.table_name}
+#         WHERE assessment_id = %s
+#         """, (assessment_id,))
+        
+#         results = []
+#         for row in self.cursor.fetchall():
+#             results.append({
+#                 'student_index': row[0],
+#                 'module_code': row[1],
+#                 'exam_year': row[2],
+#                 'exam_month': row[3],
+#                 'answers': row[4],
+#                 'submission_id': row[5]
+#             })
+        
+#         return results
+
+#     def get_answers_by_submission(self, submission_id: str) -> dict:
+#         """Get answers for a specific submission."""
+#         self.cursor.execute(f"""
+#         SELECT student_index, module_code, exam_year, exam_month, answers, assessment_id
+#         FROM {self.table_name}
+#         WHERE submission_id = %s
+#         """, (submission_id,))
+        
+#         result = self.cursor.fetchone()
+#         if result:
+#             return {
+#                 'student_index': result[0],
+#                 'module_code': result[1],
+#                 'exam_year': result[2],
+#                 'exam_month': result[3],
+#                 'answers': result[4],
+#                 'assessment_id': result[5]
+#             }
+#         return {}
+
+#     def get_all_answers_for_embedding(self, student_index: str, module_code: str, year: int, month: str, 
+#                                     assessment_id: str = None, submission_id: str = None) -> List[StudentAnswer]:
+#         """Get all answers structured for embedding purposes with optional assessment context."""
+#         if assessment_id:
+#             self.cursor.execute(f"""
+#                 SELECT answers, assessment_id, submission_id FROM {self.table_name}
+#                 WHERE assessment_id = %s AND student_index = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
+#             """, (assessment_id, student_index, module_code, year, month))
+#         else:
+#             self.cursor.execute(f"""
+#                 SELECT answers, assessment_id, submission_id FROM {self.table_name}
+#                 WHERE student_index = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
+#                 ORDER BY created_at DESC LIMIT 1
+#             """, (student_index, module_code, year, month))
+
+#         result = self.cursor.fetchone()
+#         if not result:
+#             return []
+
+#         raw_answers = result[0]
+#         db_assessment_id = result[1] if len(result) > 1 else assessment_id
+#         db_submission_id = result[2] if len(result) > 2 else submission_id
+        
+#         structured_answers = []
+
+#         for full_qid, answer_text in raw_answers.items():
+#             parts = full_qid.split("_")
+#             structured_answers.append(
+#                 StudentAnswer(
+#                     question_id=parts[0],
+#                     sub_question_id=parts[1] if len(parts) > 1 else None,
+#                     sub_sub_question_id=parts[2] if len(parts) > 2 else None,
+#                     answer_text=answer_text,
+#                     student_index=student_index,
+#                     module_code=module_code,
+#                     exam_year=year,
+#                     exam_month=month,
+#                     assessment_id=db_assessment_id,
+#                     submission_id=db_submission_id
+#                 )
+#             )
+#         return structured_answers
+
+#     def get_all_answers_grouped(self, module_code: str, year: int, month: str, assessment_id: str = None) -> Dict[Tuple[str, str, int, str], List[StudentAnswer]]:
+#         """Get all answers grouped by student for a specific module/year/month with optional assessment filtering."""
+#         if assessment_id:
+#             self.cursor.execute(f"""
+#                 SELECT student_index, module_code, exam_year, exam_month, answers, assessment_id, submission_id
+#                 FROM {self.table_name}
+#                 WHERE assessment_id = %s AND LOWER(module_code) = LOWER(%s) AND exam_year = %s AND LOWER(exam_month) = LOWER(%s)
+#             """, (assessment_id, module_code, year, month))
+#         else:
+#             self.cursor.execute(f"""
+#                 SELECT student_index, module_code, exam_year, exam_month, answers, assessment_id, submission_id
+#                 FROM {self.table_name}
+#                 WHERE LOWER(module_code) = LOWER(%s) AND exam_year = %s AND LOWER(exam_month) = LOWER(%s)
+#             """, (module_code, year, month))
+
+#         rows = self.cursor.fetchall()
+#         grouped = {}
+
+#         for row in rows:
+#             student_index, module_code, year, month = row[0], row[1], row[2], row[3]
+#             answers_json = row[4]
+#             db_assessment_id = row[5] if len(row) > 5 else assessment_id
+#             db_submission_id = row[6] if len(row) > 6 else None
+            
+#             structured_answers = []
+#             for full_qid, answer_text in answers_json.items():
+#                 parts = full_qid.split("_")
+#                 structured_answers.append(StudentAnswer(
+#                     question_id=parts[0],
+#                     sub_question_id=parts[1] if len(parts) > 1 else None,
+#                     sub_sub_question_id=parts[2] if len(parts) > 2 else None,
+#                     answer_text=answer_text,
+#                     student_index=student_index,
+#                     module_code=module_code,
+#                     exam_year=year,
+#                     exam_month=month,
+#                     assessment_id=db_assessment_id,
+#                     submission_id=db_submission_id
+#                 ))
+#             grouped[(student_index, module_code, year, month)] = structured_answers
+
+#         return grouped
+
+#     def get_all_answers_grouped_by_assessment(self, assessment_id: str) -> Dict[str, dict]:
+#         """
+#         Get all answers grouped by student index for a specific assessment.
+#         Returns structure: {student_index: {'answers': [StudentAnswer], 'submission_id': str, 'module_code': str, 'year': int, 'month': str}}
+#         """
+#         self.cursor.execute(f"""
+#             SELECT student_index, module_code, exam_year, exam_month, answers, submission_id
+#             FROM {self.table_name}
+#             WHERE assessment_id = %s
+#         """, (assessment_id,))
+
+#         rows = self.cursor.fetchall()
+#         grouped = {}
+
+#         for student_index, module_code, year, month, answers_json, submission_id in rows:
+#             structured_answers = []
+#             for full_qid, answer_text in answers_json.items():
+#                 parts = full_qid.split("_")
+#                 structured_answers.append(StudentAnswer(
+#                     question_id=parts[0],
+#                     sub_question_id=parts[1] if len(parts) > 1 else None,
+#                     sub_sub_question_id=parts[2] if len(parts) > 2 else None,
+#                     answer_text=answer_text,
+#                     student_index=student_index,
+#                     module_code=module_code,
+#                     exam_year=year,
+#                     exam_month=month,
+#                     assessment_id=assessment_id,
+#                     submission_id=submission_id
+#                 ))
+#             grouped[student_index] = {
+#                 'answers': structured_answers,
+#                 'submission_id': submission_id,
+#                 'module_code': module_code,
+#                 'year': year,
+#                 'month': month
+#             }
+
+#         return grouped
+
+#     def get_student_indexes_for_assessment(self, assessment_id: str) -> List[str]:
+#         """Get all student indexes that have been processed for a specific assessment."""
+#         self.cursor.execute(f"""
+#             SELECT DISTINCT student_index 
+#             FROM {self.table_name}
+#             WHERE assessment_id = %s
+#             ORDER BY student_index
+#         """, (assessment_id,))
+        
+#         return [row[0] for row in self.cursor.fetchall()]
+
+#     def get_processed_submissions_for_assessment(self, assessment_id: str) -> List[str]:
+#         """Get all submission IDs that have been processed for a specific assessment."""
+#         self.cursor.execute(f"""
+#             SELECT DISTINCT submission_id 
+#             FROM {self.table_name}
+#             WHERE assessment_id = %s AND submission_id IS NOT NULL
+#             ORDER BY submission_id
+#         """, (assessment_id,))
+        
+#         return [row[0] for row in self.cursor.fetchall()]
+
+#     def get_student_answers_by_assessment_and_students(self, assessment_id: str, student_indexes: List[str]) -> Dict[str, dict]:
+#         """
+#         Get student answers for specific assessment and selected students only.
+#         This is the key method for assessment-specific grading.
+#         """
+#         if not student_indexes:
+#             return self.get_all_answers_grouped_by_assessment(assessment_id)
+        
+#         placeholders = ','.join(['%s'] * len(student_indexes))
+        
+#         self.cursor.execute(f"""
+#             SELECT student_index, module_code, exam_year, exam_month, answers, submission_id
+#             FROM {self.table_name}
+#             WHERE assessment_id = %s AND student_index IN ({placeholders})
+#         """, [assessment_id] + student_indexes)
+
+#         rows = self.cursor.fetchall()
+#         grouped = {}
+
+#         for student_index, module_code, year, month, answers_json, submission_id in rows:
+#             structured_answers = []
+#             for full_qid, answer_text in answers_json.items():
+#                 parts = full_qid.split("_")
+#                 structured_answers.append(StudentAnswer(
+#                     question_id=parts[0],
+#                     sub_question_id=parts[1] if len(parts) > 1 else None,
+#                     sub_sub_question_id=parts[2] if len(parts) > 2 else None,
+#                     answer_text=answer_text,
+#                     student_index=student_index,
+#                     module_code=module_code,
+#                     exam_year=year,
+#                     exam_month=month,
+#                     assessment_id=assessment_id,
+#                     submission_id=submission_id
+#                 ))
+#             grouped[student_index] = {
+#                 'answers': structured_answers,
+#                 'submission_id': submission_id,
+#                 'module_code': module_code,
+#                 'year': year,
+#                 'month': month
+#             }
+
+#         return grouped
+
+#     def update_assessment_context(self, student_index: str, module_code: str, year: int, month: str, 
+#                                 assessment_id: str, submission_id: str = None):
+#         """Update existing records with assessment and submission context."""
+#         self.cursor.execute(f"""
+#         SELECT COUNT(*) FROM {self.table_name}
+#         WHERE assessment_id = %s AND student_index = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
+#         """, (assessment_id, student_index, module_code, year, month))
+        
+#         if self.cursor.fetchone()[0] == 0:
+#             print(f"⚠️ No record found to update for {student_index} in assessment {assessment_id}")
+#             return
+        
+#         update_query = f"""
+#         UPDATE {self.table_name} 
+#         SET updated_at = CURRENT_TIMESTAMP
+#         """
+#         params = []
+        
+#         if submission_id:
+#             update_query += ", submission_id = %s"
+#             params.append(submission_id)
+        
+#         update_query += " WHERE assessment_id = %s AND student_index = %s AND module_code = %s AND exam_year = %s AND exam_month = %s"
+#         params.extend([assessment_id, student_index, module_code, year, month])
+        
+#         self.cursor.execute(update_query, params)
+#         self.commit()
+
+#     def delete_answers_by_assessment(self, assessment_id: str) -> int:
+#         """Delete all answers for a specific assessment. Returns number of deleted records."""
+#         self.cursor.execute(f"""
+#         DELETE FROM {self.table_name}
+#         WHERE assessment_id = %s
+#         """, (assessment_id,))
+        
+#         deleted_count = self.cursor.rowcount
+#         self.commit()
+        
+#         print(f"🗑️ Deleted {deleted_count} records from {self.table_name} for assessment {assessment_id}")
+#         return deleted_count
+
+#     def delete_answers_by_submission(self, submission_id: str) -> int:
+#         """Delete answers for a specific submission. Returns number of deleted records."""
+#         self.cursor.execute(f"""
+#         DELETE FROM {self.table_name}
+#         WHERE submission_id = %s
+#         """, (submission_id,))
+        
+#         deleted_count = self.cursor.rowcount
+#         self.commit()
+        
+#         print(f"🗑️ Deleted {deleted_count} records from {self.table_name} for submission {submission_id}")
+#         return deleted_count
+
+#     def get_table_stats(self) -> dict:
+#         """Get statistics about the table contents."""
+#         stats = {}
+        
+#         self.cursor.execute(f"SELECT COUNT(*) FROM {self.table_name}")
+#         stats['total_records'] = self.cursor.fetchone()[0]
+        
+#         self.cursor.execute(f"SELECT COUNT(*) FROM {self.table_name} WHERE assessment_id IS NOT NULL")
+#         stats['records_with_assessment_id'] = self.cursor.fetchone()[0]
+        
+#         self.cursor.execute(f"SELECT COUNT(*) FROM {self.table_name} WHERE submission_id IS NOT NULL")
+#         stats['records_with_submission_id'] = self.cursor.fetchone()[0]
+        
+#         self.cursor.execute(f"SELECT COUNT(DISTINCT assessment_id) FROM {self.table_name} WHERE assessment_id IS NOT NULL")
+#         stats['unique_assessments'] = self.cursor.fetchone()[0]
+        
+#         self.cursor.execute(f"SELECT COUNT(DISTINCT student_index) FROM {self.table_name}")
+#         stats['unique_students'] = self.cursor.fetchone()[0]
+        
+#         self.cursor.execute(f"SELECT COUNT(DISTINCT module_code) FROM {self.table_name}")
+#         stats['unique_modules'] = self.cursor.fetchone()[0]
+        
+#         return stats
+
+#     def cleanup_duplicate_submissions(self) -> int:
+#         """Remove duplicate submissions keeping the most recent one. Returns number of deleted records."""
+#         self.cursor.execute(f"""
+#         DELETE FROM {self.table_name} a
+#         USING {self.table_name} b
+#         WHERE a.submission_id = b.submission_id 
+#         AND a.submission_id IS NOT NULL
+#         AND a.created_at < b.created_at
+#         """)
+        
+#         deleted_count = self.cursor.rowcount
+#         self.commit()
+        
+#         if deleted_count > 0:
+#             print(f"🧹 Cleaned up {deleted_count} duplicate submission records from {self.table_name}")
+        
+#         return deleted_count
+
 from .base_relational_db import BaseRelationalDB
 from ...models.student_answer import StudentAnswer
 from typing import Dict, Tuple, List
@@ -1493,20 +1968,99 @@ class StudentAnswerService(BaseRelationalDB):
 
     def initialize_table(self):
         """Initialize table with enhanced schema including submission and assessment tracking."""
+        
+        # First, check if table exists and get its current structure
         self.cursor.execute(f"""
-        CREATE TABLE IF NOT EXISTS {self.table_name} (
-            student_index VARCHAR,
-            module_code VARCHAR,
-            exam_year INT,
-            exam_month VARCHAR,
-            answers JSONB,
-            assessment_id TEXT,
-            submission_id TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (assessment_id, student_index, module_code, exam_year, exam_month)
-        );
+        SELECT column_name, is_nullable, data_type 
+        FROM information_schema.columns 
+        WHERE table_name = '{self.table_name}'
+        ORDER BY ordinal_position;
         """)
+        existing_columns = self.cursor.fetchall()
+        
+        if not existing_columns:
+            # Table doesn't exist, create with correct primary key from the start
+            self.cursor.execute(f"""
+            CREATE TABLE {self.table_name} (
+                assessment_id TEXT NOT NULL,
+                student_index VARCHAR NOT NULL,
+                module_code VARCHAR NOT NULL,
+                exam_year INT NOT NULL,
+                exam_month VARCHAR NOT NULL,
+                answers JSONB,
+                submission_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (assessment_id, student_index, module_code, exam_year, exam_month)
+            );
+            """)
+            print(f"✅ Created {self.table_name} with correct primary key")
+        else:
+            # Table exists, need to migrate it
+            print(f"🔄 Table {self.table_name} exists, checking/updating structure...")
+            
+            # Check if assessment_id column exists
+            column_names = [col[0] for col in existing_columns]
+            
+            # Add missing columns
+            if 'assessment_id' not in column_names:
+                self.cursor.execute(f"""
+                ALTER TABLE {self.table_name} ADD COLUMN assessment_id TEXT;
+                """)
+                print("➕ Added assessment_id column")
+            
+            if 'submission_id' not in column_names:
+                self.cursor.execute(f"""
+                ALTER TABLE {self.table_name} ADD COLUMN submission_id TEXT;
+                """)
+                print("➕ Added submission_id column")
+                
+            if 'created_at' not in column_names:
+                self.cursor.execute(f"""
+                ALTER TABLE {self.table_name} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                """)
+                print("➕ Added created_at column")
+                
+            if 'updated_at' not in column_names:
+                self.cursor.execute(f"""
+                ALTER TABLE {self.table_name} ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                """)
+                print("➕ Added updated_at column")
+            
+            # Check current primary key constraint
+            self.cursor.execute(f"""
+            SELECT constraint_name, column_name
+            FROM information_schema.key_column_usage
+            WHERE table_name = '{self.table_name}' 
+            AND constraint_name LIKE '%pkey%'
+            ORDER BY ordinal_position;
+            """)
+            current_pk = self.cursor.fetchall()
+            
+            # Expected primary key columns
+            expected_pk = ['assessment_id', 'student_index', 'module_code', 'exam_year', 'exam_month']
+            current_pk_columns = [row[1] for row in current_pk] if current_pk else []
+            
+            if set(current_pk_columns) != set(expected_pk):
+                print(f"🔧 Current PK: {current_pk_columns}")
+                print(f"🎯 Expected PK: {expected_pk}")
+                print("⚠️ Primary key mismatch detected. Manual intervention required!")
+                print("⚠️ You need to:")
+                print("⚠️ 1. Backup your data")
+                print("⚠️ 2. Drop the existing primary key constraint")
+                print("⚠️ 3. Add the new composite primary key")
+                print("⚠️ 4. Handle any duplicate records first")
+                
+                # Provide the SQL commands needed
+                print("\n📋 SQL commands to run manually:")
+                if current_pk:
+                    constraint_name = current_pk[0][0]
+                    print(f"   ALTER TABLE {self.table_name} DROP CONSTRAINT {constraint_name};")
+                
+                print(f"   -- First, populate assessment_id for existing records if needed")
+                print(f"   -- UPDATE {self.table_name} SET assessment_id = 'default_assessment' WHERE assessment_id IS NULL;")
+                print(f"   ALTER TABLE {self.table_name} ALTER COLUMN assessment_id SET NOT NULL;")
+                print(f"   ALTER TABLE {self.table_name} ADD PRIMARY KEY (assessment_id, student_index, module_code, exam_year, exam_month);")
         
         # Add indexes for better performance
         self.cursor.execute(f"""
@@ -1519,37 +2073,6 @@ class StudentAnswerService(BaseRelationalDB):
         ON {self.table_name} (submission_id);
         """)
         
-        # Add columns to existing tables if they don't exist (migration support)
-        self.cursor.execute(f"""
-        DO $$ 
-        BEGIN
-            BEGIN
-                ALTER TABLE {self.table_name} ADD COLUMN assessment_id TEXT;
-            EXCEPTION
-                WHEN duplicate_column THEN
-                    -- Column already exists, do nothing
-            END;
-            BEGIN
-                ALTER TABLE {self.table_name} ADD COLUMN submission_id TEXT;
-            EXCEPTION
-                WHEN duplicate_column THEN
-                    -- Column already exists, do nothing
-            END;
-            BEGIN
-                ALTER TABLE {self.table_name} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-            EXCEPTION
-                WHEN duplicate_column THEN
-                    -- Column already exists, do nothing
-            END;
-            BEGIN
-                ALTER TABLE {self.table_name} ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-            EXCEPTION
-                WHEN duplicate_column THEN
-                    -- Column already exists, do nothing
-            END;
-        END $$;
-        """)
-        
         self.commit()
 
     def save_answers(self, student_index: str, module_code: str, year: int, month: int, answers: List[StudentAnswer]):
@@ -1559,21 +2082,32 @@ class StudentAnswerService(BaseRelationalDB):
     def save_answers_with_submission_tracking(self, student_index: str, module_code: str, year: int, month: int, 
                                             answers: List[StudentAnswer], submission_id: str, assessment_id: str):
         """Enhanced method with submission and assessment tracking."""
+        
+        # Validate required fields
+        if not assessment_id:
+            raise ValueError("assessment_id is required")
+        
         answer_dict = {
             ans.full_question_id: ans.answer_text for ans in answers
         }
 
-        self.cursor.execute(f"""
-        INSERT INTO {self.table_name} (assessment_id, student_index, module_code, exam_year, exam_month, answers, submission_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (assessment_id, student_index, module_code, exam_year, exam_month) DO UPDATE SET
-        answers = EXCLUDED.answers,
-        submission_id = EXCLUDED.submission_id,
-        updated_at = CURRENT_TIMESTAMP
-        """, (assessment_id, student_index, module_code, year, month, json.dumps(answer_dict), submission_id))
-        self.commit()
-        
-        print(f"💾 Saved to {self.table_name}: {student_index} | {module_code} | {year}-{month} | Assessment: {assessment_id} | Submission: {submission_id}")
+        try:
+            self.cursor.execute(f"""
+            INSERT INTO {self.table_name} (assessment_id, student_index, module_code, exam_year, exam_month, answers, submission_id, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (assessment_id, student_index, module_code, exam_year, exam_month) DO UPDATE SET
+            answers = EXCLUDED.answers,
+            submission_id = EXCLUDED.submission_id,
+            updated_at = CURRENT_TIMESTAMP
+            """, (assessment_id, student_index, module_code, year, month, json.dumps(answer_dict), submission_id))
+            self.commit()
+            
+            print(f"💾 Saved to {self.table_name}: {student_index} | {module_code} | {year}-{month} | Assessment: {assessment_id} | Submission: {submission_id}")
+            
+        except Exception as e:
+            self.rollback()
+            print(f"❌ Error saving to {self.table_name}: {e}")
+            raise
 
     def check_submission_extracted(self, submission_id: str) -> bool:
         """Check if a specific submission has already been extracted."""
@@ -1937,3 +2471,37 @@ class StudentAnswerService(BaseRelationalDB):
             print(f"🧹 Cleaned up {deleted_count} duplicate submission records from {self.table_name}")
         
         return deleted_count
+
+    def migrate_existing_data_to_new_schema(self, default_assessment_id: str = "legacy_assessment"):
+        """
+        Helper method to migrate existing data without assessment_id to the new schema.
+        This should be called once during migration.
+        """
+        print(f"🔄 Starting migration to new schema...")
+        
+        # Check if there are any records without assessment_id
+        self.cursor.execute(f"""
+        SELECT COUNT(*) FROM {self.table_name} 
+        WHERE assessment_id IS NULL OR assessment_id = ''
+        """)
+        
+        records_to_migrate = self.cursor.fetchone()[0]
+        
+        if records_to_migrate > 0:
+            print(f"📊 Found {records_to_migrate} records without assessment_id")
+            
+            # Update all records without assessment_id
+            self.cursor.execute(f"""
+            UPDATE {self.table_name} 
+            SET assessment_id = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE assessment_id IS NULL OR assessment_id = ''
+            """, (default_assessment_id,))
+            
+            updated_count = self.cursor.rowcount
+            self.commit()
+            
+            print(f"✅ Updated {updated_count} records with assessment_id: {default_assessment_id}")
+        else:
+            print("✅ No migration needed - all records have assessment_id")
+        
+        return records_to_migrate

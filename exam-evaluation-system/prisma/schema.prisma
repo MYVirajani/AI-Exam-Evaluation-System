@@ -108,28 +108,27 @@ model LectureMaterial {
 }
 
 model Assessment {
-  assessment_id     String         @id
-  module_id         String
-  created_by        String
-  created_on        DateTime       @default(now()) @db.Timestamptz(6)
-  type              assessmentType
-  title             String
-  description       String
-  instructions      String[]
-  duration          Int?
-  deadline          DateTime       @db.Timestamptz(6)
-  open_at           DateTime?      @db.Timestamptz(6)
-  close_at          DateTime?      @db.Timestamptz(6)
-  total_marks       Decimal?       @db.Decimal(5, 2) //total marks calculated by all questions of assessment
-  max_marks         Decimal?       @db.Decimal(5, 2) //max marks a student can allocate by assessment
-  password          String? // For quiz access
-  question_count    Int? // Number of questions to show (for quizzes)
-  shuffle_questions Boolean        @default(false) // Whether to shuffle questions
-  max_attempts      Int?
-  auto_grade        Boolean        @default(false)
-  back_navigation   Boolean @default(true)
+  assessment_id             String         @id
+  module_id                 String
+  created_by                String
+  created_on                DateTime       @default(now()) @db.Timestamptz(6)
+  type                      assessmentType
+  title                     String
+  description               String
+  instructions              String[]
+  duration                  Int?
+  deadline                  DateTime       @db.Timestamptz(6)
+  open_at                   DateTime?      @db.Timestamptz(6)
+  close_at                  DateTime?      @db.Timestamptz(6)
+  total_marks               Decimal?       @db.Decimal(5, 2) //total marks calculated by all questions of assessment
+  max_marks                 Decimal?       @db.Decimal(5, 2) //max marks a student can allocate by assessment
+  password                  String? // For quiz access
+  question_count            Int? // Number of questions to show (for quizzes)
+  shuffle_questions         Boolean        @default(false) // Whether to shuffle questions
+  max_attempts              Int?
+  auto_grade                Boolean        @default(false)
+  back_navigation           Boolean        @default(true)
   case_sensitive_evaluation Boolean        @default(false)
-
 
   module             Module              @relation(fields: [module_id], references: [module_id])
   educator           Educator            @relation(fields: [created_by], references: [user_id])
@@ -306,4 +305,157 @@ model Pricing_Plan {
   created_on      DateTime @default(now()) @db.Timestamptz(6)
 
   evaluation_models Evaluation_Model[]
+}
+
+model student_answers_openai {
+  student_index String
+  module_code   String
+  exam_year     Int
+  exam_month    String
+  answers       Json
+  assessment_id String // NEW
+  submission_id String // NEW
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([submission_id, student_index, module_code, exam_year, exam_month])
+}
+
+// model student_paper_results_openai {
+//   id             Int      @id @default(autoincrement())
+//   student_index  String
+//   module_code    String
+//   exam_year      Int
+//   exam_month     String
+//   total_marks    Float
+//   total_possible Float
+//   graded_at      DateTime @db.Timestamptz
+//   assessment_id  String // NEW
+
+//   @@unique([student_index, module_code, exam_year, exam_month])
+// }
+
+// model graded_student_answers_openai {
+//   id               Int      @id @default(autoincrement())
+//   student_index    String
+//   module_code      String
+//   exam_year        Int
+//   exam_month       String
+//   full_question_id String
+//   mark             Float
+//   max_marks        Float
+//   reason           String
+//   graded_at        DateTime @db.Timestamptz
+//   is_null_answer   Boolean
+//   assessment_id    String // NEW
+
+//   @@unique([student_index, module_code, exam_year, exam_month, full_question_id])
+// }
+
+model student_paper_results_openai {
+  id             Int      @id @default(autoincrement())
+  student_index  String
+  module_code    String
+  exam_year      Int
+  exam_month     String
+  total_marks    Float
+  total_possible Float
+  graded_at      DateTime @db.Timestamptz
+  assessment_id  String
+
+  @@unique([student_index, module_code, exam_year, exam_month, assessment_id])
+}
+
+model graded_student_answers_openai {
+  id               Int      @id @default(autoincrement())
+  student_index    String
+  module_code      String
+  exam_year        Int
+  exam_month       String
+  full_question_id String
+  mark             Float
+  max_marks        Float
+  reason           String
+  graded_at        DateTime @db.Timestamptz
+  is_null_answer   Boolean
+  assessment_id    String
+  submission_id    String?
+
+  @@unique([student_index, module_code, exam_year, exam_month, full_question_id, assessment_id])
+}
+
+model student_answers_gemini {
+  student_index String
+  module_code   String
+  exam_year     Int
+  exam_month    String
+  answers       Json
+  assessment_id String // NEW
+  submission_id String // NEW
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([submission_id, student_index, module_code, exam_year, exam_month])
+}
+
+// model student_paper_results_gemini {
+//   id             Int      @id @default(autoincrement())
+//   student_index  String
+//   module_code    String
+//   exam_year      Int
+//   exam_month     String
+//   total_marks    Float
+//   total_possible Float
+//   graded_at      DateTime @db.Timestamptz
+//   assessment_id  String // NEW
+
+//   @@unique([student_index, module_code, exam_year, exam_month])
+// }
+
+// model graded_student_answers_gemini {
+//   id               Int      @id @default(autoincrement())
+//   student_index    String
+//   module_code      String
+//   exam_year        Int
+//   exam_month       String
+//   full_question_id String
+//   mark             Float
+//   max_marks        Float
+//   reason           String
+//   graded_at        DateTime @db.Timestamptz
+//   is_null_answer   Boolean
+//   assessment_id    String // NEW
+
+//   @@unique([student_index, module_code, exam_year, exam_month, full_question_id])
+// }
+model student_paper_results_gemini {
+  id             Int      @id @default(autoincrement())
+  student_index  String
+  module_code    String
+  exam_year      Int
+  exam_month     String
+  total_marks    Float
+  total_possible Float
+  graded_at      DateTime @db.Timestamptz
+  assessment_id  String
+
+  @@unique([student_index, module_code, exam_year, exam_month, assessment_id])
+}
+
+model graded_student_answers_gemini {
+  id               Int      @id @default(autoincrement())
+  student_index    String
+  module_code      String
+  exam_year        Int
+  exam_month       String
+  full_question_id String
+  mark             Float
+  max_marks        Float
+  reason           String
+  graded_at        DateTime @db.Timestamptz
+  is_null_answer   Boolean
+  assessment_id    String
+  submission_id    String?
+
+  @@unique([student_index, module_code, exam_year, exam_month, full_question_id, assessment_id])
 }

@@ -2,7 +2,8 @@
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ArrowLeft, Download, RefreshCw, Users, TrendingUp, Award, Clock, Eye } from "lucide-react";
+import { ArrowLeft, Download, RefreshCw, Users, TrendingUp, Award, Clock, Eye, BarChart3 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
@@ -165,6 +166,55 @@ export default function QuizResultsPage() {
     };
   };
 
+  const getDistributionData = () => {
+    const gradedSubmissions = grades.filter(g => g.percentage !== null);
+    
+    const bins = [
+      { label: "0-10%", range: [0, 10], color: "#dc2626", count: 0 },
+      { label: "11-20%", range: [11, 20], color: "#ea580c", count: 0 },
+      { label: "21-30%", range: [21, 30], color: "#d97706", count: 0 },
+      { label: "31-40%", range: [31, 40], color: "#ca8a04", count: 0 },
+      { label: "41-50%", range: [41, 50], color: "#65a30d", count: 0 },
+      { label: "51-60%", range: [51, 60], color: "#16a34a", count: 0 },
+      { label: "61-70%", range: [61, 70], color: "#0891b2", count: 0 },
+      { label: "71-80%", range: [71, 80], color: "#0284c7", count: 0 },
+      { label: "81-90%", range: [81, 90], color: "#2563eb", count: 0 },
+      { label: "91-100%", range: [91, 100], color: "#7c3aed", count: 0 },
+    ];
+
+    gradedSubmissions.forEach(grade => {
+      const percentage = grade.percentage!;
+      const bin = bins.find(b => percentage >= b.range[0] && percentage <= b.range[1]);
+      if (bin) bin.count++;
+    });
+
+    return bins.filter(bin => bin.count > 0 || gradedSubmissions.length === 0);
+  };
+
+  const getGradeBandsData = () => {
+    const gradedSubmissions = grades.filter(g => g.percentage !== null);
+    
+    const bands = [
+      { name: "Excellent (80-100%)", range: [80, 100], color: "#10b981" },
+      { name: "Good (60-79%)", range: [60, 79], color: "#3b82f6" },
+      { name: "Average (40-59%)", range: [40, 59], color: "#f59e0b" },
+      { name: "Below Average (<40%)", range: [0, 39], color: "#ef4444" }
+    ];
+
+    return bands.map(band => ({
+      name: band.name,
+      value: gradedSubmissions.filter(g => 
+        g.percentage! >= band.range[0] && g.percentage! <= band.range[1]
+      ).length,
+      color: band.color,
+      percentage: gradedSubmissions.length > 0 
+        ? Math.round((gradedSubmissions.filter(g => 
+            g.percentage! >= band.range[0] && g.percentage! <= band.range[1]
+          ).length / gradedSubmissions.length) * 100)
+        : 0
+    })).filter(band => band.value > 0);
+  };
+
   const getGradeColor = (percentage: number | null) => {
     if (percentage === null) return "text-gray-500";
     if (percentage >= 80) return "text-green-600";
@@ -206,6 +256,8 @@ export default function QuizResultsPage() {
   }
 
   const stats = getStatistics();
+  const distributionData = getDistributionData();
+  const gradeBandsData = getGradeBandsData();
   
   // Generate breadcrumbs
   const breadcrumbs = assessment 
@@ -347,6 +399,87 @@ export default function QuizResultsPage() {
             </div>
           </div>
         </div>
+
+        {/* Grade Distribution Visualizations */}
+        {grades.length > 0 && stats.gradedSubmissions > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Score Distribution Bar Chart */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="w-5 h-5 text-gray-600" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Score Distribution
+                </h3>
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={distributionData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="label" 
+                      fontSize={12}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis fontSize={12} />
+                    <Tooltip 
+                      formatter={(value) => [`${value} students`, "Count"]}
+                      labelFormatter={(label) => `Score Range: ${label}`}
+                    />
+                    <Bar 
+                      dataKey="count" 
+                      fill="#3b82f6"
+                      radius={[2, 2, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Grade Bands Pie Chart */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="w-5 h-5 text-gray-600" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Grade Bands
+                </h3>
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={gradeBandsData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {gradeBandsData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value, name, props) => [
+                        `${value} students (${props.payload.percentage}%)`, 
+                        "Count"
+                      ]}
+                    />
+                    <Legend 
+                      formatter={(value, entry) => (
+                        <span style={{ color: entry.color }}>
+                          {value} ({entry.payload.percentage}%)
+                        </span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Results Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -498,11 +631,11 @@ export default function QuizResultsPage() {
           )}
         </div>
 
-        {/* Grade Distribution */}
+        {/* Traditional Grade Distribution Cards */}
         {grades.length > 0 && (
           <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Grade Distribution
+              Grade Distribution Summary
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[

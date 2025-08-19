@@ -7,6 +7,7 @@ export interface Result {
   total_marks: number;
   total_possible: number;
   graded_at: string;
+  assessment_id: string;
 }
 
 export interface GradedAnswer {
@@ -20,4 +21,5 @@ export interface GradedAnswer {
   max_marks: number;
   reason: string;
   graded_at: string;
+  assessment_id: string;
 }

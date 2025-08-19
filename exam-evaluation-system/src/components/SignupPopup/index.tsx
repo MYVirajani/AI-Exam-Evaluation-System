@@ -20,7 +20,6 @@ import {
   FaBuilding,
   FaChevronDown,
 } from "react-icons/fa";
-import { siteConfig } from "@/config/site";
 import { FiX } from "react-icons/fi";
 
 interface SignupPopupProps {

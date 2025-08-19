@@ -1,0 +1,57 @@
+-- Insert 20 dummy students with Faculty of Engineering, University of Ruhuna as their institute
+DO $$
+DECLARE
+    i INT;
+    user_id_val UUID;
+    first_names TEXT[] := ARRAY['John', 'Emma', 'Michael', 'Sophia', 'William', 'Olivia', 'James', 'Ava', 'Robert', 'Isabella', 'David', 'Mia', 'Joseph', 'Charlotte', 'Daniel', 'Amelia', 'Matthew', 'Harper', 'Andrew', 'Evelyn'];
+    last_names TEXT[] := ARRAY['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
+    titles TEXT[] := ARRAY['Mr', 'Ms', 'Mr', 'Ms', 'Mr', 'Ms', 'Mr', 'Ms', 'Mr', 'Ms', 'Mr', 'Ms', 'Mr', 'Ms', 'Mr', 'Ms', 'Mr', 'Ms', 'Mr', 'Ms'];
+    reg_numbers TEXT[] := ARRAY['EG/2020/001', 'EG/2020/002', 'EG/2020/003', 'EG/2020/004', 'EG/2020/005', 'EG/2020/006', 'EG/2020/007', 'EG/2020/008', 'EG/2020/009', 'EG/2020/010', 'EG/2020/011', 'EG/2020/012', 'EG/2020/013', 'EG/2020/014', 'EG/2020/015', 'EG/2020/016', 'EG/2020/017', 'EG/2020/018', 'EG/2020/019', 'EG/2020/020'];
+BEGIN
+    FOR i IN 1..20 LOOP
+        -- Generate a UUID for each user
+        user_id_val := gen_random_uuid();
+        
+        -- Insert into User table
+        INSERT INTO "User" (
+            user_id,
+            first_name,
+            last_name,
+            title,
+            role,
+            username,
+            password,
+            email,
+            phone_number,
+            address,
+            city,
+            country,
+            created_on
+        ) VALUES (
+            user_id_val,
+            first_names[i],
+            last_names[i],
+            titles[i],
+            'student',
+            'student' || i,  -- Simple sequential username (student1, student2, etc.)
+            '$2b$10$AZ7hxGAk3ShDd8PPJryQ9OxBQEy4d1CATvMUgdozxifSjtDIXrRmG',  -- Specified password hash
+            'student' || i || '@example.com',
+            '077' || LPAD((i*123456)::TEXT, 7, '0'),
+            i || ' Main Street',
+            'Galle',
+            'Sri Lanka',
+            NOW()
+        );
+        
+        -- Insert into Student table
+        INSERT INTO "Student" (
+            user_id,
+            registration_number,
+            education_institute
+        ) VALUES (
+            user_id_val,
+            reg_numbers[i],
+            'Faculty of Engineering, University of Ruhuna'
+        );
+    END LOOP;
+END $$;

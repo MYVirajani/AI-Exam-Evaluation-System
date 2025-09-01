@@ -1,0 +1,31 @@
+pymupdf
+
+# .env support
+python-dotenv
+
+# LangChain core and ecosystem
+# langchain
+# langchain-core
+# langchain-community
+# langchain-huggingface
+
+# Hugging Face Hub client
+# huggingface_hub
+
+# Sentence transformer for embeddings
+# sentence-transformers
+
+# FAISS for vector database
+# faiss-cpu
+
+# Unstructured document parsing (docx, pptx, etc.)
+unstructured
+unstructured[docx]
+unstructured[pptx]
+
+# PDF support
+pypdf
+
+# Optional: Ensure all needed parsers are available
+python-docx
+python-pptx

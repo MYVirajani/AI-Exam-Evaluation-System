@@ -4852,6 +4852,8 @@ class HandwritingToTextConverter:
             (r'^\s*\(\s*v[il1]\s*\)\s*', '(vi) '),
             (r'^\s*\(\s*v[il1]{2}\s*\)\s*', '(vii) '),
             (r'^\s*\(\s*v[il1]{3}\s*\)\s*', '(viii) '),
+            (r'\b[qQ]\s*[iI]\b', 'Q1'),
+            # (r'\bole\b', 'Q2'),
         ]
         
         for pattern, replacement in roman_patterns:

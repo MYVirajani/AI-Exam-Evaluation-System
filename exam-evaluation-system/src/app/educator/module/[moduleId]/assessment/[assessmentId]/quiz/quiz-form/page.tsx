@@ -210,7 +210,7 @@ export default function QuizFormPage() {
     ? getAssessmentBreadcrumbs(
         assessment.module.module_code,
         moduleId,
-        `${assessment.title} - Form`,
+        `${assessment.title}`,
         assessmentId,
         "educator"
       )

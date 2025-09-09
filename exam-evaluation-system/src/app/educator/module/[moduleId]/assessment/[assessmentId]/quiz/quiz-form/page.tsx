@@ -62,7 +62,7 @@ interface Assessment {
   max_attempts?: number;
   open_at?: string;
   close_at?: string;
-  question_count?: number;
+  // question_count?: number;
   auto_grade?: boolean;
   back_navigation?: boolean;
   case_sensitive_evaluation?: boolean;

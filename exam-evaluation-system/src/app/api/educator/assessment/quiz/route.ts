@@ -151,7 +151,7 @@ const updatedAssessment = await prisma.assessment.update({
         ? new Decimal(maxMarks.toString())
         : existingAssessment.max_marks,
     password: password ? await bcrypt.hash(password, 10) : existingAssessment.password,
-    question_count: finalQuestionCount,
+    // question_count: finalQuestionCount,
     auto_grade: typeof autoGrade === "boolean" ? autoGrade : existingAssessment.auto_grade,
     shuffle_questions:
       typeof shuffleQuestions === "boolean"

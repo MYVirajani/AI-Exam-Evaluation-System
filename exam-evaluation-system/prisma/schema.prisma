@@ -294,26 +294,27 @@ model Assessment_Grade {
 }
 
 model Evaluation_Model {
-  model_id        String @id
+  model_id        String             @id
   model_name      String
-  pricing_plan_id String
-
-  pricing_plan      Pricing_Plan       @relation(fields: [pricing_plan_id], references: [pricing_plan_id])
+  description     String?
+  pricing_plans   Pricing_Plan[]     
   question_grades   Question_Grade[]
   assessment_grades Assessment_Grade[]
 }
 
 model Pricing_Plan {
-  pricing_plan_id String   @id
-  name            String
-  duration        Int
-  price           Decimal  @db.Decimal(9, 3)
-  description     String
-  payment_method  String
-  created_on      DateTime @default(now()) @db.Timestamptz(6)
+  pricing_plan_id  String             @id
+  name             String
+  duration         Int
+  price            Decimal            @db.Decimal(9, 3)
+  description      String
+  features         String[]
+  payment_method   String
+  created_on       DateTime           @default(now()) @db.Timestamptz(6)
 
   evaluation_models Evaluation_Model[]
 }
+
 
 model student_answers_openai {
   student_index String

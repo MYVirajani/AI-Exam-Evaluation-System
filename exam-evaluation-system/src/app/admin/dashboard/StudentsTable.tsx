@@ -84,11 +84,11 @@ export default function StudentsTable() {
   };
 
   const columns: ColumnDef<Student>[] = [
+    { header: "Reg. No.", accessorKey: "registration_number" },
     { header: "First Name", accessorKey: "first_name" },
     { header: "Last Name", accessorKey: "last_name" },
     { header: "Email", accessorKey: "email" },
     { header: "Phone", accessorKey: "phone_number" },
-    { header: "Registration #", accessorKey: "registration_number" },
     { header: "Institute", accessorKey: "education_institute" },
     { header: "Enrollments", accessorKey: "enrollment_count" },
     {

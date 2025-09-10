@@ -15,11 +15,10 @@ type PricingPlan = {
 };
 
 type ExamEvaluationModel = {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  pricing_plans?: PricingPlan[]; // ✅ include pricing plans
+  model_id: string;
+  model_name: string;
+  description: string | null;
+  pricing_plans: PricingPlan[];
 };
 
 export default function ExamEvaluationModelsTable() {
@@ -49,54 +48,66 @@ export default function ExamEvaluationModelsTable() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this model?")) return;
     try {
-      await fetch(`/api/admin/exam-models/${id}`, { method: "DELETE" });
-      setModels(models.filter((m) => m.id !== id));
+      await fetch(`/api/admin/evaluation-models/${id}`, { method: "DELETE" });
+      setModels(models.filter((m) => m.model_id !== id));
     } catch (err) {
       console.error("Delete failed", err);
     }
   };
-const handleSave = async (model: { name: string; description: string }) => {
-  try {
-    if (editingModel) {
-      // Update existing model
-      const res = await fetch(`/api/admin/evaluation-models/${editingModel.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model_name: model.name,
-          description: model.description,
-        }),
-      });
-      const updated = await res.json();
-      setModels(models.map((m) => (m.id === editingModel.id ? updated : m)));
-    } else {
-      // Create new model
-      const res = await fetch("/api/admin/evaluation-models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model_name: model.name,
-          description: model.description,
-        }),
-      });
-      const newModel = await res.json();
-      setModels([...models, newModel]);
-    }
-  } catch (err) {
-    console.error("Save failed", err);
-  } finally {
-    setShowModal(false);
-    setEditingModel(null);
-  }
-};
 
+  const handleSave = async (model: { name: string; description: string }) => {
+    try {
+      if (editingModel) {
+        // Update existing model
+        const res = await fetch(
+          `/api/admin/evaluation-models/${editingModel.model_id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model_name: model.name,
+              description: model.description,
+            }),
+          }
+        );
+        const updated = await res.json();
+        setModels(
+          models.map((m) => (m.model_id === editingModel.model_id ? updated : m))
+        );
+      } else {
+        // Create new model
+        const res = await fetch("/api/admin/evaluation-models", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model_name: model.name,
+            description: model.description,
+          }),
+        });
+        const newModel = await res.json();
+        setModels([...models, newModel]);
+      }
+    } catch (err) {
+      console.error("Save failed", err);
+    } finally {
+      setShowModal(false);
+      setEditingModel(null);
+    }
+  };
 
   const columns: ColumnDef<ExamEvaluationModel>[] = [
     { accessorKey: "model_name", header: "Name" },
-    { accessorKey: "description", header: "Description" },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) =>
+        row.original.description || (
+          <span className="text-gray-400 italic">No description</span>
+        ),
+    },
     {
       id: "pricingPlans",
-      header: "Pricing Plans", // ✅ New Column
+      header: "Pricing Plans",
       cell: ({ row }) => {
         const plans = row.original.pricing_plans || [];
         return plans.length > 0 ? (
@@ -125,7 +136,7 @@ const handleSave = async (model: { name: string; description: string }) => {
             Edit
           </button>
           <button
-            onClick={() => handleDelete(row.original.id)}
+            onClick={() => handleDelete(row.original.model_id)}
             className="px-2 py-1 text-sm bg-red-500 text-white rounded"
           >
             Delete
@@ -198,7 +209,10 @@ const handleSave = async (model: { name: string; description: string }) => {
         onSave={handleSave}
         initialData={
           editingModel
-            ? { name: editingModel.name, description: editingModel.description }
+            ? {
+                name: editingModel.model_name,
+                description: editingModel.description || "",
+              }
             : undefined
         }
       />

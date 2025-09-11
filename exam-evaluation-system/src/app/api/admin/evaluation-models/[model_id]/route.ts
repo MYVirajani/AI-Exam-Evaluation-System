@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // PUT /api/admin/evaluation-models/:id
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: { model_id: string } }) {
   try {
-    const modelId = params.id;
+    const modelId = params.model_id;
     const { model_name, description } = await req.json();
 
     if (!model_name) {
@@ -35,10 +35,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 // DELETE /api/admin/evaluation-models/:id
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { model_id: string } }
 ) {
   try {
-    const modelId = params.id;
+    const modelId = params.model_id;
 
     await prisma.evaluation_Model.delete({
       where: { model_id: modelId },

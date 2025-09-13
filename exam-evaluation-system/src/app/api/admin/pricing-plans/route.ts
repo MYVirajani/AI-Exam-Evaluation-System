@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; 
 
 import Stripe from "stripe";
+
 export async function GET() {
   try {
     const plans = await prisma.pricing_Plan.findMany({
       orderBy: { created_on: "desc" },
       include: {
-        evaluation_model: { // ✅ Use relation name defined in your Prisma schema
+        evaluation_model: {
           select: {
             model_id: true,
             model_name: true,
@@ -15,11 +16,19 @@ export async function GET() {
             created_on: true,
           },
         },
+        _count: {   // ✅ This gives you the number of related records
+          select: { subscriptions: true },
+        },
       },
     });
 
-    console.log("plans: ", plans);
-    return NextResponse.json({ plans });
+    // Format response to rename `_count.subscriptions` → `subscriptionCount` if needed
+    const formattedPlans = plans.map((plan) => ({
+      ...plan,
+      subscriptionCount: plan._count.subscriptions,
+    }));
+
+    return NextResponse.json({ plans: formattedPlans });
   } catch (error: any) {
     console.error("Error fetching pricing plans:", error);
     return NextResponse.json(
@@ -28,7 +37,6 @@ export async function GET() {
     );
   }
 }
-
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 

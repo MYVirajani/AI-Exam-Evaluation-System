@@ -26,7 +26,20 @@ interface PricingPlan {
   features: string[];
   model_id: string;
   evaluation_model: EvaluationModel;
+  subscriptionCount: number; // ✅ new field from backend
 }
+
+// ✅ Unified labels for all billing period options
+const BILLING_PERIOD_LABELS: Record<string, string> = {
+  day: "Daily",
+  week: "Weekly",
+  month: "Monthly",
+  year: "Yearly",
+  "3_months": "Every 3 months",
+  "6_months": "Every 6 months",
+  custom: "Custom",
+};
+
 
 export default function PricingPlansTable() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
@@ -66,26 +79,34 @@ export default function PricingPlansTable() {
     setShowConfirm(true);
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    try {
-      const res = await fetch(`/api/admin/pricing-plans/${deleteId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error();
-      setPlans((prev) => prev.filter((p) => p.pricing_plan_id !== deleteId));
-      toast.success("Deleted successfully");
-    } catch {
-      toast.error("Failed to delete plan");
-    } finally {
-      setShowConfirm(false);
-      setDeleteId(null);
-    }
-  };
+const handleDelete = async () => {
+  if (!deleteId) return;
+  try {
+    const res = await fetch(`/api/admin/pricing-plans/${deleteId}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error();
+    setPlans((prev) => prev.filter((p) => p.pricing_plan_id !== deleteId));
+    toast.success("Deleted successfully");
+  } catch {
+    toast.error("Failed to delete plan");
+  } finally {
+    setShowConfirm(false);
+    setDeleteId(null);
+  }
+};
 
   const columns: ColumnDef<PricingPlan>[] = [
     { header: "Name", accessorKey: "name" },
-    { header: "Billing Period", accessorKey: "billing_period" },
+    {
+      header: "Billing Period",
+      cell: ({ row }) => (
+        <span>
+          {BILLING_PERIOD_LABELS[row.original.billing_period] ??
+            row.original.billing_period}
+        </span>
+      ),
+    },
     { header: "Price (USD)", accessorKey: "price" },
     {
       header: "Evaluation Model",
@@ -112,6 +133,13 @@ export default function PricingPlansTable() {
         ),
     },
     { header: "Description", accessorKey: "description" },
+    {
+      header: "Subscriptions",
+      accessorKey: "subscriptionCount",
+      cell: ({ row }) => (
+        <span>{row.original.subscriptionCount ?? 0}</span>
+      ),
+    },
     {
       header: "Actions",
       cell: ({ row }) => (

@@ -45,3 +45,26 @@ export async function PATCH(
     );
   }
 }
+
+interface Params {
+  params: { id: string };
+}
+
+export async function DELETE(req: Request, { params }: Params) {
+  try {
+    const { id } = params;
+
+    // Delete pricing plan (subscriptions will cascade if set in schema)
+    await prisma.pricing_Plan.delete({
+      where: { pricing_plan_id: id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting pricing plan:", error);
+    return NextResponse.json(
+      { error: "Failed to delete pricing plan" },
+      { status: 500 }
+    );
+  }
+}

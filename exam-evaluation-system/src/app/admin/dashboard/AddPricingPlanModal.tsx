@@ -86,7 +86,7 @@ export default function AddPricingPlanModal({
     setFeatures((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSubmit = async () => {
-    if (!selectedModelId || !name || price <0) {
+    if (!selectedModelId || !name || price < 0) {
       alert("Fill all required fields");
       return;
     }
@@ -147,9 +147,15 @@ export default function AddPricingPlanModal({
             value={billingPeriod}
             onChange={(e) => setBillingPeriod(e.target.value)}
           >
+            <option value="day">Daily</option>
+            <option value="week">Weekly</option>
             <option value="month">Monthly</option>
             <option value="year">Yearly</option>
+            <option value="3_months">Every 3 months</option>
+            <option value="6_months">Every 6 months</option>
+            <option value="custom">Custom</option>
           </select>
+
           <textarea
             className="border p-2 rounded"
             placeholder="Description"

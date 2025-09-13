@@ -11,13 +11,20 @@ import ConfirmDialog from "@/components/ConfimDialog";
 import Button from "@/components/Button";
 import AddPricingPlanModal from "./AddPricingPlanModal";
 
+interface EvaluationModel {
+  model_id: string;
+  model_name: string;
+  description?: string;
+}
+
 interface PricingPlan {
   pricing_plan_id: string;
   name: string;
   billing_period: string;
   price: number;
   description: string;
-  stripe_price_id: string;
+  features: string[];
+  evaluation_model: EvaluationModel;
 }
 
 export default function PricingPlansTable() {
@@ -111,6 +118,30 @@ export default function PricingPlansTable() {
     { header: "Name", accessorKey: "name" },
     { header: "Billing Period", accessorKey: "billing_period" },
     { header: "Price(USD)", accessorKey: "price" },
+    {
+      header: "Evaluation Model",
+      cell: ({ row }) => (
+        <span
+          title={row.original.evaluation_model?.description || "No description"}
+          className="cursor-help underline decoration-dotted"
+        >
+          {row.original.evaluation_model?.model_name}
+        </span>
+      ),
+    },
+    {
+      header: "Features",
+      cell: ({ row }) =>
+        row.original.features?.length > 0 ? (
+          <ul className="list-disc pl-4">
+            {row.original.features.map((f, i) => (
+              <li key={i}>{f}</li>
+            ))}
+          </ul>
+        ) : (
+          <span className="text-gray-500">No features</span>
+        ),
+    },
     { header: "Description", accessorKey: "description" },
     {
       header: "Actions",
@@ -118,13 +149,27 @@ export default function PricingPlansTable() {
         <div className="flex gap-2">
           {editingId === row.original.pricing_plan_id ? (
             <>
-              <button onClick={handleSave} className="text-green-600">Save</button>
-              <button onClick={() => setEditingId(null)} className="text-gray-600">Cancel</button>
+              <button onClick={handleSave} className="text-green-600">
+                Save
+              </button>
+              <button onClick={() => setEditingId(null)} className="text-gray-600">
+                Cancel
+              </button>
             </>
           ) : (
             <>
-              <button onClick={() => handleEdit(row.original)} className="text-blue-600">Edit</button>
-              <button onClick={() => confirmDelete(row.original.pricing_plan_id)} className="text-red-600">Delete</button>
+              <button
+                onClick={() => handleEdit(row.original)}
+                className="text-blue-600"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => confirmDelete(row.original.pricing_plan_id)}
+                className="text-red-600"
+              >
+                Delete
+              </button>
             </>
           )}
         </div>
@@ -170,7 +215,10 @@ export default function PricingPlansTable() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {table.getRowModel().rows.map((row, idx) => (
-              <tr key={row.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+              <tr
+                key={row.id}
+                className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+              >
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}

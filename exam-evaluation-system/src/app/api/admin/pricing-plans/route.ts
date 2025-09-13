@@ -2,14 +2,23 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; 
 
 import Stripe from "stripe";
-
-// GET /api/admin/pricing-plans → Fetch pricing plans from DB
 export async function GET() {
   try {
     const plans = await prisma.pricing_Plan.findMany({
       orderBy: { created_on: "desc" },
+      include: {
+        evaluation_model: { // ✅ Use relation name defined in your Prisma schema
+          select: {
+            model_id: true,
+            model_name: true,
+            description: true,
+            created_on: true,
+          },
+        },
+      },
     });
-    console.log('plans: ', plans);
+
+    console.log("plans: ", plans);
     return NextResponse.json({ plans });
   } catch (error: any) {
     console.error("Error fetching pricing plans:", error);

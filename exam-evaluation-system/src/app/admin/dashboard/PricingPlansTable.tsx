@@ -40,7 +40,6 @@ const BILLING_PERIOD_LABELS: Record<string, string> = {
   custom: "Custom",
 };
 
-
 export default function PricingPlansTable() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -79,22 +78,22 @@ export default function PricingPlansTable() {
     setShowConfirm(true);
   };
 
-const handleDelete = async () => {
-  if (!deleteId) return;
-  try {
-    const res = await fetch(`/api/admin/pricing-plans/${deleteId}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error();
-    setPlans((prev) => prev.filter((p) => p.pricing_plan_id !== deleteId));
-    toast.success("Deleted successfully");
-  } catch {
-    toast.error("Failed to delete plan");
-  } finally {
-    setShowConfirm(false);
-    setDeleteId(null);
-  }
-};
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      const res = await fetch(`/api/admin/pricing-plans/${deleteId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error();
+      setPlans((prev) => prev.filter((p) => p.pricing_plan_id !== deleteId));
+      toast.success("Deleted successfully");
+    } catch {
+      toast.error("Failed to delete plan");
+    } finally {
+      setShowConfirm(false);
+      setDeleteId(null);
+    }
+  };
 
   const columns: ColumnDef<PricingPlan>[] = [
     { header: "Name", accessorKey: "name" },
@@ -136,9 +135,7 @@ const handleDelete = async () => {
     {
       header: "Subscriptions",
       accessorKey: "subscriptionCount",
-      cell: ({ row }) => (
-        <span>{row.original.subscriptionCount ?? 0}</span>
-      ),
+      cell: ({ row }) => <span>{row.original.subscriptionCount ?? 0}</span>,
     },
     {
       header: "Actions",
@@ -155,7 +152,12 @@ const handleDelete = async () => {
           </button>
           <button
             onClick={() => confirmDelete(row.original.pricing_plan_id)}
-            className="text-red-600"
+            className={`text-red-600 ${
+              row.original.subscriptionCount > 0
+                ? "opacity-50 cursor-not-allowed"
+                : ""
+            }`}
+            disabled={row.original.subscriptionCount > 0}
           >
             Delete
           </button>

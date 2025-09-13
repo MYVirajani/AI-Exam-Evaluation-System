@@ -20,9 +20,8 @@ export default function AddPricingPlanModal({
   onAdd,
 }: PricingPlanModalProps) {
   const [name, setName] = useState("");
-  const [duration, setDuration] = useState<number>(0);
+  const [billingPeriod, setBillingPeriod] = useState("month"); // month/year
   const [price, setPrice] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState("");
   const [description, setDescription] = useState("");
   const [features, setFeatures] = useState<string[]>([]);
   const [newFeature, setNewFeature] = useState("");
@@ -31,7 +30,7 @@ export default function AddPricingPlanModal({
   const [selectedModelId, setSelectedModelId] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ Fetch models for dropdown
+  // ✅ Fetch evaluation models for dropdown
   useEffect(() => {
     if (!isOpen) return;
     const fetchModels = async () => {
@@ -59,7 +58,11 @@ export default function AddPricingPlanModal({
 
   const handleSubmit = async () => {
     if (!selectedModelId) {
-      alert("Please select a model");
+      alert("Please select an evaluation model");
+      return;
+    }
+    if (!name || price <= 0) {
+      alert("Please provide a valid name and price");
       return;
     }
     setLoading(true);
@@ -69,24 +72,22 @@ export default function AddPricingPlanModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          duration,
-          price,
-          payment_method: paymentMethod,
           description,
+          price,
+          billing_period: billingPeriod,
           features,
           model_id: selectedModelId,
         }),
       });
-      if (!res.ok) throw new Error("Failed to add pricing plan");
+      if (!res.ok) throw new Error("Failed to create pricing plan");
       const data = await res.json();
       onAdd(data.plan);
       onClose();
 
       // Reset form
       setName("");
-      setDuration(0);
+      setBillingPeriod("month");
       setPrice(0);
-      setPaymentMethod("");
       setDescription("");
       setFeatures([]);
       setSelectedModelId("");
@@ -114,31 +115,24 @@ export default function AddPricingPlanModal({
             onChange={(e) => setName(e.target.value)}
           />
 
-          {/* Duration */}
-          <input
-            className="border p-2 rounded"
-            type="number"
-            placeholder="Duration (days)"
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-          />
-
           {/* Price */}
           <input
             className="border p-2 rounded"
             type="number"
-            placeholder="Price"
+            placeholder="Price (USD)"
             value={price}
             onChange={(e) => setPrice(Number(e.target.value))}
           />
 
-          {/* Payment Method */}
-          <input
+          {/* Billing Period */}
+          <select
             className="border p-2 rounded"
-            placeholder="Payment Method"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-          />
+            value={billingPeriod}
+            onChange={(e) => setBillingPeriod(e.target.value)}
+          >
+            <option value="month">Monthly</option>
+            <option value="year">Yearly</option>
+          </select>
 
           {/* Description */}
           <textarea
@@ -148,13 +142,13 @@ export default function AddPricingPlanModal({
             onChange={(e) => setDescription(e.target.value)}
           />
 
-          {/* ✅ Model Dropdown */}
+          {/* Evaluation Model */}
           <select
             className="border p-2 rounded"
             value={selectedModelId}
             onChange={(e) => setSelectedModelId(e.target.value)}
           >
-            <option value="">Select Model</option>
+            <option value="">Select Evaluation Model</option>
             {models.map((model) => (
               <option key={model.model_id} value={model.model_id}>
                 {model.model_name}
@@ -162,7 +156,7 @@ export default function AddPricingPlanModal({
             ))}
           </select>
 
-          {/* ✅ Features List */}
+          {/* Features */}
           <div>
             <div className="flex gap-2 mb-2">
               <input

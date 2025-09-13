@@ -1,5 +1,4 @@
 "use client";
-
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,10 +14,10 @@ import AddPricingPlanModal from "./AddPricingPlanModal";
 interface PricingPlan {
   pricing_plan_id: string;
   name: string;
-  duration: number;
+  billing_period: string;
   price: number;
   description: string;
-  payment_method: string;
+  stripe_price_id: string;
 }
 
 export default function PricingPlansTable() {
@@ -29,15 +28,31 @@ export default function PricingPlansTable() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
+  const fetchPlans = async () => {
+    try {
+      const res = await fetch("/api/admin/pricing-plans");
+      const data = await res.json();
+      setPlans(data.plans || []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load pricing plans");
+    }
+  };
+
   useEffect(() => {
-    fetch("/api/admin/pricing-plans")
-      .then((res) => res.json())
-      .then((data) => setPlans(data.plans || []))
-      .catch((err) => {
-        console.error(err);
-        toast.error("Failed to load pricing plans");
-      });
+    fetchPlans();
   }, []);
+
+  const syncPlans = async () => {
+    try {
+      await fetch("/api/admin/pricing-plans/sync", { method: "POST" });
+      toast.success("Plans synced from Stripe");
+      fetchPlans();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to sync plans");
+    }
+  };
 
   const confirmDelete = (id: string) => {
     setDeleteId(id);
@@ -47,7 +62,9 @@ export default function PricingPlansTable() {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`/api/admin/pricing-plans/${deleteId}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/pricing-plans/${deleteId}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Failed to delete pricing plan");
       setPlans((prev) => prev.filter((p) => p.pricing_plan_id !== deleteId));
       toast.success("Pricing plan deleted");
@@ -92,9 +109,8 @@ export default function PricingPlansTable() {
 
   const columns: ColumnDef<PricingPlan>[] = [
     { header: "Name", accessorKey: "name" },
-    { header: "Duration (days)", accessorKey: "duration" },
-    { header: "Price", accessorKey: "price" },
-    { header: "Payment Method", accessorKey: "payment_method" },
+    { header: "Billing Period", accessorKey: "billing_period" },
+    { header: "Price(USD)", accessorKey: "price" },
     { header: "Description", accessorKey: "description" },
     {
       header: "Actions",
@@ -116,15 +132,24 @@ export default function PricingPlansTable() {
     },
   ];
 
-  const table = useReactTable({ data: plans, columns, getCoreRowModel: getCoreRowModel() });
+  const table = useReactTable({
+    data: plans,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium text-gray-900">Pricing Plans</h3>
-        <Button variant="primary" onClick={() => setShowAddModal(true)}>
-          + Add Pricing Plan
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={syncPlans}>
+            Sync from Stripe
+          </Button>
+          <Button variant="primary" onClick={() => setShowAddModal(true)}>
+            + Add Pricing Plan
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -147,7 +172,10 @@ export default function PricingPlansTable() {
             {table.getRowModel().rows.map((row, idx) => (
               <tr key={row.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td
+                    key={cell.id}
+                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -155,7 +183,11 @@ export default function PricingPlansTable() {
             ))}
           </tbody>
         </table>
-        {plans.length === 0 && <div className="text-center py-12 text-gray-500">No pricing plans found</div>}
+        {plans.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            No pricing plans found
+          </div>
+        )}
       </div>
 
       <AddPricingPlanModal
@@ -163,7 +195,6 @@ export default function PricingPlansTable() {
         onClose={() => setShowAddModal(false)}
         onAdd={handleAddPlan}
       />
-
       <ConfirmDialog
         isOpen={showConfirm}
         title="Delete Pricing Plan"

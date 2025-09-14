@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // PUT /api/admin/evaluation-models/:id
-export async function PUT(req: Request, { params }: { params: { model_id: string } }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: { model_id: string } }
+) {
   try {
     const modelId = params.model_id;
     const { model_name, description } = await req.json();
@@ -19,6 +22,9 @@ export async function PUT(req: Request, { params }: { params: { model_id: string
       data: {
         model_name,
         description: description || null,
+      },
+      include: {
+        pricing_plans: true,
       },
     });
 

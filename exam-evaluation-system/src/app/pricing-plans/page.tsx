@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import PaymentModal from "./PaymentModal"; // ✅ import modal
 
 interface EvaluationModel {
   model_id: string;
@@ -18,6 +21,11 @@ interface PricingPlan {
   evaluation_model: EvaluationModel;
 }
 
+// ✅ Stripe publishable key
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
+
 // ✅ Billing period labels
 const BILLING_PERIOD_LABELS: Record<string, string> = {
   day: "Daily",
@@ -32,6 +40,7 @@ const BILLING_PERIOD_LABELS: Record<string, string> = {
 export default function PricingPlansPage() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -62,51 +71,60 @@ export default function PricingPlansPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">
-        Our Pricing Plans
-      </h1>
+    <Elements stripe={stripePromise}>
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">
+          Our Pricing Plans
+        </h1>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {plans.map((plan) => (
-          <div
-            key={plan.pricing_plan_id}
-            className="border rounded-2xl shadow-md p-6 flex flex-col hover:shadow-lg transition"
-          >
-            <h2 className="text-xl font-semibold mb-2 text-gray-800">
-              {plan.name}
-            </h2>
-            <p className="text-3xl font-bold text-blue-600">
-              ${plan.price}
-              <span className="text-base font-normal text-gray-500 ml-1">
-                /
-                {BILLING_PERIOD_LABELS[plan.billing_period] ??
-                  plan.billing_period}
-              </span>
-            </p>
-            {plan.description && (
-              <p className="mt-2 text-gray-600 text-sm">{plan.description}</p>
-            )}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {plans.map((plan) => (
+            <div
+              key={plan.pricing_plan_id}
+              className="border rounded-2xl shadow-md p-6 flex flex-col hover:shadow-lg transition"
+            >
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">
+                {plan.name}
+              </h2>
+              <p className="text-3xl font-bold text-blue-600">
+                ${plan.price}
+                <span className="text-base font-normal text-gray-500 ml-1">
+                  /
+                  {BILLING_PERIOD_LABELS[plan.billing_period] ??
+                    plan.billing_period}
+                </span>
+              </p>
+              {plan.description && (
+                <p className="mt-2 text-gray-600 text-sm">{plan.description}</p>
+              )}
 
-            {plan.features?.length > 0 && (
-              <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-center">
-                    <span className="mr-2 text-green-500">✔</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            )}
+              {plan.features?.length > 0 && (
+                <ul className="mt-4 space-y-2 text-sm text-gray-700">
+                  {plan.features.map((f, i) => (
+                    <li key={i} className="flex items-center">
+                      <span className="mr-2 text-green-500">✔</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-            <div className="mt-auto pt-6">
-              <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition">
-                Choose Plan
-              </button>
+              <div className="mt-auto pt-6">
+                <button
+                  onClick={() => setSelectedPlan(plan)}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Subscribe
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {selectedPlan && (
+          <PaymentModal plan={selectedPlan} onClose={() => setSelectedPlan(null)} />
+        )}
       </div>
-    </div>
+    </Elements>
   );
 }

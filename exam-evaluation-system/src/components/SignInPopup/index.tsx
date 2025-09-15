@@ -4,9 +4,9 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { FaLock, FaEye, FaEyeSlash, FaRobot, FaBrain, FaChartLine } from "react-icons/fa";
-import { siteConfig } from "@/config/site";
 import { useRouter } from "next/navigation";
 import { FiX } from "react-icons/fi";
+import { useUser } from "@/context/UserContext";
 
 interface SignInPopupProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ export default function SignInPopup({ isOpen, onClose, onSwitchToSignUp }: SignI
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
+    const { fetchUser } = useUser()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +41,7 @@ export default function SignInPopup({ isOpen, onClose, onSwitchToSignUp }: SignI
       if (!res.ok) {
         toast.error(json.error || "Sign in failed");
       } else {
+        await fetchUser();
         toast.success("Signed in successfully!");
         const user = json.user;
 

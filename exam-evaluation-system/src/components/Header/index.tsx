@@ -3,7 +3,7 @@
 
 import { siteConfig } from "@/config/site";
 import { FiMenu, FiLogOut } from "react-icons/fi";
-import { useEffect, useState } from "react";
+import { useUser } from "@/context/UserContext";
 import { logout } from "@/lib/logout";
 
 interface HeaderProps {
@@ -11,35 +11,12 @@ interface HeaderProps {
   className?: string;
 }
 
-interface SessionUser {
-  first_name: string;
-  last_name: string;
-}
 
 const Header: React.FC<HeaderProps> = ({
   title = siteConfig.title,
   className = "",
 }) => {
-  const [user, setUser] = useState<SessionUser | null>(null);
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        const res = await fetch("/api/auth/session");
-        if (res.ok) {
-          const data = await res.json();
-          console.log('data:',data);
-          if (data.loggedIn) {
-            setUser(data.user);
-          }
-        }
-      } catch {
-        setUser(null);
-      }
-    };
-    fetchSession();
-  }, []);
-
+const { user } = useUser();
   return (
     <header className={`relative overflow-hidden mb-6 ${className}`}>
       {/* Background */}
@@ -85,7 +62,7 @@ const Header: React.FC<HeaderProps> = ({
           {user && (
             <div className="flex items-center space-x-4">
               <span className="text-white font-medium">
-                {user.first_name} {user.last_name}
+                {user.firstName} {user.lastName}
               </span>
               <button
                 onClick={logout}

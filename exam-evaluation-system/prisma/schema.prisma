@@ -29,15 +29,18 @@ model User {
 }
 
 model Educator {
-  official_email      String             @unique
+  user_id             String    @id
+  official_email      String    @unique
   education_institute String
-  user_id             String             @id
-  user                User               @relation(fields: [user_id], references: [user_id])
+
+  user                User      @relation(fields: [user_id], references: [user_id])
   modules             Module[]
   question_grades     Question_Grade[]
   assessment_grades   Assessment_Grade[]
   assessments         Assessment[]
+  subscriptions       Subscription[]   // NEW: one educator can have many subscriptions
 }
+
 
 model Student {
   user_id             String       @id
@@ -54,6 +57,13 @@ enum Role {
   student
 }
 
+enum AvailabilityStatus {
+  draft      // not visible to students yet
+  active     // visible and available
+  expired    // deadline passed (system can auto-update to this)
+  archived   // hidden manually by admin/educator
+}
+
 model Module {
   module_id           String   @id
   module_code         String
@@ -67,6 +77,7 @@ model Module {
   created_by          String
   created_on          DateTime @default(now()) @db.Timestamptz(6)
   last_updated_at     DateTime @default(now()) @db.Timestamptz(6)
+  status              AvailabilityStatus @default(active)
 
   educator    Educator     @relation(fields: [created_by], references: [user_id])
   assessments Assessment[]
@@ -122,13 +133,13 @@ model Assessment {
   close_at                  DateTime?      @db.Timestamptz(6)
   total_marks               Decimal?       @db.Decimal(5, 2) //total marks calculated by all questions of assessment
   max_marks                 Decimal?       @db.Decimal(5, 2) //max marks a student can allocate by assessment
-  password                  String? // For quiz access
-  question_count            Int? // Number of questions to show (for quizzes)
+  password                  String? 
   shuffle_questions         Boolean        @default(false) // Whether to shuffle questions
   max_attempts              Int?
   auto_grade                Boolean        @default(false)
   back_navigation           Boolean        @default(true)
   case_sensitive_evaluation Boolean        @default(false)
+  status              AvailabilityStatus @default(active)
 
   module             Module              @relation(fields: [module_id], references: [module_id])
   educator           Educator            @relation(fields: [created_by], references: [user_id])
@@ -286,26 +297,59 @@ model Assessment_Grade {
 }
 
 model Evaluation_Model {
-  model_id        String @id
-  model_name      String
-  pricing_plan_id String
+  model_id          String          @id @default(uuid())
+  model_name        String
+  description       String?
+  created_on        DateTime        @default(now()) @db.Timestamptz(6)
 
-  pricing_plan      Pricing_Plan       @relation(fields: [pricing_plan_id], references: [pricing_plan_id])
+  pricing_plans     Pricing_Plan[]
   question_grades   Question_Grade[]
   assessment_grades Assessment_Grade[]
 }
 
 model Pricing_Plan {
-  pricing_plan_id String   @id
-  name            String
-  duration        Int
-  price           Decimal  @db.Decimal(9, 3)
-  description     String
-  payment_method  String
-  created_on      DateTime @default(now()) @db.Timestamptz(6)
+  pricing_plan_id   String   @id @default(uuid())
+  name              String
+  billing_period    String
+  price             Decimal  @db.Decimal(9,2)
+  description       String?
+  features          String[]
+  stripe_price_id   String   @unique
+  stripe_product_id String
+  created_on        DateTime @default(now()) @db.Timestamptz(6)
 
-  evaluation_models Evaluation_Model[]
+  evaluation_model  Evaluation_Model @relation(fields: [model_id], references: [model_id], onDelete: Cascade)
+  model_id          String
+  subscriptions     Subscription[]
 }
+
+
+
+model Subscription {
+  subscription_id        String        @id @default(uuid())
+  status                 SubscriptionStatus  @default(INCOMPLETE)     
+  start_date             DateTime      @default(now()) @db.Timestamptz(6)
+  end_date               DateTime?
+  stripe_customer_id     String?
+  stripe_subscription_id String?
+
+  // link to Pricing Plan
+  pricing_plan           Pricing_Plan  @relation(fields: [pricing_plan_id], references: [pricing_plan_id])
+  pricing_plan_id        String
+
+  // link to Educator
+  educator               Educator      @relation(fields: [educator_id], references: [user_id])
+  educator_id            String
+}
+enum SubscriptionStatus {
+  ACTIVE      // Subscription is currently active
+  CANCELED    // Subscription was canceled by educator or admin
+  PAST_DUE    // Payment failed or overdue
+  INCOMPLETE  // Payment not completed yet
+  TRIALING    // Trial period before billing starts
+  FAILED
+}
+
 
 model student_answers_openai {
   student_index String

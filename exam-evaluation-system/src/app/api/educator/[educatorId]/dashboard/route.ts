@@ -41,6 +41,7 @@ export async function GET(
         enrollment_key: true,
         module_image_url: true,
         _count: { select: { enrollments: true } },
+        status:true,
       },
     });
     console.info(`${logPrefix} - Modules fetched: count=${modules.length}`);
@@ -58,6 +59,7 @@ export async function GET(
         open_at: true,
         close_at: true,
         module_id: true,
+        status:true,
       },
     });
 
@@ -100,11 +102,14 @@ export async function GET(
       close_at: asm.close_at,
       module_id: asm.module_id,
       number_of_submissions: submissionCountMap[asm.assessment_id] || 0,
+      status: asm.status,
     }));
 
     console.info(
       `${logPrefix} - Successfully processed request in ${Date.now() - startTime}ms`
     );
+    console.log('formattedAssessments: ', formattedAssessments);
+    console.log('formattedModules: ',formattedModules);
     return NextResponse.json({
       modules: formattedModules,
       assessments: formattedAssessments,

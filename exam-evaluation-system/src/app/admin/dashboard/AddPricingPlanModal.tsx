@@ -141,7 +141,9 @@ export default function AddPricingPlanModal({
             placeholder="Price (USD)"
             value={price}
             onChange={(e) => setPrice(Number(e.target.value))}
+            disabled={isEdit} // ✅ disable editing price when editing
           />
+
           <select
             className="border p-2 rounded"
             value={billingPeriod}

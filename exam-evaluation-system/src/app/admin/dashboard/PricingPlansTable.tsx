@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import Button from "@/components/Button";
 import ConfirmDialog from "@/components/ConfimDialog";
 import AddPricingPlanModal from "./AddPricingPlanModal";
+import {RefreshCcw} from 'lucide-react';
 
 interface EvaluationModel {
   model_id: string;
@@ -46,6 +47,7 @@ export default function PricingPlansTable() {
   const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const fetchPlans = async () => {
     try {
@@ -92,6 +94,22 @@ export default function PricingPlansTable() {
     } finally {
       setShowConfirm(false);
       setDeleteId(null);
+    }
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/admin/pricing-plans/sync", {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Plans synced from Stripe!");
+      fetchPlans(); // refresh UI
+    } catch {
+      toast.error("Failed to sync from Stripe");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -176,16 +194,31 @@ export default function PricingPlansTable() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Pricing Plans</h3>
-        <Button
-          variant="primary"
-          onClick={() => {
-            setEditingPlan(null);
-            setShowModal(true);
-          }}
-        >
-          + Add Pricing Plan
-        </Button>
+        <div className="flex gap-2">
+          <Button
+  variant="secondary"
+  onClick={handleSync}
+  disabled={isSyncing}
+  className="flex items-center gap-2"
+>
+  <RefreshCcw
+    className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+  />
+  {isSyncing ? "Syncing..." : "Sync from Stripe"}
+</Button>
+
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditingPlan(null);
+              setShowModal(true);
+            }}
+          >
+            + Add Pricing Plan
+          </Button>
+        </div>
       </div>
+
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead>

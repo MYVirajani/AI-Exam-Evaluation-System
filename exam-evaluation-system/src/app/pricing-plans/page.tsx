@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements } from "@stripe/react-stripe-js";
-import PaymentModal from "./PaymentModal"; // ✅ import modal
+import SignInPopup from "@/components/SignInPopup"; 
 
 interface EvaluationModel {
   model_id: string;
@@ -21,12 +19,6 @@ interface PricingPlan {
   evaluation_model: EvaluationModel;
 }
 
-// ✅ Stripe publishable key
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-);
-
-// ✅ Billing period labels
 const BILLING_PERIOD_LABELS: Record<string, string> = {
   day: "Daily",
   week: "Weekly",
@@ -40,8 +32,28 @@ const BILLING_PERIOD_LABELS: Record<string, string> = {
 export default function PricingPlansPage() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [educatorId, setEducatorId] = useState<string | null>(null);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
 
+  // ✅ Fetch current session to get educatorId
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const res = await fetch("/api/auth/session");
+        if (!res.ok) return setEducatorId(null);
+        const session = await res.json();
+        console.log("session:", session);
+        setEducatorId(session?.user?.user_id ?? null);
+      } catch {
+        setEducatorId(null);
+      }
+    };
+
+    fetchSession();
+  }, []);
+
+  // ✅ Fetch pricing plans
   useEffect(() => {
     const fetchPlans = async () => {
       try {
@@ -58,6 +70,41 @@ export default function PricingPlansPage() {
     fetchPlans();
   }, []);
 
+  // ✅ Handle Subscribe button
+  const handleSubscribe = async (plan: PricingPlan) => {
+    // If user is not logged in, show login popup
+    if (!educatorId) {
+      setIsLoginOpen(true);
+      return;
+    }
+
+    try {
+      setProcessing(plan.pricing_plan_id);
+
+      const res = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pricing_plan_id: plan.pricing_plan_id,
+          educator_id: educatorId, // ✅ use ID from session
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data?.url) {
+        // ✅ Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        console.error("No checkout session URL returned", data);
+      }
+    } catch (error) {
+      console.error("Failed to create checkout session:", error);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-10">Loading pricing plans...</div>;
   }
@@ -71,60 +118,67 @@ export default function PricingPlansPage() {
   }
 
   return (
-    <Elements stripe={stripePromise}>
-      <div className="max-w-6xl mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">
-          Our Pricing Plans
-        </h1>
+    <div className="max-w-6xl mx-auto px-4 py-10">
+      <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">
+        Our Pricing Plans
+      </h1>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <div
-              key={plan.pricing_plan_id}
-              className="border rounded-2xl shadow-md p-6 flex flex-col hover:shadow-lg transition"
-            >
-              <h2 className="text-xl font-semibold mb-2 text-gray-800">
-                {plan.name}
-              </h2>
-              <p className="text-3xl font-bold text-blue-600">
-                ${plan.price}
-                <span className="text-base font-normal text-gray-500 ml-1">
-                  /
-                  {BILLING_PERIOD_LABELS[plan.billing_period] ??
-                    plan.billing_period}
-                </span>
-              </p>
-              {plan.description && (
-                <p className="mt-2 text-gray-600 text-sm">{plan.description}</p>
-              )}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {plans.map((plan) => (
+          <div
+            key={plan.pricing_plan_id}
+            className="border rounded-2xl shadow-md p-6 flex flex-col hover:shadow-lg transition"
+          >
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">
+              {plan.name}
+            </h2>
+            <p className="text-3xl font-bold text-blue-600">
+              ${plan.price}
+              <span className="text-base font-normal text-gray-500 ml-1">
+                /
+                {BILLING_PERIOD_LABELS[plan.billing_period] ??
+                  plan.billing_period}
+              </span>
+            </p>
+            {plan.description && (
+              <p className="mt-2 text-gray-600 text-sm">{plan.description}</p>
+            )}
 
-              {plan.features?.length > 0 && (
-                <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                  {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-center">
-                      <span className="mr-2 text-green-500">✔</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              )}
+            {plan.features?.length > 0 && (
+              <ul className="mt-4 space-y-2 text-sm text-gray-700">
+                {plan.features.map((f, i) => (
+                  <li key={i} className="flex items-center">
+                    <span className="mr-2 text-green-500">✔</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            )}
 
-              <div className="mt-auto pt-6">
-                <button
-                  onClick={() => setSelectedPlan(plan)}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition"
-                >
-                  Subscribe
-                </button>
-              </div>
+            <div className="mt-auto pt-6">
+              <button
+                onClick={() => handleSubscribe(plan)}
+                disabled={processing === plan.pricing_plan_id}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {processing === plan.pricing_plan_id
+                  ? "Redirecting..."
+                  : "Subscribe"}
+              </button>
             </div>
-          ))}
-        </div>
-
-        {selectedPlan && (
-          <PaymentModal plan={selectedPlan} onClose={() => setSelectedPlan(null)} />
-        )}
+          </div>
+        ))}
       </div>
-    </Elements>
+
+      {/* ✅ Login popup */}
+      <SignInPopup
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        onSwitchToSignUp={() => {
+          setIsLoginOpen(false);
+          // Optionally open signup popup
+        }}
+      />
+    </div>
   );
 }

@@ -5,7 +5,9 @@ import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const token = cookies().get("token")?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
+
   if (!token) {
     return NextResponse.json({ loggedIn: false }, { status: 401 });
   }
@@ -17,7 +19,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { user_id: decoded.id },
-    select: { first_name: true, last_name: true },
+    select: { first_name: true, last_name: true, user_id:true},
   });
 
   if (!user) {

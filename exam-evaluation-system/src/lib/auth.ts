@@ -1,10 +1,10 @@
 // src/lib/auth.ts
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecret"; // put this in .env
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret"; 
 
 export function signToken(payload: object) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" }); // 7-day session
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" }); 
 }
 
 export function verifyToken(token: string) {

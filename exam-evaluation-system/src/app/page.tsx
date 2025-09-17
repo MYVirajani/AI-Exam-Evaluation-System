@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Brain,
   CheckCircle,
@@ -19,6 +20,7 @@ import { siteConfig } from "@/config/site";
 export default function Home() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -49,7 +51,10 @@ export default function Home() {
                 <span>Get Started</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
-              <button className="px-8 py-4 border-2 border-blue-200 text-blue-700 rounded-xl hover:bg-blue-50 transition-all duration-300 font-semibold">
+               <button
+                onClick={() => router.push("/pricing-plans")}
+                className="px-8 py-4 border-2 border-blue-200 text-blue-700 rounded-xl hover:bg-blue-50 transition-all duration-300 font-semibold"
+              >
                 System Guide
               </button>
             </div>

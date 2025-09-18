@@ -12,7 +12,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
-  variant?: 'primary' | 'destructive' | 'success';
+  variant?: 'primary' | 'destructive' | 'success' | 'secondary';
   icon?: React.ReactNode;
   loading?: boolean;
 }
@@ -71,6 +71,8 @@ export default function ConfirmDialog({
         return 'text-red-600';
       case 'success':
         return 'text-green-600';
+      case 'secondary':
+        return 'text-gray-600';
       default:
         return 'text-blue-600';
     }
@@ -82,6 +84,8 @@ export default function ConfirmDialog({
         return 'bg-red-50 border-red-200';
       case 'success':
         return 'bg-green-50 border-green-200';
+      case 'secondary':
+        return 'bg-gray-50 border-gray-200';
       default:
         return 'bg-blue-50 border-blue-200';
     }

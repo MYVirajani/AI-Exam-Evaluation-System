@@ -11,6 +11,7 @@ import Button from "@/components/Button";
 import ConfirmDialog from "@/components/ConfimDialog";
 import AddPricingPlanModal from "./AddPricingPlanModal";
 import {RefreshCcw} from 'lucide-react';
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface EvaluationModel {
   model_id: string;
@@ -48,6 +49,7 @@ export default function PricingPlansTable() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+ const [isLoading, setIsLoading] = useState(true);
 
   const fetchPlans = async () => {
     try {
@@ -60,7 +62,10 @@ export default function PricingPlansTable() {
   };
 
   useEffect(() => {
-    fetchPlans();
+    setIsLoading(true);
+    fetchPlans().finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   const handleSave = (plan: PricingPlan, isEdit: boolean) => {
@@ -189,7 +194,19 @@ export default function PricingPlansTable() {
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
-
+ // Show loading animation while data is being fetched
+  if (isLoading) {
+    return (
+      <LoadingAnimation
+        variant="spinner"
+        size="lg"
+        text="Loading pricing plans..."
+        color="blue"
+        fullScreen={false}
+        className="py-12"
+      />
+    );
+  }
   return (
     <div>
       <div className="flex justify-between items-center mb-4">

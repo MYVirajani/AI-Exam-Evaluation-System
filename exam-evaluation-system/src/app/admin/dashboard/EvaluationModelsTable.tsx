@@ -8,6 +8,7 @@ import {
   ColumnDef,
 } from "@tanstack/react-table";
 import AddModelModal from "./AddModelModal";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 type PricingPlan = {
   pricing_plan_id: string;
@@ -152,8 +153,18 @@ export default function ExamEvaluationModelsTable() {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  if (loading) return <p>Loading exam models...</p>;
-
+if (loading) {
+    return (
+      <LoadingAnimation
+        variant="spinner"
+        size="lg"
+        text="Loading evaluation models..."
+        color="blue"
+        fullScreen={false}
+        className="py-12"
+      />
+    );
+  }
   return (
     <div>
       <div className="flex justify-between items-center mb-4">

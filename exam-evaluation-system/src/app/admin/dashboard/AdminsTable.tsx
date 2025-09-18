@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfimDialog";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface Admin {
   user_id: string;
@@ -25,14 +26,18 @@ export default function AdminsTable() {
   const [editedAdmin, setEditedAdmin] = useState<Partial<Admin>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setIsLoading(true);
     fetch("/api/admin/admins")
       .then((res) => res.json())
       .then((data) => setAdmins(data.admins || []))
       .catch((err) => {
         console.error(err);
         toast.error("Failed to load admins");
+      }).finally(() => {
+        setIsLoading(false);
       });
   }, []);
 
@@ -108,7 +113,18 @@ export default function AdminsTable() {
   ];
 
   const table = useReactTable({ data: admins, columns, getCoreRowModel: getCoreRowModel() });
-
+ if (isLoading) {
+    return (
+      <LoadingAnimation
+        variant="spinner"
+        size="lg"
+        text="Loading admins..."
+        color="blue"
+        fullScreen={false}
+        className="py-12"
+      />
+    );
+  }
   return (
     <div>
       <div className="overflow-x-auto">

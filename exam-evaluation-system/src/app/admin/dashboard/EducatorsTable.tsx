@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfimDialog";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface Educator {
   user_id: string;
@@ -27,14 +28,19 @@ export default function EducatorsTable() {
   const [editedEducator, setEditedEducator] = useState<Partial<Educator>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setIsLoading(true);
     fetch("/api/admin/educators")
       .then((res) => res.json())
       .then((data) => setEducators(data.educators || []))
       .catch((err) => {
         console.error(err);
         toast.error("Failed to load educators");
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   }, []);
 
@@ -118,6 +124,20 @@ export default function EducatorsTable() {
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  // Show loading animation while data is being fetched
+  if (isLoading) {
+    return (
+      <LoadingAnimation
+        variant="spinner"
+        size="lg"
+        text="Loading educators..."
+        color="blue"
+        fullScreen={false}
+        className="py-12"
+      />
+    );
+  }
 
   return (
     <div>

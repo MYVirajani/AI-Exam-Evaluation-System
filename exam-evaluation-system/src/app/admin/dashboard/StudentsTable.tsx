@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfimDialog";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface Student {
   user_id: string;
@@ -27,14 +28,18 @@ export default function StudentsTable() {
   const [editedStudent, setEditedStudent] = useState<Partial<Student>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+     setIsLoading(true);
     fetch("/api/admin/students")
       .then(res => res.json())
       .then(data => setStudents(data.students || []))
       .catch(err => {
         console.error(err);
         toast.error("Failed to load students");
+      }).finally(() => {
+        setIsLoading(false);
       });
   }, []);
 
@@ -112,7 +117,19 @@ export default function StudentsTable() {
   ];
 
   const table = useReactTable({ data: students, columns, getCoreRowModel: getCoreRowModel() });
-
+ // Show loading animation while data is being fetched
+  if (isLoading) {
+    return (
+      <LoadingAnimation
+        variant="spinner"
+        size="lg"
+        text="Loading students..."
+        color="blue"
+        fullScreen={false}
+        className="py-12"
+      />
+    );
+  }
   return (
     <div>
       <div className="overflow-x-auto">

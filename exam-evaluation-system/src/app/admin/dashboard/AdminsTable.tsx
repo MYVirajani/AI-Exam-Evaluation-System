@@ -267,48 +267,48 @@ export default function AdminsTable() {
         </div>
       ),
     },
-    {
-      header: "Actions",
-      id: "actions",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          {editingId === row.original.user_id ? (
-            <>
-              <button 
-                onClick={handleSave} 
-                className="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
-              >
-                Save
-              </button>
-              <button 
-                onClick={() => {
-                  setEditingId(null);
-                  setEditedAdmin({});
-                }} 
-                className="inline-flex items-center px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button 
-                onClick={() => handleEdit(row.original)} 
-                className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
-              >
-                Edit
-              </button>
-              <button 
-                onClick={() => confirmDelete(row.original.user_id)} 
-                className="inline-flex items-center px-3 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
-              >
-                Delete
-              </button>
-            </>
-          )}
-        </div>
-      ),
-    },
+    // {
+    //   header: "Actions",
+    //   id: "actions",
+    //   cell: ({ row }) => (
+    //     <div className="flex items-center gap-2">
+    //       {editingId === row.original.user_id ? (
+    //         <>
+    //           <button 
+    //             onClick={handleSave} 
+    //             className="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
+    //           >
+    //             Save
+    //           </button>
+    //           <button 
+    //             onClick={() => {
+    //               setEditingId(null);
+    //               setEditedAdmin({});
+    //             }} 
+    //             className="inline-flex items-center px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+    //           >
+    //             Cancel
+    //           </button>
+    //         </>
+    //       ) : (
+    //         <>
+    //           <button 
+    //             onClick={() => handleEdit(row.original)} 
+    //             className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
+    //           >
+    //             Edit
+    //           </button>
+    //           <button 
+    //             onClick={() => confirmDelete(row.original.user_id)} 
+    //             className="inline-flex items-center px-3 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
+    //           >
+    //             Delete
+    //           </button>
+    //         </>
+    //       )}
+    //     </div>
+    //   ),
+    // },
   ];
 
   const table = useReactTable({ 

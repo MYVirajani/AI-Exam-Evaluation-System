@@ -5,81 +5,124 @@ import { siteConfig } from "@/config/site";
 import { FiMenu, FiLogOut } from "react-icons/fi";
 import { useUser } from "@/context/UserContext";
 import { logout } from "@/lib/logout";
+import { useState } from "react";
+import ConfirmDialog from "../ConfimDialog";
 
 interface HeaderProps {
   title?: string;
   className?: string;
 }
 
-
 const Header: React.FC<HeaderProps> = ({
   title = siteConfig.title,
   className = "",
 }) => {
-const { user } = useUser();
+  const { user, setUser } = useUser();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      // Logout was successful, close the dialog and update user state
+      setShowLogoutConfirm(false);
+      setUser(null); // Clear user from context
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Handle logout failure if needed
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutConfirm(false);
+  };
+
   return (
-    <header className={`relative overflow-hidden mb-6 ${className}`}>
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-800 via-blue-600 to-cyan-400" />
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-sm" />
+    <>
+      <header className={`relative overflow-hidden mb-6 ${className}`}>
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-800 via-blue-600 to-cyan-400" />
+        <div className="absolute inset-0 bg-black/10 backdrop-blur-sm" />
 
-      {/* Floating circles */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-        <div className="absolute -top-4 -left-4 w-24 h-24 bg-white/5 rounded-full animate-pulse" />
-        <div
-          className="absolute top-8 right-16 w-16 h-16 bg-white/3 rounded-full animate-bounce"
-          style={{ animationDelay: "1s", animationDuration: "3s" }}
-        />
-        <div
-          className="absolute bottom-4 left-1/3 w-20 h-20 bg-white/4 rounded-full animate-pulse"
-          style={{ animationDelay: "0.5s" }}
-        />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 p-6">
-        <div className="flex items-center justify-between">
-          {/* Left section: menu + title */}
-          <div className="flex items-center space-x-6">
-            <button className="group relative p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110">
-              <FiMenu className="text-white text-xl group-hover:rotate-90 transition-transform duration-300" />
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-400/20 to-cyan-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </button>
-
-            <div className="space-y-1">
-              <h1 className="text-3xl font-bold text-white drop-shadow-lg tracking-tight">
-                {title}
-              </h1>
-              {siteConfig.description && (
-                <p className="text-white/80 text-sm font-medium drop-shadow-sm">
-                  {siteConfig.description}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Right section: user info + logout */}
-          {user && (
-            <div className="flex items-center space-x-4">
-              <span className="text-white font-medium">
-                {user.firstName} {user.lastName}
-              </span>
-              <button
-                onClick={logout}
-                className="group relative p-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110"
-                title="Logout"
-              >
-                <FiLogOut className="text-white text-xl" />
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-400/30 to-pink-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </button>
-            </div>
-          )}
+        {/* Floating circles */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+          <div className="absolute -top-4 -left-4 w-24 h-24 bg-white/5 rounded-full animate-pulse" />
+          <div
+            className="absolute top-8 right-16 w-16 h-16 bg-white/3 rounded-full animate-bounce"
+            style={{ animationDelay: "1s", animationDuration: "3s" }}
+          />
+          <div
+            className="absolute bottom-4 left-1/3 w-20 h-20 bg-white/4 rounded-full animate-pulse"
+            style={{ animationDelay: "0.5s" }}
+          />
         </div>
-      </div>
 
-      {/* Bottom border */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-300" />
-    </header>
+        {/* Content */}
+        <div className="relative z-10 p-6">
+          <div className="flex items-center justify-between">
+            {/* Left section: menu + title */}
+            <div className="flex items-center space-x-6">
+              <button className="group relative p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110">
+                <FiMenu className="text-white text-xl group-hover:rotate-90 transition-transform duration-300" />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-400/20 to-cyan-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </button>
+
+              <div className="space-y-1">
+                <h1 className="text-3xl font-bold text-white drop-shadow-lg tracking-tight">
+                  {title}
+                </h1>
+                {siteConfig.description && (
+                  <p className="text-white/80 text-sm font-medium drop-shadow-sm">
+                    {siteConfig.description}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Right section: user info + logout */}
+            {user && (
+              <div className="flex items-center space-x-4">
+                <span className="text-white font-medium">
+                  {user.firstName} {user.lastName}
+                </span>
+                <button
+                  onClick={handleLogoutClick}
+                  className="group relative p-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110"
+                  title="Logout"
+                >
+                  <FiLogOut className="text-white text-xl" />
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-400/30 to-pink-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom border */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-300" />
+      </header>
+
+      {/* Confirm Dialog for Logout */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Confirm Logout"
+        message="Are you sure you want to log out?"
+        onConfirm={handleConfirmLogout}
+        onCancel={handleCancelLogout}
+        confirmText="Logout"
+        cancelText="Cancel"
+        variant="primary"
+        icon={<FiLogOut className="w-6 h-6" />}
+        loading={isLoggingOut}
+      />
+    </>
   );
 };
 

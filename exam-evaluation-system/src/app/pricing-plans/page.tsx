@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SignInPopup from "@/components/SignInPopup"; 
+import SignInPopup from "@/components/SignInPopup";
+import PricingPlanCard from "@/components/PricingPlanCard";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface EvaluationModel {
   model_id: string;
@@ -32,7 +34,6 @@ const BILLING_PERIOD_LABELS: Record<string, string> = {
 export default function PricingPlansPage() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState<string | null>(null);
   const [educatorId, setEducatorId] = useState<string | null>(null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
 
@@ -79,8 +80,6 @@ export default function PricingPlansPage() {
     }
 
     try {
-      setProcessing(plan.pricing_plan_id);
-
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -100,19 +99,28 @@ export default function PricingPlansPage() {
       }
     } catch (error) {
       console.error("Failed to create checkout session:", error);
-    } finally {
-      setProcessing(null);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-10">Loading pricing plans...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingAnimation 
+          size="lg" 
+          variant="dots" 
+          text="Loading pricing plans..." 
+          color="blue" 
+        />
+      </div>
+    );
   }
 
   if (!plans.length) {
     return (
-      <div className="text-center py-10 text-gray-500">
-        No pricing plans available
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center py-10 text-gray-500">
+          No pricing plans available
+        </div>
       </div>
     );
   }
@@ -125,48 +133,13 @@ export default function PricingPlansPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan) => (
-          <div
+          <PricingPlanCard
             key={plan.pricing_plan_id}
-            className="border rounded-2xl shadow-md p-6 flex flex-col hover:shadow-lg transition"
-          >
-            <h2 className="text-xl font-semibold mb-2 text-gray-800">
-              {plan.name}
-            </h2>
-            <p className="text-3xl font-bold text-blue-600">
-              ${plan.price}
-              <span className="text-base font-normal text-gray-500 ml-1">
-                /
-                {BILLING_PERIOD_LABELS[plan.billing_period] ??
-                  plan.billing_period}
-              </span>
-            </p>
-            {plan.description && (
-              <p className="mt-2 text-gray-600 text-sm">{plan.description}</p>
-            )}
-
-            {plan.features?.length > 0 && (
-              <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-center">
-                    <span className="mr-2 text-green-500">✔</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="mt-auto pt-6">
-              <button
-                onClick={() => handleSubscribe(plan)}
-                disabled={processing === plan.pricing_plan_id}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {processing === plan.pricing_plan_id
-                  ? "Redirecting..."
-                  : "Subscribe"}
-              </button>
-            </div>
-          </div>
+            plan={plan}
+            billingPeriodLabels={BILLING_PERIOD_LABELS}
+            educatorId={educatorId}
+            onSubscribe={handleSubscribe}
+          />
         ))}
       </div>
 

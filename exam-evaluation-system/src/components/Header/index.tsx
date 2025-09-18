@@ -1,4 +1,4 @@
-// src/components/Header/index.tsx
+// src/components/Header/index.tsx (updated)
 "use client";
 
 import { siteConfig } from "@/config/site";
@@ -6,16 +6,18 @@ import { FiMenu, FiLogOut } from "react-icons/fi";
 import { useUser } from "@/context/UserContext";
 import { logout } from "@/lib/logout";
 import { useState } from "react";
-import ConfirmDialog from "../ConfimDialog";
+import ConfirmDialog from "../ConfirmDialog";
 
 interface HeaderProps {
   title?: string;
   className?: string;
+  onMenuClick: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
   title = siteConfig.title,
   className = "",
+  onMenuClick, // Add this prop
 }) => {
   const { user, setUser } = useUser();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -29,12 +31,10 @@ const Header: React.FC<HeaderProps> = ({
     setIsLoggingOut(true);
     try {
       await logout();
-      // Logout was successful, close the dialog and update user state
       setShowLogoutConfirm(false);
-      setUser(null); // Clear user from context
+      setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
-      // Handle logout failure if needed
     } finally {
       setIsLoggingOut(false);
     }
@@ -69,7 +69,10 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center justify-between">
             {/* Left section: menu + title */}
             <div className="flex items-center space-x-6">
-              <button className="group relative p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110">
+              <button
+                onClick={onMenuClick} // Use the passed handler
+                className="group relative p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110"
+              >
                 <FiMenu className="text-white text-xl group-hover:rotate-90 transition-transform duration-300" />
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-400/20 to-cyan-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </button>

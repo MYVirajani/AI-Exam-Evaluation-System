@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-table";
 import toast from "react-hot-toast";
 import AddModelModal from "./AddModelModal";
-import ConfirmDialog from "@/components/ConfimDialog";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import {
   Search,
@@ -42,7 +42,9 @@ export default function ExamEvaluationModelsTable() {
   const [models, setModels] = useState<ExamEvaluationModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [editingModel, setEditingModel] = useState<ExamEvaluationModel | null>(null);
+  const [editingModel, setEditingModel] = useState<ExamEvaluationModel | null>(
+    null
+  );
   const [showModal, setShowModal] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -111,7 +113,9 @@ export default function ExamEvaluationModelsTable() {
         );
         const updated = await res.json();
         setModels(
-          models.map((m) => (m.model_id === editingModel.model_id ? updated : m))
+          models.map((m) =>
+            m.model_id === editingModel.model_id ? updated : m
+          )
         );
         toast.success("Model updated successfully");
       } else {
@@ -130,7 +134,9 @@ export default function ExamEvaluationModelsTable() {
       }
     } catch (err) {
       console.error("Save failed", err);
-      toast.error(editingModel ? "Failed to update model" : "Failed to add model");
+      toast.error(
+        editingModel ? "Failed to update model" : "Failed to add model"
+      );
     } finally {
       setShowModal(false);
       setEditingModel(null);
@@ -141,10 +147,12 @@ export default function ExamEvaluationModelsTable() {
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      
+
       // Get current filtered and sorted data
-      const currentData = table.getCoreRowModel().rows.map(row => row.original);
-      
+      const currentData = table
+        .getCoreRowModel()
+        .rows.map((row) => row.original);
+
       if (currentData.length === 0) {
         toast.error("No data to export");
         return;
@@ -155,17 +163,19 @@ export default function ExamEvaluationModelsTable() {
         "Model Name",
         "Description",
         "Pricing Plans Count",
-        "Pricing Plans"
+        "Pricing Plans",
       ];
-      
+
       const csvContent = [
         headers.join(","),
-        ...currentData.map(model => [
-          `"${model.model_name || ''}"`,
-          `"${model.description || ''}"`,
-          model.pricing_plans?.length || 0,
-          `"${model.pricing_plans?.map(p => p.name).join('; ') || ''}"`,
-        ].join(","))
+        ...currentData.map((model) =>
+          [
+            `"${model.model_name || ""}"`,
+            `"${model.description || ""}"`,
+            model.pricing_plans?.length || 0,
+            `"${model.pricing_plans?.map((p) => p.name).join("; ") || ""}"`,
+          ].join(",")
+        ),
       ].join("\n");
 
       // Create and download file
@@ -173,13 +183,18 @@ export default function ExamEvaluationModelsTable() {
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
-      link.setAttribute("download", `evaluation_models_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `evaluation_models_export_${new Date().toISOString().split("T")[0]}.csv`
+      );
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      toast.success(`Exported ${currentData.length} evaluation models successfully`);
+
+      toast.success(
+        `Exported ${currentData.length} evaluation models successfully`
+      );
     } catch (error) {
       console.error("Export failed:", error);
       toast.error("Failed to export data");
@@ -203,7 +218,10 @@ export default function ExamEvaluationModelsTable() {
       accessorKey: "description",
       cell: ({ getValue }) => (
         <div className="max-w-xs">
-          <span className="text-gray-700 text-sm truncate block" title={getValue() as string || ""}>
+          <span
+            className="text-gray-700 text-sm truncate block"
+            title={(getValue() as string) || ""}
+          >
             {(getValue() as string) || (
               <span className="text-gray-500 italic">No description</span>
             )}
@@ -221,7 +239,7 @@ export default function ExamEvaluationModelsTable() {
             {plans.length > 0 ? (
               <div className="space-y-1">
                 <div className="text-sm font-medium text-gray-900 mb-2">
-                  {plans.length} plan{plans.length !== 1 ? 's' : ''}
+                  {plans.length} plan{plans.length !== 1 ? "s" : ""}
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {plans.map((plan, index) => (
@@ -230,7 +248,9 @@ export default function ExamEvaluationModelsTable() {
                       className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                       title={plan.name}
                     >
-                      {plan.name.length > 15 ? `${plan.name.substring(0, 15)}...` : plan.name}
+                      {plan.name.length > 15
+                        ? `${plan.name.substring(0, 15)}...`
+                        : plan.name}
                     </span>
                   ))}
                 </div>
@@ -266,7 +286,11 @@ export default function ExamEvaluationModelsTable() {
                   ? "text-gray-500 bg-gray-100 cursor-not-allowed opacity-50"
                   : "text-red-700 bg-red-100 hover:bg-red-200"
               }`}
-              title={hasPlans ? "Cannot delete model with associated pricing plans" : "Delete model"}
+              title={
+                hasPlans
+                  ? "Cannot delete model with associated pricing plans"
+                  : "Delete model"
+              }
             >
               Delete
             </button>
@@ -321,7 +345,9 @@ export default function ExamEvaluationModelsTable() {
       {/* Header with Search and Actions */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Exam Evaluation Models</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Exam Evaluation Models
+          </h3>
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -333,13 +359,13 @@ export default function ExamEvaluationModelsTable() {
             />
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
             <Filter className="w-4 h-4 mr-2" />
             Filter
           </button>
-          <button 
+          <button
             onClick={handleExport}
             disabled={isExporting || models.length === 0}
             className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -365,11 +391,11 @@ export default function ExamEvaluationModelsTable() {
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
-              {table.getHeaderGroups().map(headerGroup => (
+              {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th 
-                      key={header.id} 
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
                       className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider"
                     >
                       {header.isPlaceholder ? null : (
@@ -380,8 +406,12 @@ export default function ExamEvaluationModelsTable() {
                             }`}
                             onClick={header.column.getToggleSortingHandler()}
                           >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {header.column.getCanSort() && getSortIcon(header.column)}
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                            {header.column.getCanSort() &&
+                              getSortIcon(header.column)}
                           </button>
                         </div>
                       )}
@@ -393,9 +423,15 @@ export default function ExamEvaluationModelsTable() {
             <tbody className="bg-white divide-y divide-gray-200">
               {table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                  {row.getVisibleCells().map(cell => (
-                    <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -410,12 +446,16 @@ export default function ExamEvaluationModelsTable() {
             <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <Layers className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No evaluation models found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No evaluation models found
+            </h3>
             <p className="text-gray-500 mb-4">
-              {globalFilter ? "Try adjusting your search criteria" : "Get started by adding your first evaluation model"}
+              {globalFilter
+                ? "Try adjusting your search criteria"
+                : "Get started by adding your first evaluation model"}
             </p>
             {!globalFilter && (
-              <button 
+              <button
                 onClick={() => {
                   setEditingModel(null);
                   setShowModal(true);
@@ -433,12 +473,11 @@ export default function ExamEvaluationModelsTable() {
       {/* Summary Info */}
       <div className="flex items-center justify-between text-sm text-gray-700 bg-gray-50 px-4 py-3 rounded-lg">
         <div>
-          Showing {table.getRowModel().rows.length} of {models.length} evaluation models
+          Showing {table.getRowModel().rows.length} of {models.length}{" "}
+          evaluation models
           {globalFilter && ` (filtered)`}
         </div>
-        <div>
-          Total Models: {models.length}
-        </div>
+        <div>Total Models: {models.length}</div>
       </div>
 
       <AddModelModal

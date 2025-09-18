@@ -1,11 +1,13 @@
 // src/context/UserContext.tsx
 "use client";
 
+import { Role } from "@/generated/prisma";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 interface User {
   firstName: string;
   lastName: string;
+  role: Role;
 }
 
 interface UserContextType {
@@ -29,6 +31,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           setUser({
             firstName: data.user.first_name,
             lastName: data.user.last_name,
+            role:data.user.role,
           });
         } else {
           setUser(null);

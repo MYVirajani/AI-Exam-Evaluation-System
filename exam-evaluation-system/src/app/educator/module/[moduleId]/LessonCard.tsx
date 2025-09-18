@@ -10,7 +10,7 @@ import {
   FiPlus,
   FiUpload,
 } from "react-icons/fi";
-import ConfirmDialog from "@/components/ConfimDialog";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import toast from "react-hot-toast";
 
 interface Material {
@@ -82,16 +82,16 @@ const LessonCard: React.FC<LessonCardProps> = ({
     if (!files || files.length === 0) {
       return;
     }
-    
+
     const newFileArray = Array.from(files);
-    
+
     // Check for duplicate files by name and size
-    const existingFileKeys = selectedFiles.map(f => `${f.name}-${f.size}`);
-    const uniqueNewFiles = newFileArray.filter(newFile => {
+    const existingFileKeys = selectedFiles.map((f) => `${f.name}-${f.size}`);
+    const uniqueNewFiles = newFileArray.filter((newFile) => {
       const fileKey = `${newFile.name}-${newFile.size}`;
       return !existingFileKeys.includes(fileKey);
     });
-    
+
     if (uniqueNewFiles.length === 0) {
       toast.info("All selected files are already in the list");
       // Reset file input
@@ -100,21 +100,33 @@ const LessonCard: React.FC<LessonCardProps> = ({
       }
       return;
     }
-    
+
     // Add new unique files to existing selection
     const updatedFiles = [...selectedFiles, ...uniqueNewFiles];
     setSelectedFiles(updatedFiles);
-    
-    console.log("New files added:", uniqueNewFiles.length, uniqueNewFiles.map(f => f.name));
+
+    console.log(
+      "New files added:",
+      uniqueNewFiles.length,
+      uniqueNewFiles.map((f) => f.name)
+    );
     console.log("Total files now:", updatedFiles.length);
-    
+
     if (uniqueNewFiles.length < newFileArray.length) {
       const duplicateCount = newFileArray.length - uniqueNewFiles.length;
-      toast.info(`${uniqueNewFiles.length} new files added. ${duplicateCount} duplicate${duplicateCount > 1 ? 's' : ''} skipped.`);
+      toast.info(
+        `${uniqueNewFiles.length} new files added. ${duplicateCount} duplicate${
+          duplicateCount > 1 ? "s" : ""
+        } skipped.`
+      );
     } else {
-      toast.success(`${uniqueNewFiles.length} file${uniqueNewFiles.length > 1 ? 's' : ''} added to selection`);
+      toast.success(
+        `${uniqueNewFiles.length} file${
+          uniqueNewFiles.length > 1 ? "s" : ""
+        } added to selection`
+      );
     }
-    
+
     // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -133,7 +145,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
       const formData = new FormData();
 
       // Append each file individually
-      selectedFiles.forEach(file => {
+      selectedFiles.forEach((file) => {
         formData.append("files", file);
       });
 
@@ -189,9 +201,11 @@ const LessonCard: React.FC<LessonCardProps> = ({
   };
 
   const handleRemoveFile = (indexToRemove: number) => {
-    const updatedFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
+    const updatedFiles = selectedFiles.filter(
+      (_, index) => index !== indexToRemove
+    );
     setSelectedFiles(updatedFiles);
-    
+
     if (updatedFiles.length === 0 && fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -264,10 +278,13 @@ const LessonCard: React.FC<LessonCardProps> = ({
               Clear All
             </button>
           </div>
-          
+
           <div className="space-y-2 mb-4">
             {selectedFiles.map((file, index) => (
-              <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white rounded-lg p-2 border border-blue-200">
+              <div
+                key={`${file.name}-${index}`}
+                className="flex items-center justify-between bg-white rounded-lg p-2 border border-blue-200"
+              >
                 <div className="flex items-center text-sm text-blue-700">
                   <FiFile size={14} className="mr-2 flex-shrink-0" />
                   <span className="truncate mr-2">{file.name}</span>
@@ -285,7 +302,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
               </div>
             ))}
           </div>
-          
+
           <div className="flex space-x-2">
             <button
               onClick={handleFileUpload}
@@ -300,7 +317,8 @@ const LessonCard: React.FC<LessonCardProps> = ({
               ) : (
                 <>
                   <FiUpload size={16} className="mr-2" />
-                  Upload {selectedFiles.length} File{selectedFiles.length > 1 ? 's' : ''}
+                  Upload {selectedFiles.length} File
+                  {selectedFiles.length > 1 ? "s" : ""}
                 </>
               )}
             </button>

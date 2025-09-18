@@ -298,7 +298,7 @@ model Assessment_Grade {
 
 model Evaluation_Model {
   model_id          String          @id @default(uuid())
-  model_name        String
+  model_name        String          @unique
   description       String?
   created_on        DateTime        @default(now()) @db.Timestamptz(6)
 

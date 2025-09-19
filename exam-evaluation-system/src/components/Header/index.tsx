@@ -7,6 +7,7 @@ import { logout } from "@/lib/logout";
 import { useState } from "react";
 import ConfirmDialog from "../ConfirmDialog";
 import Sidebar from "../Sidebar";
+import toast from "react-hot-toast";
 
 interface HeaderProps {
   title?: string;
@@ -26,18 +27,20 @@ const Header: React.FC<HeaderProps> = ({
     setShowLogoutConfirm(true);
   };
 
-  const handleConfirmLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await logout();
-      setShowLogoutConfirm(false);
-      setUser(null);
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      setIsLoggingOut(false);
-    }
-  };
+const handleConfirmLogout = async () => {
+  setIsLoggingOut(true);
+  try {
+    await logout();
+    setShowLogoutConfirm(false);
+    setUser(null);
+    toast.success("Logged out successfully ✅");
+  } catch (error) {
+    console.error("Logout failed:", error);
+    toast.error("Logout failed. Please try again.");
+  } finally {
+    setIsLoggingOut(false);
+  }
+};
 
   const handleCancelLogout = () => {
     setShowLogoutConfirm(false);

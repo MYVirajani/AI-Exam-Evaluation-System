@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { logout } from "@/lib/logout";
 import toast from "react-hot-toast";
-import ConfirmDialog from "@/components/ConfirmDialog"; // adjust path if needed
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,11 +17,16 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, setUser } = useUser();
-  const role = user?.role || "guest";
-  const menuItems = sidebarMenuConfig[role] || [];
-
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // Don't render sidebar if user is not logged in
+  if (!user) {
+    return null;
+  }
+
+  const role = user?.role || "guest";
+  const menuItems = sidebarMenuConfig[role] || [];
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true);
@@ -31,20 +36,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     setShowLogoutConfirm(false);
   };
 
- const handleConfirmLogout = async () => {
-  setIsLoggingOut(true);
-  try {
-    await logout();
-    setShowLogoutConfirm(false);
-    setUser(null);
-    toast.success("Logged out successfully ✅");
-  } catch (error) {
-    console.error("Logout failed:", error);
-    toast.error("Logout failed. Please try again.");
-  } finally {
-    setIsLoggingOut(false);
-  }
-};
+  const handleConfirmLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      setShowLogoutConfirm(false);
+      setUser(null);
+      toast.success("Logged out successfully");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast.error("Logout failed. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -66,14 +72,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             transition={{ type: "tween", duration: 0.3 }}
             className="fixed top-0 left-0 w-64 h-full bg-white shadow-2xl z-50 flex flex-col"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-900 capitalize">
-                {role} Menu
-              </h2>
-              <button onClick={onClose} className="text-gray-600 hover:text-gray-900">
-                <FiX className="text-xl" />
-              </button>
+            {/* Header with User Info */}
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {user.firstName} {user.lastName}
+                </h2>
+                <button onClick={onClose} className="text-gray-600 hover:text-gray-900">
+                  <FiX className="text-xl" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600">{user.email}</p>
+              <p className="text-xs text-gray-500 capitalize mt-1">{role}</p>
             </div>
 
             {/* Dynamic Nav Links */}
@@ -90,22 +100,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               ))}
             </nav>
 
-            {/* User Info + Logout */}
-            {user && (
-              <div className="p-4 border-t bg-gray-50">
-                <p className="text-sm font-semibold text-gray-900">
-                  {user.firstName} {user.lastName}
-                </p>
-                <p className="text-xs text-gray-600">{user.email}</p>
-                <button
-                  onClick={handleLogoutClick}
-                  className="mt-3 flex items-center gap-2 text-sm text-red-600 hover:text-red-800 font-medium"
-                >
-                  <FiLogOut className="text-lg" />
-                  Logout
-                </button>
-              </div>
-            )}
+            {/* Footer with Logout */}
+            <div className="p-4 border-t bg-gray-50">
+              <button
+                onClick={handleLogoutClick}
+                className="w-full flex items-center justify-center gap-2 py-2 text-sm text-red-600 hover:text-red-800 font-medium border border-red-200 hover:bg-red-50 rounded-md transition-colors"
+              >
+                <FiLogOut className="text-lg" />
+                Logout
+              </button>
+            </div>
           </motion.aside>
 
           {/* Confirm Dialog */}

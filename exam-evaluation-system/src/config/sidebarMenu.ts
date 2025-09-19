@@ -9,7 +9,7 @@ export const sidebarMenuConfig: Record<string, { label: string; href: string }[]
   educator: [
     { label: "Dashboard", href: "/educator/dashboard" },
     { label: "My Courses", href: "/courses" },
-    { label: "Assignments", href: "/assignments" },
+    { label: "Pricing Plans", href: "/pricing-plans" },
   ],
   student: [
     { label: "Dashboard", href: "/student/dashboard" },

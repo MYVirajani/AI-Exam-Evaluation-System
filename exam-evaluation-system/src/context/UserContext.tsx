@@ -1,4 +1,3 @@
-// src/context/UserContext.tsx
 "use client";
 
 import { Role } from "@/generated/prisma";
@@ -8,6 +7,7 @@ interface User {
   firstName: string;
   lastName: string;
   role: Role;
+  email: string;
 }
 
 interface UserContextType {
@@ -21,7 +21,6 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  // Fetch current user from API
   const fetchUser = async () => {
     try {
       const res = await fetch("/api/auth/session");
@@ -31,7 +30,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
           setUser({
             firstName: data.user.first_name,
             lastName: data.user.last_name,
-            role:data.user.role,
+            role: data.user.role,
+            email: data.user.email,
           });
         } else {
           setUser(null);

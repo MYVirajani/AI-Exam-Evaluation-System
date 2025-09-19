@@ -1,4 +1,3 @@
-// src/app/api/auth/session/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
@@ -19,7 +18,13 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { user_id: decoded.id },
-    select: { first_name: true, last_name: true, user_id:true},
+    select: { 
+      first_name: true, 
+      last_name: true, 
+      user_id: true,
+      role: true,
+      email: true,
+    },
   });
 
   if (!user) {

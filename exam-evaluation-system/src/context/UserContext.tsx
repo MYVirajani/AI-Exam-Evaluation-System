@@ -8,6 +8,7 @@ interface User {
   lastName: string;
   role: Role;
   email: string;
+  userId: string;
 }
 
 interface UserContextType {
@@ -32,6 +33,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             lastName: data.user.last_name,
             role: data.user.role,
             email: data.user.email,
+            userId:data.user.user_id,
           });
         } else {
           setUser(null);

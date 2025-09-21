@@ -6,7 +6,6 @@ import { useUser } from "@/context/UserContext";
 import { logout } from "@/lib/logout";
 import { useState } from "react";
 import ConfirmDialog from "../ConfirmDialog";
-import Sidebar from "../Sidebar";
 import toast from "react-hot-toast";
 
 interface HeaderProps {
@@ -21,7 +20,6 @@ const Header: React.FC<HeaderProps> = ({
   const { user, setUser } = useUser();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true);
@@ -72,7 +70,6 @@ const handleConfirmLogout = async () => {
             {/* Left section: menu + title */}
             <div className="flex items-center space-x-6">
               <button
-                onClick={() => setIsSidebarOpen(true)}
                 className="group relative p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110"
               >
                 <FiMenu className="text-white text-xl group-hover:rotate-90 transition-transform duration-300" />
@@ -114,8 +111,6 @@ const handleConfirmLogout = async () => {
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-300" />
       </header>
 
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Confirm Dialog for Logout */}
       <ConfirmDialog

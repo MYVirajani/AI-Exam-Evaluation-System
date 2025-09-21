@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { logout } from "@/lib/logout";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -30,14 +31,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, setUser } = useUser();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
   const [modules, setModules] = useState<Module[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Fetch sidebar data based on role
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
 
+      setLoading(true); // start loading
       try {
         if (user.role === "educator") {
           const res = await fetch(
@@ -55,6 +57,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         }
       } catch (error) {
         console.error("Failed to fetch sidebar data:", error);
+        toast.error("Failed to load sidebar data.");
+      } finally {
+        setLoading(false); // end loading
       }
     };
 
@@ -83,7 +88,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Map role to dashboard route
   const dashboardRoutes: Record<string, string> = {
     admin: "/admin/dashboard",
     educator: "/educator/dashboard",
@@ -130,88 +134,109 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
             {/* Dynamic Nav Links */}
             <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
-              {/* Dashboard link */}
-              {dashboardRoutes[role] && (
-                <Link
-                  href={dashboardRoutes[role]}
-                  onClick={onClose}
-                  className="block text-purple-700 font-semibold hover:underline"
-                >
-                  Dashboard
-                </Link>
-              )}
-
-              {role === "educator" && (
+              {loading ? (
+                <div className="flex justify-center mt-10">
+                  <LoadingAnimation
+                    size="lg"
+                    variant="spinner"
+                    text="Loading modules..."
+                    fullScreen={false}
+                  />
+                </div>
+              ) : (
                 <>
-                  <h3 className="text-sm font-semibold text-gray-700">
-                    My Modules
-                  </h3>
-                  {modules.map((module) => (
-                    <div key={module.module_id} className="ml-2">
-                      {/* 👇 Module click */}
-                      <Link
-                        href={`/educator/module/${module.module_id}`}
-                        onClick={onClose}
-                        className="block text-gray-800 hover:text-purple-600 font-medium"
-                      >
-                        {module.module_name}
-                      </Link>
-                      {module.assessments && module.assessments.length > 0 && (
-                        <div className="ml-4 mt-1 space-y-1">
-                          {module.assessments.map((assessment) => {
-                            const href =
-                              assessment.type === "quiz"
-                                ? `/educator/module/${module.module_id}/assessment/${assessment.assessment_id}/quiz?educatorId=${user.userId}`
-                                : `/educator/module/${module.module_id}/assessment/${assessment.assessment_id}?educatorId=${user.userId}`;
+                  {/* Dashboard link */}
+                  {dashboardRoutes[role] && (
+                    <Link
+                      href={dashboardRoutes[role]}
+                      onClick={onClose}
+                      className="block text-purple-700 font-semibold hover:underline"
+                    >
+                      Dashboard
+                    </Link>
+                  )}
 
-                            return (
-                              <Link
-                                key={assessment.assessment_id}
-                                href={href}
-                                onClick={onClose}
-                                className="block text-sm text-gray-600 hover:text-purple-600"
-                              >
-                                {assessment.title}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </>
-              )}
+                  {role === "educator" && (
+                    <>
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        My Modules
+                      </h3>
+                      {modules.map((module) => (
+                        <div key={module.module_id} className="ml-2">
+                          <Link
+                            href={`/educator/module/${module.module_id}`}
+                            onClick={onClose}
+                            className="block text-gray-800 hover:text-purple-600 font-medium"
+                          >
+                            {module.module_name}
+                          </Link>
+                          {module.assessments &&
+                            module.assessments.length > 0 && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {module.assessments.map((assessment) => {
+                                  const href =
+                                    assessment.type === "quiz"
+                                      ? `/educator/module/${module.module_id}/assessment/${assessment.assessment_id}/quiz?educatorId=${user.userId}`
+                                      : `/educator/module/${module.module_id}/assessment/${assessment.assessment_id}?educatorId=${user.userId}`;
 
-              {role === "student" && (
-                <>
-                  <h3 className="text-sm font-semibold text-gray-700">
-                    Enrolled Modules
-                  </h3>
-                  {modules.map((module) => (
-                    <div key={module.module_id} className="ml-2">
-                      <Link
-                        href={`/student/module/${module.module_id}`}
-                        onClick={onClose}
-                        className="block text-gray-800 hover:text-purple-600 font-medium"
-                      >
-                        {module.module_name}
-                      </Link>
-                      {module.assessments && module.assessments.length > 0 && (
-                        <div className="ml-4 mt-1 space-y-1">
-                          {module.assessments.map((assessment) => (
-                            <Link
-                              key={assessment.assessment_id}
-                              href={`/student/module/${module.module_id}/assessment/${assessment.assessment_id}`}
-                              onClick={onClose}
-                              className="block text-sm text-gray-600 hover:text-purple-600"
-                            >
-                              {assessment.title}
-                            </Link>
-                          ))}
+                                  return (
+                                    <Link
+                                      key={assessment.assessment_id}
+                                      href={href}
+                                      onClick={onClose}
+                                      className="block text-sm text-gray-600 hover:text-purple-600"
+                                    >
+                                      {assessment.title}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      ))}
+                    </>
+                  )}
+
+                  {role === "student" && (
+                    <>
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        Enrolled Modules
+                      </h3>
+                      {modules.map((module) => (
+                        <div key={module.module_id} className="ml-2">
+                          <Link
+                            href={`/student/module/${module.module_id}?studentId=${user.userId}`}
+                            onClick={onClose}
+                            className="block text-gray-800 hover:text-purple-600 font-medium"
+                          >
+                            {module.module_name}
+                          </Link>
+                          {module.assessments &&
+                            module.assessments.length > 0 && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {module.assessments.map((assessment) => {
+                                  const href =
+                                    assessment.type === "quiz"
+                                      ? `/student/quiz/${assessment.assessment_id}?studentId=${user.userId}&moduleId=${module.module_id}`
+                                      : `/student/assessments/${assessment.assessment_id}?studentId=${user.userId}&moduleId=${module.module_id}`;
+
+                                  return (
+                                    <Link
+                                      key={assessment.assessment_id}
+                                      href={href}
+                                      onClick={onClose}
+                                      className="block text-sm text-gray-600 hover:text-purple-600"
+                                    >
+                                      {assessment.title}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </>
               )}
             </nav>

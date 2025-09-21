@@ -405,7 +405,7 @@ export default function EducatorsTable() {
     return (
       <LoadingAnimation
         variant="spinner"
-        size="lg"
+        size="md"
         text="Loading educators..."
         color="blue"
         fullScreen={false}

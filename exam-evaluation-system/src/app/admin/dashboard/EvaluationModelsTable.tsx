@@ -321,7 +321,7 @@ export default function ExamEvaluationModelsTable() {
     return (
       <LoadingAnimation
         variant="spinner"
-        size="lg"
+        size="md"
         text="Loading evaluation models..."
         color="blue"
         fullScreen={false}

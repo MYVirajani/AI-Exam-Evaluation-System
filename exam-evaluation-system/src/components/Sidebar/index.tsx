@@ -116,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     switch (role) {
       case "admin":
         return {
-          accent: "text-red-600 hover:text-red-700",
+          accent: "text-purple-600 hover:text-purple-700",
         };
       case "educator":
         return {
@@ -353,9 +353,9 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12">
             <LoadingAnimation
-              size="lg"
+              size="sm"
               variant="spinner"
-              text="Loading modules..."
+              text="Loading sidebar menu..."
               fullScreen={false}
             />
           </div>

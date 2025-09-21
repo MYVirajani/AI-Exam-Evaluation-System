@@ -402,7 +402,7 @@ export default function StudentsTable() {
     return (
       <LoadingAnimation
         variant="spinner"
-        size="lg"
+        size="md"
         text="Loading students..."
         color="blue"
         fullScreen={false}

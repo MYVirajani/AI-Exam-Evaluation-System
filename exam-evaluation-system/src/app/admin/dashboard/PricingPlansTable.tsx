@@ -368,7 +368,7 @@ export default function PricingPlansTable() {
     return (
       <LoadingAnimation
         variant="spinner"
-        size="lg"
+        size="md"
         text="Loading pricing plans..."
         color="blue"
         fullScreen={false}

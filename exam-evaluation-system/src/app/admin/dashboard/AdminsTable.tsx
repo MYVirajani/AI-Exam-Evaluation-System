@@ -357,7 +357,7 @@ export default function AdminsTable() {
     return (
       <LoadingAnimation
         variant="spinner"
-        size="lg"
+        size="md"
         text="Loading admins..."
         color="blue"
         fullScreen={false}

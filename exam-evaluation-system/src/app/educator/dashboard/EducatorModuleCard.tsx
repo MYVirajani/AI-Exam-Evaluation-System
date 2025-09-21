@@ -7,14 +7,14 @@ interface EducatorModuleCardProps {
   title: string;
   image?: string | null;
   enrolled: string;
-  maxEnrollments?: number; // New prop for maximum enrollments allowed
+  maxEnrollments?: number; 
 }
 
 const EducatorModuleCard: React.FC<EducatorModuleCardProps> = ({
   title,
   image,
   enrolled,
-  maxEnrollments = 100, // Default max enrollments if not provided
+  maxEnrollments = 100,
 }) => {
   const hasValidImage = image?.trim();
   const randomGradient: GradientColor = React.useMemo(() => getRandomGradient(), []);

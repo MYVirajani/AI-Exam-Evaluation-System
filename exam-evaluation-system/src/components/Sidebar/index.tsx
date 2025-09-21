@@ -39,27 +39,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     const fetchData = async () => {
       if (!user) return;
 
-      setLoading(true); // start loading
+      setLoading(true);
       try {
+        let data;
         if (user.role === "educator") {
-          const res = await fetch(
-            `/api/sidebar/educator?userId=${user.userId}`
-          );
-          const data = await res.json();
+          const res = await fetch(`/api/sidebar/educator?userId=${user.userId}`);
+          data = await res.json();
           setModules(data.modules || []);
         } else if (user.role === "student") {
           const res = await fetch(`/api/sidebar/student?userId=${user.userId}`);
-          const data = await res.json();
-          const enrolledModules = data.enrollments.map(
-            (enrollment: any) => enrollment.module
-          );
-          setModules(enrolledModules || []);
+          data = await res.json();
+          setModules(data.enrollments.map((enrollment: any) => enrollment.module) || []);
         }
       } catch (error) {
         console.error("Failed to fetch sidebar data:", error);
         toast.error("Failed to load sidebar data.");
       } finally {
-        setLoading(false); // end loading
+        setLoading(false);
       }
     };
 
@@ -68,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   if (!user) return null;
 
-  const role = user?.role || "guest";
+  const role = user.role;
 
   const handleLogoutClick = () => setShowLogoutConfirm(true);
   const handleCancelLogout = () => setShowLogoutConfirm(false);
@@ -77,8 +73,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     setIsLoggingOut(true);
     try {
       await logout();
-      setShowLogoutConfirm(false);
       setUser(null);
+      setShowLogoutConfirm(false);
       toast.success("Logged out successfully");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -93,6 +89,57 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     educator: "/educator/dashboard",
     student: "/student/dashboard",
   };
+
+  // Build assessment links dynamically
+  const getAssessmentHref = (
+    role: string,
+    moduleId: string,
+    assessment: Assessment,
+    userId: string
+  ) => {
+    if (role === "educator") {
+      return assessment.type === "quiz"
+        ? `/educator/module/${moduleId}/assessment/${assessment.assessment_id}/quiz?educatorId=${userId}`
+        : `/educator/module/${moduleId}/assessment/${assessment.assessment_id}?educatorId=${userId}`;
+    }
+    if (role === "student") {
+      return assessment.type === "quiz"
+        ? `/student/quiz/${assessment.assessment_id}?studentId=${userId}&moduleId=${moduleId}`
+        : `/student/assessments/${assessment.assessment_id}?studentId=${userId}&moduleId=${moduleId}`;
+    }
+    return "#";
+  };
+
+  // Component for rendering modules & assessments
+  const ModuleLinks = ({ modules }: { modules: Module[] }) => (
+    <>
+      {modules.map((module) => (
+        <div key={module.module_id} className="ml-2">
+          <Link
+            href={`/${role}/module/${module.module_id}${role === "student" ? `?studentId=${user.userId}` : ""}`}
+            onClick={onClose}
+            className="block text-gray-800 hover:text-purple-600 font-medium"
+          >
+            {module.module_name}
+          </Link>
+          {module.assessments?.length ? (
+            <div className="ml-4 mt-1 space-y-1">
+              {module.assessments.map((assessment) => (
+                <Link
+                  key={assessment.assessment_id}
+                  href={getAssessmentHref(role, module.module_id, assessment, user.userId)}
+                  onClick={onClose}
+                  className="block text-sm text-gray-600 hover:text-purple-600"
+                >
+                  {assessment.title}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ))}
+    </>
+  );
 
   return (
     <AnimatePresence>
@@ -121,10 +168,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <h2 className="text-lg font-semibold text-gray-900">
                   {user.firstName} {user.lastName}
                 </h2>
-                <button
-                  onClick={onClose}
-                  className="text-gray-600 hover:text-gray-900"
-                >
+                <button onClick={onClose} className="text-gray-600 hover:text-gray-900">
                   <FiX className="text-xl" />
                 </button>
               </div>
@@ -145,7 +189,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 </div>
               ) : (
                 <>
-                  {/* Dashboard link */}
                   {dashboardRoutes[role] && (
                     <Link
                       href={dashboardRoutes[role]}
@@ -156,86 +199,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     </Link>
                   )}
 
+                  <ModuleLinks modules={modules} />
+
                   {role === "educator" && (
-                    <>
-                      <h3 className="text-sm font-semibold text-gray-700">
-                        My Modules
-                      </h3>
-                      {modules.map((module) => (
-                        <div key={module.module_id} className="ml-2">
-                          <Link
-                            href={`/educator/module/${module.module_id}`}
-                            onClick={onClose}
-                            className="block text-gray-800 hover:text-purple-600 font-medium"
-                          >
-                            {module.module_name}
-                          </Link>
-                          {module.assessments &&
-                            module.assessments.length > 0 && (
-                              <div className="ml-4 mt-1 space-y-1">
-                                {module.assessments.map((assessment) => {
-                                  const href =
-                                    assessment.type === "quiz"
-                                      ? `/educator/module/${module.module_id}/assessment/${assessment.assessment_id}/quiz?educatorId=${user.userId}`
-                                      : `/educator/module/${module.module_id}/assessment/${assessment.assessment_id}?educatorId=${user.userId}`;
-
-                                  return (
-                                    <Link
-                                      key={assessment.assessment_id}
-                                      href={href}
-                                      onClick={onClose}
-                                      className="block text-sm text-gray-600 hover:text-purple-600"
-                                    >
-                                      {assessment.title}
-                                    </Link>
-                                  );
-                                })}
-                              </div>
-                            )}
-                        </div>
-                      ))}
-                    </>
-                  )}
-
-                  {role === "student" && (
-                    <>
-                      <h3 className="text-sm font-semibold text-gray-700">
-                        Enrolled Modules
-                      </h3>
-                      {modules.map((module) => (
-                        <div key={module.module_id} className="ml-2">
-                          <Link
-                            href={`/student/module/${module.module_id}?studentId=${user.userId}`}
-                            onClick={onClose}
-                            className="block text-gray-800 hover:text-purple-600 font-medium"
-                          >
-                            {module.module_name}
-                          </Link>
-                          {module.assessments &&
-                            module.assessments.length > 0 && (
-                              <div className="ml-4 mt-1 space-y-1">
-                                {module.assessments.map((assessment) => {
-                                  const href =
-                                    assessment.type === "quiz"
-                                      ? `/student/quiz/${assessment.assessment_id}?studentId=${user.userId}&moduleId=${module.module_id}`
-                                      : `/student/assessments/${assessment.assessment_id}?studentId=${user.userId}&moduleId=${module.module_id}`;
-
-                                  return (
-                                    <Link
-                                      key={assessment.assessment_id}
-                                      href={href}
-                                      onClick={onClose}
-                                      className="block text-sm text-gray-600 hover:text-purple-600"
-                                    >
-                                      {assessment.title}
-                                    </Link>
-                                  );
-                                })}
-                              </div>
-                            )}
-                        </div>
-                      ))}
-                    </>
+                    <Link
+                      href="/pricing-plans"
+                      onClick={onClose}
+                      className="block text-purple-700 font-semibold hover:underline"
+                    >
+                      Pricing Plans
+                    </Link>
                   )}
                 </>
               )}

@@ -16,3 +16,10 @@ chmod +x services/handwriting-ocr/run.bat
 
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 
+
+Docker db
+# create docker container
+docker-compose up -d
+# access db
+docker exec -it ai-exam-evaluation-db psql -U nethmi -d AI-exam-evaluation-system
+

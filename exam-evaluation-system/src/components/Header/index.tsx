@@ -97,12 +97,11 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
                   <div className="text-white font-medium text-sm sm:text-base truncate">
                     {user.firstName} {user.lastName}
                   </div>
-                 {user.role && (
-  <div className="text-white/70 text-xs sm:text-sm truncate">
-    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-  </div>
-)}
-
+                  {user.role && (
+                    <div className="text-white/70 text-xs sm:text-sm truncate">
+                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -111,7 +110,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
                   title="Logout"
                 >
                   <FiLogOut className="text-white text-lg sm:text-xl" />
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-400/30 to-pink-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400/30 to-blue-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </button>
               </div>
             )}

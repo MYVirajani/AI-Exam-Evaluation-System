@@ -198,7 +198,11 @@ export default function EducatorHomePage() {
     return json;
   };
 
-  const handleEventSelect = (eventId: string, eventTitle: string, moduleTitle: string) => {
+  const handleEventSelect = (
+    eventId: string,
+    eventTitle: string,
+    moduleTitle: string
+  ) => {
     console.log("Selected event:", { eventId, eventTitle, moduleTitle });
   };
 
@@ -224,8 +228,7 @@ export default function EducatorHomePage() {
         const {
           modules,
           assessments,
-        }: { modules: Module[]; assessments: Assessment[] } =
-          await res.json();
+        }: { modules: Module[]; assessments: Assessment[] } = await res.json();
 
         const mappedModules = modules.map((m) => ({
           id: m.module_id,
@@ -417,182 +420,206 @@ export default function EducatorHomePage() {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Created Modules
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {createdModules.length}
-                </p>
-              </div>
-              <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <FiBook className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Upcoming Events</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{upcomingEvents.length}</p>
-              </div>
-              <div className="h-12 w-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <FiCalendar className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <button
-            onClick={() => setIsModuleModalOpen(true)}
-            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-left group"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Create New Module
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Set up a new course module for your students
-                </p>
-              </div>
-              <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                <FiPlus className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsEventModalOpen(true)}
-            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-left group"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Create Assessment
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Add a new assignment, quiz, or exam
-                </p>
-              </div>
-              <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                <FiCalendar className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsResultsModalOpen(true)}
-            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-left group"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">View Results</h3>
-                <p className="text-gray-600 text-sm">Check student performance and analytics</p>
-              </div>
-              <div className="h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                <FiFileText className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-          </button>
-        </div>
-
-        {/* Upcoming Events Section */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-          <div className="px-6 py-5 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Upcoming Events
-                </h2>
-                <p className="text-gray-600 mt-1">
-                  Track your upcoming assessments and deadlines
-                </p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
-                  {canScrollEventLeft && (
-                    <button
-                      onClick={scrollEventLeft}
-                      className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-                    >
-                      <FiChevronLeft className="w-5 h-5 text-gray-600" />
-                    </button>
-                  )}
-                  {canScrollEventRight && (
-                    <button
-                      onClick={scrollEventRight}
-                      className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-                    >
-                      <FiChevronRight className="w-5 h-5 text-gray-600" />
-                    </button>
-                  )}
+        {createdModules.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Created Modules
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">
+                    {createdModules.length}
+                  </p>
                 </div>
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setIsEventModalOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  + New Event
-                </Button>
+                <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <FiBook className="h-6 w-6 text-blue-600" />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="p-6">
-            {upcomingEvents.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FiCalendar className="w-8 h-8 text-gray-400" />
+            {/* Only show Upcoming Events stat if modules exist */}
+            {createdModules.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Upcoming Events
+                    </p>
+                    <p className="text-3xl font-bold text-gray-900 mt-1">
+                      {upcomingEvents.length}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <FiCalendar className="h-6 w-6 text-orange-600" />
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No upcoming events
-                </h3>
-                <p className="text-gray-600 max-w-sm mx-auto mb-6">
-                  Create your first assessment to get started with tracking
-                  student progress.
-                </p>
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setIsEventModalOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                >
-                  Create Your First Assessment
-                </Button>
-              </div>
-            ) : (
-              <div
-                ref={eventScrollRef}
-                className="flex space-x-4 overflow-x-auto hide-scrollbar pb-2"
-              >
-                {upcomingEvents.map((evt) => (
-                  <EducatorEventCard
-                    key={evt.id}
-                    title={evt.title}
-                    module={evt.module}
-                    uploads={evt.uploads}
-                    deadline={evt.deadline}
-                    openAt={evt.openAt}
-                    closeAt={evt.closeAt}
-                    assessmentId={evt.id}
-                    assessmentType={evt.assessmentType}
-                    moduleId={evt.moduleId}
-                  />
-                ))}
               </div>
             )}
           </div>
-        </div>
+        )}
+
+        {/* Quick Actions */}
+        {createdModules.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <button
+              onClick={() => setIsModuleModalOpen(true)}
+              className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-left group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Create New Module
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    Set up a new course module for your students
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                  <FiPlus className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </button>
+
+            {/* Only show Create Assessment button if modules exist */}
+            {createdModules.length > 0 && (
+              <button
+                onClick={() => setIsEventModalOpen(true)}
+                className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-left group"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Create Assessment
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Add a new assignment, quiz, or exam
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                    <FiCalendar className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {/* Only show View Results button if modules exist */}
+            {createdModules.length > 0 && (
+              <button
+                onClick={() => setIsResultsModalOpen(true)}
+                className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-left group"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      View Results
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Check student performance and analytics
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                    <FiFileText className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Upcoming Events Section - Only show if at least one module exists */}
+        {createdModules.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+            <div className="px-6 py-5 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Upcoming Events
+                  </h2>
+                  <p className="text-gray-600 mt-1">
+                    Track your upcoming assessments and deadlines
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2">
+                    {canScrollEventLeft && (
+                      <button
+                        onClick={scrollEventLeft}
+                        className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                      >
+                        <FiChevronLeft className="w-5 h-5 text-gray-600" />
+                      </button>
+                    )}
+                    {canScrollEventRight && (
+                      <button
+                        onClick={scrollEventRight}
+                        className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                      >
+                        <FiChevronRight className="w-5 h-5 text-gray-600" />
+                      </button>
+                    )}
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => setIsEventModalOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    + New Event
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {upcomingEvents.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FiCalendar className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No upcoming events
+                  </h3>
+                  <p className="text-gray-600 max-w-sm mx-auto mb-6">
+                    Create your first assessment to get started with tracking
+                    student progress.
+                  </p>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => setIsEventModalOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Create Your First Assessment
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  ref={eventScrollRef}
+                  className="flex space-x-4 overflow-x-auto hide-scrollbar pb-2"
+                >
+                  {upcomingEvents.map((evt) => (
+                    <EducatorEventCard
+                      key={evt.id}
+                      title={evt.title}
+                      module={evt.module}
+                      uploads={evt.uploads}
+                      deadline={evt.deadline}
+                      openAt={evt.openAt}
+                      closeAt={evt.closeAt}
+                      assessmentId={evt.id}
+                      assessmentType={evt.assessmentType}
+                      moduleId={evt.moduleId}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Created Modules Section */}
+
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
           <div className="px-6 py-5 border-b border-gray-200">
             <div className="flex items-center justify-between">

@@ -351,13 +351,15 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
     <div className="flex-1 flex flex-col min-h-0">
       <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <LoadingAnimation
-              size="sm"
-              variant="spinner"
-              text="Loading sidebar menu..."
-              fullScreen={false}
-            />
+          <div className="flex-1 flex items-center justify-center min-h-[300px]">
+            <div className="text-center">
+              <LoadingAnimation
+                size="sm"
+                variant="spinner"
+                text="Loading sidebar menu..."
+                fullScreen={false}
+              />
+            </div>
           </div>
         ) : (
           <>

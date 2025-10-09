@@ -1,13 +1,14 @@
 # extract_figures_tables.py
 import os
 import json
-import fitz 
+import fitz
 import cv2
 import numpy as np
 import pdfplumber
 from PIL import Image
+from docx import Document
 
-INPUT_FOLDER = "pdfs"
+INPUT_FOLDER = "docs"
 OUTPUT_FOLDER = "outputs"
 
 
@@ -15,8 +16,8 @@ def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
 
-
-def extract_figures(pdf_path, output_figure_dir):
+# ---------------- PDF FIGURE EXTRACTION ---------------- #
+def extract_figures_from_pdf(pdf_path, output_figure_dir):
     doc = fitz.open(pdf_path)
     figure_metadata = []
 
@@ -37,6 +38,7 @@ def extract_figures(pdf_path, output_figure_dir):
                 fig_path = os.path.join(output_figure_dir, f"figure_page{page_index}_{count}.png")
                 Image.fromarray(roi).save(fig_path)
                 figure_metadata.append({
+                    "type": "figure",
                     "page": page_index,
                     "figure_file": os.path.basename(fig_path),
                     "bbox": [int(x), int(y), int(w), int(h)]
@@ -46,37 +48,120 @@ def extract_figures(pdf_path, output_figure_dir):
     return figure_metadata
 
 
-def process_pdfs(input_folder=INPUT_FOLDER, output_folder=OUTPUT_FOLDER):
-    pdf_files = [f for f in os.listdir(input_folder) if f.lower().endswith(".pdf")]
-    if not pdf_files:
-        print("[!] No PDF files found in folder:", input_folder)
+# ---------------- PDF TABLE EXTRACTION ---------------- #
+def extract_tables_from_pdf(pdf_path, output_table_dir):
+    table_metadata = []
+    count = 0
+
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_index, page in enumerate(pdf.pages, start=1):
+            tables = page.extract_tables()
+            for table in tables:
+                count += 1
+                table_path = os.path.join(output_table_dir, f"table_page{page_index}_{count}.json")
+                with open(table_path, "w", encoding="utf-8") as f:
+                    json.dump(table, f, indent=2)
+                table_metadata.append({
+                    "type": "table",
+                    "page": page_index,
+                    "table_file": os.path.basename(table_path),
+                    "rows": len(table),
+                    "cols": len(table[0]) if table else 0
+                })
+
+    return table_metadata
+
+
+# ---------------- WORD IMAGE EXTRACTION ---------------- #
+def extract_images_from_docx(docx_path, output_figure_dir):
+    from zipfile import ZipFile
+
+    figure_metadata = []
+    with ZipFile(docx_path, "r") as docx:
+        count = 0
+        for file in docx.namelist():
+            if file.startswith("word/media/") and (file.lower().endswith(".png") or file.lower().endswith(".jpg") or file.lower().endswith(".jpeg")):
+                count += 1
+                image_data = docx.read(file)
+                image_path = os.path.join(output_figure_dir, f"figure_{count}.png")
+                with open(image_path, "wb") as img_file:
+                    img_file.write(image_data)
+                figure_metadata.append({
+                    "type": "figure",
+                    "figure_file": os.path.basename(image_path)
+                })
+    return figure_metadata
+
+
+# ---------------- WORD TABLE EXTRACTION ---------------- #
+def extract_tables_from_docx(docx_path, output_table_dir):
+    doc = Document(docx_path)
+    table_metadata = []
+    count = 0
+
+    for t_index, table in enumerate(doc.tables, start=1):
+        data = []
+        for row in table.rows:
+            data.append([cell.text.strip() for cell in row.cells])
+        count += 1
+        table_path = os.path.join(output_table_dir, f"table_{t_index}.json")
+        with open(table_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        table_metadata.append({
+            "type": "table",
+            "table_file": os.path.basename(table_path),
+            "rows": len(data),
+            "cols": len(data[0]) if data else 0
+        })
+
+    return table_metadata
+
+
+# ---------------- PROCESSING FUNCTION ---------------- #
+def process_documents(input_folder=INPUT_FOLDER, output_folder=OUTPUT_FOLDER):
+    files = [f for f in os.listdir(input_folder) if f.lower().endswith((".pdf", ".docx"))]
+    if not files:
+        print("[!] No PDF or DOCX files found in folder:", input_folder)
         return
 
-    print(f"[+] Found {len(pdf_files)} PDF(s) to process...")
+    print(f"[+] Found {len(files)} document(s) to process...")
 
-    for pdf_file in pdf_files:
-        pdf_path = os.path.join(input_folder, pdf_file)
-        student_name = os.path.splitext(pdf_file)[0]
+    for file_name in files:
+        file_path = os.path.join(input_folder, file_name)
+        student_name = os.path.splitext(file_name)[0]
         student_folder = os.path.join(output_folder, student_name)
         figure_dir = os.path.join(student_folder, "figures")
-        ensure_dir(figure_dir)
+        table_dir = os.path.join(student_folder, "tables")
 
-        print(f"\n[+] Processing '{pdf_file}'...")
-        figures_metadata = extract_figures(pdf_path, figure_dir)
+        ensure_dir(figure_dir)
+        ensure_dir(table_dir)
+
+        print(f"\n[+] Processing '{file_name}'...")
+        figures_metadata, tables_metadata = [], []
+
+        if file_name.lower().endswith(".pdf"):
+            figures_metadata = extract_figures_from_pdf(file_path, figure_dir)
+            tables_metadata = extract_tables_from_pdf(file_path, table_dir)
+        elif file_name.lower().endswith(".docx"):
+            figures_metadata = extract_images_from_docx(file_path, figure_dir)
+            tables_metadata = extract_tables_from_docx(file_path, table_dir)
 
         metadata = {
-            "student_file": pdf_file,
+            "file": file_name,
             "num_figures": len(figures_metadata),
+            "num_tables": len(tables_metadata),
             "figures": figures_metadata,
+            "tables": tables_metadata
         }
+
         meta_path = os.path.join(student_folder, "metadata.json")
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=4)
 
-        print(f"[✓] Completed '{pdf_file}' — Figures: {len(figures_metadata)}")
+        print(f"[✓] Completed '{file_name}' — Figures: {len(figures_metadata)}, Tables: {len(tables_metadata)}")
 
-    print("\n[✓] All PDFs processed successfully!")
+    print("\n[✓] All documents processed successfully!")
 
 
 if __name__ == "__main__":
-    process_pdfs()
+    process_documents()

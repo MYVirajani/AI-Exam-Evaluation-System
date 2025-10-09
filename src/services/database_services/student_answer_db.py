@@ -132,7 +132,8 @@ class StudentAnswerService(BaseRelationalDB):
             "openai": "student_answers_openai",
             "google_gemini": "student_answers_gemini",      # Allow snake_case
             "googlegemini": "student_answers_gemini",        # Support compact form
-            "gemini": "student_answers_gemini"
+            "gemini": "student_answers_gemini",
+            "deepseek": "student_answers_deepseek" 
         }
 
         normalized = provider_suffix.strip().lower()

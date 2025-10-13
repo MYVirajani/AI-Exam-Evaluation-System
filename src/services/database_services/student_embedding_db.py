@@ -96,11 +96,17 @@ from ...models.student_answer import StudentAnswer
 logger = logging.getLogger(__name__)
 
 class StudentAnswerEmbeddingDB(BaseVectorDBService):
-    def __init__(self, embedder: AbstractEmbedder):
-        super().__init__(embedder)  # << pass embedder to parent
+    def __init__(self, embedder: AbstractEmbedder, provider_override: str = None):
+        super().__init__(embedder)  # pass embedder to parent
         self.embedder = embedder
-        self.suffix = embedder.get_table_suffix()  # "openai" or "gemini"
-        self.table_name = f"student_answer_embeddings_{self.suffix}"  # << FIXED here
+
+        # If DeepSeek is used, force suffix to "deepseek"
+        if provider_override:
+            self.suffix = provider_override.lower()
+        else:
+            self.suffix = embedder.get_table_suffix()  # openai / gemini
+
+        self.table_name = f"student_answer_embeddings_{self.suffix}"
         register_vector(self.conn)
         logging.info(f"[VectorDB] Using table: {self.table_name}")
         self._create_table()
@@ -245,100 +251,3 @@ class StudentAnswerEmbeddingDB(BaseVectorDBService):
             return row[0]  # Returns the vector
         return None
 
-    def get_embeddings_by_assessment(self, assessment_id: str) -> List[dict]:
-        """Get all embeddings for a specific assessment."""
-        self.cursor.execute(f"""
-            SELECT student_index, full_question_id, module_code, exam_year, exam_month, 
-                   submission_id, embedding, created_at
-            FROM {self.table_name}
-            WHERE assessment_id = %s
-            ORDER BY student_index, full_question_id
-        """, (assessment_id,))
-        
-        results = []
-        for row in self.cursor.fetchall():
-            results.append({
-                'student_index': row[0],
-                'full_question_id': row[1],
-                'module_code': row[2],
-                'exam_year': row[3],
-                'exam_month': row[4],
-                'submission_id': row[5],
-                'embedding': row[6],
-                'created_at': row[7]
-            })
-        
-        return results
-
-    def get_embeddings_by_submission(self, submission_id: str) -> List[dict]:
-        """Get all embeddings for a specific submission."""
-        self.cursor.execute(f"""
-            SELECT student_index, full_question_id, module_code, exam_year, exam_month, 
-                   assessment_id, embedding, created_at
-            FROM {self.table_name}
-            WHERE submission_id = %s
-            ORDER BY full_question_id
-        """, (submission_id,))
-        
-        results = []
-        for row in self.cursor.fetchall():
-            results.append({
-                'student_index': row[0],
-                'full_question_id': row[1],
-                'module_code': row[2],
-                'exam_year': row[3],
-                'exam_month': row[4],
-                'assessment_id': row[5],
-                'embedding': row[6],
-                'created_at': row[7]
-            })
-        
-        return results
-
-    def delete_embeddings_by_assessment(self, assessment_id: str) -> int:
-        """Delete all embeddings for a specific assessment. Returns number of deleted records."""
-        self.cursor.execute(f"""
-        DELETE FROM {self.table_name}
-        WHERE assessment_id = %s
-        """, (assessment_id,))
-        
-        deleted_count = self.cursor.rowcount
-        self.commit()
-        
-        print(f"🗑️ Deleted {deleted_count} embedding records from {self.table_name} for assessment {assessment_id}")
-        return deleted_count
-
-    def delete_embeddings_by_submission(self, submission_id: str) -> int:
-        """Delete embeddings for a specific submission. Returns number of deleted records."""
-        self.cursor.execute(f"""
-        DELETE FROM {self.table_name}
-        WHERE submission_id = %s
-        """, (submission_id,))
-        
-        deleted_count = self.cursor.rowcount
-        self.commit()
-        
-        print(f"🗑️ Deleted {deleted_count} embedding records from {self.table_name} for submission {submission_id}")
-        return deleted_count
-
-    def get_embedding_stats_by_assessment(self, assessment_id: str) -> dict:
-        """Get statistics about embeddings for a specific assessment."""
-        stats = {}
-        
-        # Total embeddings for assessment
-        self.cursor.execute(f"SELECT COUNT(*) FROM {self.table_name} WHERE assessment_id = %s", (assessment_id,))
-        stats['total_embeddings'] = self.cursor.fetchone()[0]
-        
-        # Unique students
-        self.cursor.execute(f"SELECT COUNT(DISTINCT student_index) FROM {self.table_name} WHERE assessment_id = %s", (assessment_id,))
-        stats['unique_students'] = self.cursor.fetchone()[0]
-        
-        # Unique questions
-        self.cursor.execute(f"SELECT COUNT(DISTINCT full_question_id) FROM {self.table_name} WHERE assessment_id = %s", (assessment_id,))
-        stats['unique_questions'] = self.cursor.fetchone()[0]
-        
-        # Unique submissions
-        self.cursor.execute(f"SELECT COUNT(DISTINCT submission_id) FROM {self.table_name} WHERE assessment_id = %s AND submission_id IS NOT NULL", (assessment_id,))
-        stats['unique_submissions'] = self.cursor.fetchone()[0]
-        
-        return stats

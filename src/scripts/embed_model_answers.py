@@ -1,5 +1,6 @@
 
 
+<<<<<<< HEAD
 # # # import argparse
 # # # import logging
 # # # import pathlib
@@ -334,10 +335,25 @@
 
 # # Load environment variables
 # load_dotenv()
+=======
+# import argparse
+# import logging
+# import pathlib
+# from typing import Iterable
+# from docx import Document
+# import pdfplumber
+# from rich import print
+
+# from src.services.model_answer_extractor import ModelAnswerExtractor
+# from src.services.embedding.openai_embedder import OpenAIEmbedder
+# from src.services.embedding.gemini_embedder import GeminiEmbedder
+# from src.services.database_services.model_answer_embedding_db import ModelAnswerEmbeddingDB
+>>>>>>> ea07d59eb89948e42998ca858c699570ea3da626
 
 # logging.basicConfig(level=logging.INFO)
 # logger = logging.getLogger(__name__)
 
+<<<<<<< HEAD
 
 # # --------------------------------------------------------------------------- #
 # #                            Database helpers                                 #
@@ -450,10 +466,23 @@
 
 # def iter_files(root: pathlib.Path, patterns: Iterable[str]) -> Iterable[pathlib.Path]:
 #     """Yield files under *root* whose suffix matches one of *patterns*."""
+=======
+# def read_text(path: pathlib.Path) -> str:
+#     if path.suffix.lower() == ".docx":
+#         doc = Document(path)
+#         return "\n".join(p.text for p in doc.paragraphs)
+#     elif path.suffix.lower() == ".pdf":
+#         with pdfplumber.open(path) as pdf:
+#             return "\n".join(p.extract_text() or "" for p in pdf.pages)
+#     raise ValueError(f"Unsupported file type: {path.name}")
+
+# def iter_files(root: pathlib.Path, patterns: Iterable[str]) -> Iterable[pathlib.Path]:
+>>>>>>> ea07d59eb89948e42998ca858c699570ea3da626
 #     for file in root.rglob("*"):
 #         if file.suffix.lower() in patterns and file.is_file():
 #             yield file
 
+<<<<<<< HEAD
 
 # # --------------------------------------------------------------------------- #
 # #                               Main routine                                  #
@@ -602,10 +631,50 @@
 #         }
 #     }
 
+=======
+# def main() -> None:
+#     ap = argparse.ArgumentParser(description="Extract & embed model answers")
+#     ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini"])
+#     ap.add_argument("--model", required=True, help="LLM model name (e.g. gpt-4o, gemini-1.5-pro)")
+#     ap.add_argument("--embedder", default="text-embedding-3-small", help="Embedding model name")
+#     ap.add_argument("--root", default="data/Model_Answers", help="Root folder of model answers")
+#     ap.add_argument("--ext", nargs="*", default=[".pdf", ".docx"], help="File extensions (default: .pdf .docx)")
+#     args = ap.parse_args()
+
+#     root = pathlib.Path(args.root)
+#     if not root.exists():
+#         logger.error("Root folder does not exist: %s", root)
+#         return
+
+#     print(f"[bold]⏳ Scanning [cyan]{root}[/] …[/]")
+
+#     extractor = ModelAnswerExtractor(args.provider, args.model)
+
+#     # Choose embedder
+#     embedder = OpenAIEmbedder(args.embedder) if args.provider == "OpenAI" else GeminiEmbedder(model_name=args.embedder)
+
+#     # Vector DB
+#     vec_db = ModelAnswerEmbeddingDB(embedder)
+#     file_patterns = {e.lower() if e.startswith(".") else f".{e.lower()}" for e in args.ext}
+
+#     processed = 0
+#     for file in iter_files(root, file_patterns):
+#         processed += 1
+#         print(f"→ {file.relative_to(root)}")
+#         raw_text = read_text(file)
+
+#         answers = extractor.extract(raw_text)
+#         vec_db.save_embeddings(answers)
+
+#     vec_db.close()
+#     msg = "No model-answer files found." if processed == 0 else f"✅ Done. {processed} file(s) processed."
+#     print(f"[green]{msg}[/]")
+>>>>>>> ea07d59eb89948e42998ca858c699570ea3da626
 
 # if __name__ == "__main__":
 #     main()
 
+<<<<<<< HEAD
 """
 Run from the project root:
 
@@ -616,6 +685,8 @@ Run from the project root:
          --assessment-id ASSESSMENT_ID
 """
 
+=======
+>>>>>>> ea07d59eb89948e42998ca858c699570ea3da626
 import argparse
 import logging
 import pathlib
@@ -645,6 +716,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+<<<<<<< HEAD
 # --------------------------------------------------------------------------- #
 #                            Database helpers                                 #
 # --------------------------------------------------------------------------- #
@@ -759,6 +831,8 @@ def resolve_file_path(file_path: str) -> pathlib.Path:
 # --------------------------------------------------------------------------- #
 #                              File helpers                                   #
 # --------------------------------------------------------------------------- #
+=======
+>>>>>>> ea07d59eb89948e42998ca858c699570ea3da626
 def read_text(path: pathlib.Path) -> str:
     """Return plain text from .docx or .pdf (raise on others)."""
     suffix = path.suffix.lower()
@@ -773,6 +847,7 @@ def read_text(path: pathlib.Path) -> str:
 
     raise ValueError(f"Unsupported file type: {path.name}")
 
+<<<<<<< HEAD
 
 # --------------------------------------------------------------------------- #
 #                               Main routine                                  #
@@ -806,6 +881,23 @@ def main(assessment_id: Optional[str] = None, provider: Optional[str] = None,
         provider = args.provider
         model = args.model
         embedder = args.embedder
+=======
+
+def iter_files(root: pathlib.Path, patterns: Iterable[str]) -> Iterable[pathlib.Path]:
+    for file in root.rglob("*"):
+        if file.suffix.lower() in patterns and file.is_file():
+            yield file
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Extract & embed model answers")
+    ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini", "DeepSeek"])
+    ap.add_argument("--model", required=True, help="LLM model name (e.g. gpt-4o, gemini-1.5-pro, deepseek-chat)")
+    ap.add_argument("--embedder", default="text-embedding-3-small", help="Embedding model name")
+    ap.add_argument("--root", default="data/Model_Answers", help="Root folder of model answers")
+    ap.add_argument("--ext", nargs="*", default=[".pdf", ".docx"], help="File extensions (default: .pdf .docx)")
+    args = ap.parse_args()
+>>>>>>> ea07d59eb89948e42998ca858c699570ea3da626
 
     logger.info(f"Processing model answer for assessment {assessment_id}")
 
@@ -824,6 +916,7 @@ def main(assessment_id: Optional[str] = None, provider: Optional[str] = None,
     # Create extractor - but we'll override the extracted metadata with database data
     extractor = ModelAnswerExtractor(provider, model)
 
+<<<<<<< HEAD
     # Choose embedding backend
     if provider == "OpenAI":
         embedder_instance = OpenAIEmbedder(embedder)
@@ -831,6 +924,24 @@ def main(assessment_id: Optional[str] = None, provider: Optional[str] = None,
         embedder_instance = GeminiEmbedder(model_name=embedder)
 
     vec_db = ModelAnswerEmbeddingDB(embedder_instance)
+=======
+    # Choose embedder
+    provider_override = None
+    if args.provider == "OpenAI":
+        embedder = OpenAIEmbedder(args.embedder)
+    elif args.provider == "GoogleGemini":
+        embedder = GeminiEmbedder(model_name=args.embedder)
+    elif args.provider == "DeepSeek":
+        print("⚠️ DeepSeek selected: using OpenAI embeddings but saving in DeepSeek table")
+        embedder = OpenAIEmbedder("text-embedding-3-small")
+        provider_override = "deepseek"
+    else:
+        raise ValueError(f"Unsupported provider: {args.provider}")
+
+    # Vector DB
+    vec_db = ModelAnswerEmbeddingDB(embedder, provider_override=provider_override)
+    file_patterns = {e.lower() if e.startswith(".") else f".{e.lower()}" for e in args.ext}
+>>>>>>> ea07d59eb89948e42998ca858c699570ea3da626
 
     try:
         file_url = model_answer_file['file_url']
@@ -874,5 +985,11 @@ def main(assessment_id: Optional[str] = None, provider: Optional[str] = None,
         vec_db.close()
 
 
+
 if __name__ == "__main__":
+<<<<<<< HEAD
     main()
+=======
+    main()
+
+>>>>>>> ea07d59eb89948e42998ca858c699570ea3da626

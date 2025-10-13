@@ -604,6 +604,7 @@
 #         return None
 
 
+
 import logging
 from pgvector.psycopg2 import register_vector
 
@@ -613,11 +614,13 @@ from ...models.model_answer import ModelAnswer
 
 logger = logging.getLogger(__name__)
 
+
 class ModelAnswerEmbeddingDB(BaseVectorDBService):
-    def __init__(self, embedder: AbstractEmbedder):
+    def __init__(self, embedder: AbstractEmbedder, provider_override: str = None):
         super().__init__(embedder)
         self.embedder = embedder
-        self.suffix = embedder.get_table_suffix()  # e.g., "openai" or "gemini"
+        # Use override if provided (e.g., "deepseek"), else default suffix
+        self.suffix = provider_override.lower() if provider_override else embedder.get_table_suffix()
         self.table = f"model_answer_embeddings_{self.suffix}"
         register_vector(self.conn)
         logger.info(f"Using table: {self.table}")
@@ -688,10 +691,9 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
             ))
 
         self.commit()
-        logger.info("Saved %d model-answer embeddings for assessment %s into table '%s'.", len(answers), assessment_id, self.table)
-    
-    def get_model_answer(self, full_question_id: str, module_code: str, assessment_id: str) -> dict | None:
-        """Get model answer for specific assessment."""
+        logger.info("Saved %d model-answer embeddings into table '%s'.", len(answers), self.table)
+
+    def get_model_answer(self, full_question_id: str, module_code: str) -> dict | None:
         self.cursor.execute(f"""
             SELECT question_text, answer_text, guideline_text, max_marks
             FROM {self.table}
@@ -707,22 +709,13 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
                 "max_marks": row[3]
             }
         return None
-        
-    def get_embedding(self, full_question_id: str, module_code: str, exam_year: int, exam_month: str, assessment_id: str = None) -> list[float] | None:
-        """Get embedding with optional assessment filtering."""
-        if assessment_id:
-            self.cursor.execute(f"""
-                SELECT answer_embedding
-                FROM {self.table}
-                WHERE full_question_id = %s AND module_code = %s AND exam_year = %s AND exam_month = %s AND assessment_id = %s
-            """, (full_question_id, module_code, exam_year, exam_month, assessment_id))
-        else:
-            # Fallback for backward compatibility
-            self.cursor.execute(f"""
-                SELECT answer_embedding
-                FROM {self.table}
-                WHERE full_question_id = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
-            """, (full_question_id, module_code, exam_year, exam_month))
+
+    def get_embedding(self, full_question_id: str, module_code: str, exam_year: int, exam_month: str) -> list[float] | None:
+        self.cursor.execute(f"""
+            SELECT answer_embedding
+            FROM {self.table}
+            WHERE full_question_id = %s AND module_code = %s AND exam_year = %s AND exam_month = %s
+        """, (full_question_id, module_code, exam_year, exam_month))
 
         row = self.cursor.fetchone()
         if row and row[0] is not None:

@@ -160,41 +160,46 @@
 
 EXTRACT_STUDENT_ANSWERS_PROMPT = """
 You will receive the full text content of a student's typed or handwritten exam script.
+The script may include embedded media references such as images, tables, or equations extracted from the document.
+Media items are represented as placeholders such as:
+- [Image: path/to/image.png]
+- [Table: path/to/table.png]
+- [Equation: path/to/equation.png]
 
 ---
 
 ### Your Tasks:
 
-1. Extract Exam Metadata (ONLY ONCE)
-
+#### 1. Extract Exam Metadata (ONLY ONCE)
 From the top section of the document, extract:
 - "student_index" (e.g., "EG/2020/4247")
 - "module_code" (e.g., "EE6250")
 - "exam_year" (e.g., 2025)
 - "exam_month" (e.g., "June")
 
-Return these inside a "metadata" field.
+Return these inside a `"metadata"` field.
 
 ---
 
-2. Extract Answers with Correct Question Hierarchy (Avoid Over-Splitting)
+#### 2. Extract Answers and Their Associated Media URLs
 
-Extract all answers *exactly following the hierarchical structure* used in the answer script:
-- Q1) i) a)
-- Q1) ii)
-- Q2) i) b)
-- Q2) ii)
+Extract all answers *exactly following the hierarchical structure* used in the script:
+- Q1) a)
+- Q1) b)
+- Q2) i)
+- Q2) ii) a)
 - etc.
 
-Make sure to preserve:
-- Main questions: Q1, Q2, Q3, ...
-- Sub-questions: i, ii, iii, ...
-- Sub-sub-questions: a, b, c, ...
-- Sub-sub-sub-questions: 1), 2), ...
+Each answer must include:
+- `"answer_text"` — plain text of the answer (preserving line breaks with \\n)
+- `"media_urls"` — a **list of URLs or paths** appearing inside that answer (from the [Image:], [Table:], or [Equation:] markers)
 
-Treat each change in question number as a new section, even if the formatting is inconsistent or spacing is irregular.
+If no media appears for that sub-question, `"media_urls"` should be an empty list `[]`.
+
+Each sub-question **must** have its own `media_urls` list — even if the parent question has none.
 
 ---
+
 
 ### COMPREHENSIVE EXAMPLES:
 

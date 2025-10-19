@@ -35,10 +35,15 @@ def extract_and_save(docx_path: str, extractor: AnswerExtractor, provider: str):
             return
 
         # Preview the result
-        pprint([
-            {"question": ans.full_question_id, "answer": ans.answer_text}
-            for ans in answers
-        ])
+        print("\n🧾 Extracted Answers Preview:")
+        for ans in answers:
+            print(f"• {ans.full_question_id}:")
+            print(f"   📝 {ans.answer_text[:120]}{'...' if len(ans.answer_text) > 120 else ''}")
+            if ans.media_urls:
+                print(f"   🖼️ Media URLs: {ans.media_urls}")
+            else:
+                print("   🖼️ Media URLs: None")
+
 
         # Save to database - use the mapped provider suffix from extractor
         first = answers[0]

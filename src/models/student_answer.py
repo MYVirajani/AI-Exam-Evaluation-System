@@ -1,6 +1,5 @@
-
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 @dataclass
 class StudentAnswer:
@@ -15,6 +14,8 @@ class StudentAnswer:
     exam_year: Optional[int] = None
     exam_month: Optional[str] = None
     coordinates: Tuple[float, float, float, float] = (0, 0, 0, 0)
+    media_urls: Optional[List[str]] = None      
+    media_summaries: Optional[List[str]] = None 
 
     @property
     def full_question_id(self) -> str:
@@ -38,5 +39,9 @@ class StudentAnswer:
             "module_code": self.module_code,
             "exam_year": self.exam_year,
             "exam_month": self.exam_month,
-            "coordinates": self.coordinates
-    }
+            "assessment_id": self.assessment_id,
+            "submission_id": self.submission_id,
+            "coordinates": self.coordinates,
+            "media_urls": self.media_urls or [],
+            "media_summaries": self.media_summaries or []
+        }

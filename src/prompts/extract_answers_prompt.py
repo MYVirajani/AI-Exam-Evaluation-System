@@ -170,7 +170,7 @@ Media items are represented as placeholders such as:
 
 ### Your Tasks:
 
-#### 1. Extract Exam Metadata (ONLY ONCE)
+#### 1️⃣ Extract Exam Metadata (ONLY ONCE)
 From the top section of the document, extract:
 - "student_index" (e.g., "EG/2020/4247")
 - "module_code" (e.g., "EE6250")
@@ -181,24 +181,16 @@ Return these inside a `"metadata"` field.
 
 ---
 
-#### 2. Extract Answers and Their Associated Media URLs
+#### 2️⃣ Extract Answers and Media URLs — **Unified Object Format**
 
-Extract all answers *exactly following the hierarchical structure* used in the script:
-- Q1) a)
-- Q1) b)
-- Q2) i)
-- Q2) ii) a)
-- etc.
+Extract all questions and sub-questions in the structure of the answer script (e.g., Q1) a), Q1) b), Q2) i), etc.).
 
-Each answer must include:
-- `"answer_text"` — plain text of the answer (preserving line breaks with \\n)
-- `"media_urls"` — a **list of URLs or paths** appearing inside that answer (from the [Image:], [Table:], or [Equation:] markers)
-
-If no media appears for that sub-question, `"media_urls"` should be an empty list `[]`.
-
-Each sub-question **must** have its own `media_urls` list — even if the parent question has none.
-
----
+✅ **Each sub-question must always be represented as an object** containing:
+```json
+{
+  "answer_text": "<the student's full text answer here>",
+  "media_urls": ["<list of any media paths or URLs found within this answer>"]
+}
 
 
 ### COMPREHENSIVE EXAMPLES:

@@ -8,11 +8,12 @@ class StudentAnswer:
     sub_sub_question_id: Optional[str] = None
     sub_sub_sub_question_id: Optional[str] = None
     answer_text: str = ""
-
     student_index: Optional[str] = None
     module_code: Optional[str] = None
     exam_year: Optional[int] = None
     exam_month: Optional[str] = None
+    assessment_id: Optional[str] = None
+    submission_id: Optional[str] = None
     coordinates: Tuple[float, float, float, float] = (0, 0, 0, 0)
     media_urls: Optional[List[str]] = None      
     media_summaries: Optional[List[str]] = None 

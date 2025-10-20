@@ -1,38 +1,242 @@
+// // src/app/api/assessment/route.ts
+// import { NextResponse } from "next/server";
+// import { writeFile, mkdir } from "fs/promises";
+// import path from "path";
+// import { v4 as uuidv4 } from "uuid";
+// import {  assessmentType } from "@/generated/prisma";
+// import { prisma } from '@/lib/prisma';
+
+
+// export async function POST(request: Request) {
+//   try {
+//     console.log("➡️ Incoming POST request to create assessment");
+
+//     const formData = await request.formData();
+//     const type = formData.get("type") as string;
+//     const title = formData.get("title") as string;
+//     const description = (formData.get("description") as string) || "";
+//     const deadlineRaw = formData.get("deadline") as string;
+//     const moduleId = formData.get("moduleId") as string;
+//     const createdBy = formData.get("createdBy") as string;
+
+//     console.log("📦 Form data received:", { type, title, deadlineRaw, moduleId, createdBy });
+
+//     if (!createdBy) {
+//       console.error("❌ Missing createdBy (educator ID)");
+//       return NextResponse.json(
+//         { success: false, error: "Missing educator ID (createdBy)" },
+//         { status: 400 }
+//       );
+//     }
+
+//     if (!type || !title || !deadlineRaw || !moduleId) {
+//       console.error("❌ Missing required fields");
+//       return NextResponse.json(
+//         { success: false, error: "Missing required fields" },
+//         { status: 400 }
+//       );
+//     }
+
+//     const deadline = new Date(deadlineRaw);
+//     if (isNaN(deadline.getTime())) {
+//       console.error("❌ Invalid deadline format");
+//       return NextResponse.json(
+//         { success: false, error: "Invalid deadline" },
+//         { status: 400 }
+//       );
+//     }
+
+//     const projectRoot = process.cwd();
+//     const parentDir = path.dirname(projectRoot);
+//     const baseDataDir = path.join(parentDir, "src", "data");
+
+//     async function handleFile(fieldName: string, required = false) {
+//       try {
+//         const file = formData.get(fieldName) as File | null;
+//         if (!file) {
+//           if (required) throw new Error(`${fieldName} is required`);
+//           return { id: uuidv4(), url: null as string | null };
+//         }
+
+//         const subdirs: Record<string, string> = {
+//           questionPaper: "question_papers",
+//           modelAnswerPaper: "model_answer_papers",
+//           markingScheme: "marking_schemes",
+//         };
+//         const subdir = subdirs[fieldName] || "";
+//         const uploadDir = path.join(baseDataDir, subdir);
+//         await mkdir(uploadDir, { recursive: true });
+
+//         const buffer = Buffer.from(await file.arrayBuffer());
+//         const ext = file.name.split(".").pop();
+//         const id = uuidv4();
+//         const filename = `${id}.${ext}`;
+//         const filepath = path.join(uploadDir, filename);
+//         await writeFile(filepath, buffer);
+
+//         const fileUrl = `src/data/${subdir}/${filename}`;
+//         console.log(`✅ File saved: ${fileUrl}`);
+//         return { id, url: fileUrl };
+//       } catch (err) {
+//         console.error(`❌ Error handling file (${fieldName}):`, err);
+//         throw err;
+//       }
+//     }
+
+//     const qp = await handleFile("questionPaper");
+//     const mapr = await handleFile("modelAnswerPaper");
+//     const ms = await handleFile("markingScheme");
+
+//     let qpId: string | null = null;
+//     let maprId: string | null = null;
+//     let msId: string | null = null;
+
+//     if (qp.url) {
+//       try {
+//         await prisma.question_Paper.create({
+//           data: {
+//             question_paper_id: qp.id,
+//             file_url: qp.url,
+//             created_on: new Date(),
+//           },
+//         });
+//         qpId = qp.id;
+//         console.log("✅ Question paper saved in DB");
+//       } catch (err) {
+//         console.error("❌ Failed to save question paper in DB:", err);
+//       }
+//     }
+
+//     if (mapr.url) {
+//       try {
+//         await prisma.model_Answer_Paper.create({
+//           data: {
+//             model_answer_paper_id: mapr.id,
+//             file_url: mapr.url,
+//             created_on: new Date(),
+//           },
+//         });
+//         maprId = mapr.id;
+//         console.log("✅ Model answer paper saved in DB");
+//       } catch (err) {
+//         console.error("❌ Failed to save model answer paper in DB:", err);
+//       }
+//     }
+
+//     if (ms.url) {
+//       try {
+//         await prisma.marking_Scheme.create({
+//           data: {
+//             marking_scheme_id: ms.id,
+//             file_url: ms.url,
+//             created_on: new Date(),
+//           },
+//         });
+//         msId = ms.id;
+//         console.log("✅ Marking scheme saved in DB");
+//       } catch (err) {
+//         console.error("❌ Failed to save marking scheme in DB:", err);
+//       }
+//     }
+
+//     const newAssessment = await prisma.assessment.create({
+//   data: {
+//     assessment_id: uuidv4(),
+//     type: type as assessmentType,
+//     title,
+//     description,
+//     deadline,
+//     module_id: moduleId,
+//     created_by: createdBy,
+//     ...(qpId && { question_paper_id: qpId }),
+//     ...(maprId && { model_answer_paper_id: maprId }),
+//     ...(msId && { marking_scheme_id: msId }),
+//   },
+// });
+
+//     console.log("🎉 Assessment created successfully:", newAssessment);
+
+//     return NextResponse.json({ success: true, assessment: newAssessment });
+//   } catch (error: any) {
+//     console.error("❌ General error while creating assessment:", error);
+//     return NextResponse.json(
+//       {
+//         success: false,
+//         error:
+//           error instanceof Error ? error.message : "Failed to create assessment",
+//       },
+//       { status: 500 }
+//     );
+//   }
+// }
+
 // src/app/api/assessment/route.ts
+
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { PrismaClient, assessmentType } from "@/generated/prisma";
-
-const prisma = new PrismaClient();
+import { assessmentType } from "@/generated/prisma";
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
+    console.log("➡️ Incoming POST request to create assessment");
 
-    // 1) Validate core fields
-    const type        = formData.get("type")        as string;
-    const title       = formData.get("title")       as string;
+    const formData = await request.formData();
+    const type = formData.get("type") as string;
+    const title = formData.get("title") as string;
     const description = (formData.get("description") as string) || "";
-    const deadlineRaw = formData.get("deadline")    as string;
-    const moduleId    = formData.get("moduleId")    as string;
-    const createdBy   = "12345";
+    const deadlineRaw = formData.get("deadline") as string;
+    const moduleId = formData.get("moduleId") as string;
+    const createdBy = formData.get("createdBy") as string;
+
+    console.log("📦 Form data received:", { type, title, deadlineRaw, moduleId, createdBy });
+
+    if (!createdBy) {
+      return NextResponse.json(
+        { success: false, error: "Missing educator ID (createdBy)" },
+        { status: 400 }
+      );
+    }
 
     if (!type || !title || !deadlineRaw || !moduleId) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      );
     }
+
     const deadline = new Date(deadlineRaw);
     if (isNaN(deadline.getTime())) {
-      return NextResponse.json({ success: false, error: "Invalid deadline" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Invalid deadline" },
+        { status: 400 }
+      );
     }
 
-    // 2) Figure out <parent>/src/data
-    const projectRoot = process.cwd();
-    const parentDir   = path.dirname(projectRoot);
-    const baseDataDir = path.join(parentDir, "src", "data");
+    // Step 1: Create assessment first
+    const assessmentId = uuidv4();
+    const newAssessment = await prisma.assessment.create({
+      data: {
+        assessment_id: assessmentId,
+        type: type as assessmentType,
+        title,
+        description,
+        deadline,
+        module_id: moduleId,
+        created_by: createdBy,
+        total_marks: 0.0, // default, update later if needed
+        instructions: [],
+      },
+    });
 
-    // 3) Helper: save into subfolder under baseDataDir
+    console.log("✅ Assessment created:", assessmentId);
+
+    // Step 2: Handle file uploads
+    const projectRoot = process.cwd();
+    const baseDataDir = path.join(path.dirname(projectRoot), "src", "data");
+
     async function handleFile(fieldName: string, required = false) {
       const file = formData.get(fieldName) as File | null;
       if (!file) {
@@ -40,79 +244,78 @@ export async function POST(request: Request) {
         return { id: uuidv4(), url: null as string | null };
       }
 
-      // decide subdirectory
-      const subdirs: Record<string,string> = {
-        questionPaper:     "question_papers",
-        modelAnswerPaper:  "model_answer_papers",
-        markingScheme:     "marking_schemes"
+      const subdirs: Record<string, string> = {
+        questionPaper: "question_papers",
+        modelAnswerPaper: "model_answer_papers",
+        markingScheme: "marking_schemes",
       };
       const subdir = subdirs[fieldName] || "";
       const uploadDir = path.join(baseDataDir, subdir);
       await mkdir(uploadDir, { recursive: true });
 
-      // write file
-      const buffer   = Buffer.from(await file.arrayBuffer());
-      const ext      = file.name.split(".").pop();
-      const id       = uuidv4();
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const ext = file.name.split(".").pop();
+      const id = uuidv4();
       const filename = `${id}.${ext}`;
       const filepath = path.join(uploadDir, filename);
       await writeFile(filepath, buffer);
 
-      // relative path for DB
-      return {
-        id,
-        url: `src/data/${subdir}/${filename}`,
-      };
+      const fileUrl = `src/data/${subdir}/${filename}`;
+      console.log(`✅ File saved: ${fileUrl}`);
+      return { id, url: fileUrl };
     }
 
-    // 4) Upload files
-    const qp   = await handleFile("questionPaper", true);
+    // Step 3: Save each file (if provided) and related record
+    const qp = await handleFile("questionPaper");
     const mapr = await handleFile("modelAnswerPaper");
-    const ms   = await handleFile("markingScheme");
+    const ms = await handleFile("markingScheme");
 
-    // 5) Persist file‐records
-    await prisma.question_Paper.create({
-      data: {
-        question_paper_id: qp.id,
-        file_url:          qp.url!,
-        created_on:        new Date(),
-      },
-    });
-    await prisma.model_Answer_Paper.create({
-      data: {
-        model_answer_paper_id: mapr.id,
-        file_url:              mapr.url ?? "",
-        created_on:            new Date(),
-      },
-    });
-    await prisma.marking_Scheme.create({
-      data: {
-        marking_scheme_id: ms.id,
-        file_url:          ms.url ?? "",
-        created_on:        new Date(),
-      },
-    });
+    if (qp.url) {
+      await prisma.question_Paper.create({
+        data: {
+          assessment_id: assessmentId,
+          question_paper_id: qp.id,
+          file_url: qp.url,
+          created_on: new Date(),
+        },
+      });
+      console.log("✅ Question paper linked");
+    }
 
-    // 6) Finally create the assessment
-    const newAssessment = await prisma.assessment.create({
-      data: {
-        assessment_id:          uuidv4(),
-        type:                   type as assessmentType,
-        title,
-        description,
-        deadline,
-        module_id:              moduleId,
-        created_by:             createdBy,
-        question_paper_id:      qp.id,
-        model_answer_paper_id:  mapr.id,
-        marking_scheme_id:      ms.id,
-      },
-    });
+    if (mapr.url) {
+      await prisma.model_Answer_Paper.create({
+        data: {
+          assessment_id: assessmentId,
+          model_answer_paper_id: mapr.id,
+          file_url: mapr.url,
+          created_on: new Date(),
+        },
+      });
+      console.log("✅ Model answer paper linked");
+    }
+
+    if (ms.url) {
+      await prisma.marking_Scheme.create({
+        data: {
+          assessment_id: assessmentId,
+          marking_scheme_id: ms.id,
+          file_url: ms.url,
+          created_on: new Date(),
+        },
+      });
+      console.log("✅ Marking scheme linked");
+    }
 
     return NextResponse.json({ success: true, assessment: newAssessment });
+
   } catch (error: any) {
-    console.error("Error creating assessment:", error);
-    const message = error instanceof Error ? error.message : "Failed to create assessment";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    console.error("❌ Error creating assessment:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create assessment",
+      },
+      { status: 500 }
+    );
   }
 }

@@ -114,7 +114,7 @@ INSTRUCTIONS:
 OUTPUT (JSON only, no markdown):
 --------------------------------
 {{
-  "score": <int>,
+  "score": <float>,
   "reason": "<one-sentence explanation>"
 }}
 """

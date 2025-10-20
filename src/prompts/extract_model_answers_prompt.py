@@ -65,8 +65,10 @@ Your response **must** be a single valid JSON object with this structure:
 
 # EXTRACT_MODEL_ANSWERS_PROMPT = """
 # You will receive the full text of an official model-answer or marking guide.
+# You will receive the full text of an official model-answer or marking guide.
 
 # -----------------------------
+# *Your Tasks:*
 # *Your Tasks:*
 
 # 1. Extract global metadata once:
@@ -75,13 +77,14 @@ Your response **must** be a single valid JSON object with this structure:
 #    - "exam_month": e.g., "June"
 
 # 2. Extract all answers using the *exact question hierarchy* from the document.
+# 2. Extract all answers using the *exact question hierarchy* from the document.
 #    Example structure: Q1 → Q1.i → Q1.i.a
 
 # 3. For each lowest-level question node, extract:
 #    - "question": The actual question text (if available, else use "")
 #    - "answer": The model answer content
 #    - "guideline": Bullet points or marking instructions (or empty string if not present)
-#    - "marks": Maximum marks (as an integer, or null if not available)
+#    - "marks": Maximum marks (as a decimal, or null if not available)
 
 # -----------------------------
 
@@ -372,6 +375,125 @@ Your response **must** be a single valid JSON object with this structure:
 #         }
 #       },
 #       "ii": {
+#         "question": "Derive the formula for electrical power and calculate power when V=12V and I=2A.",
+#         "answer": "Power is the rate of energy consumption: P = W/t\nSince W = V × I × t, therefore P = V × I\nGiven: V = 12V, I = 2A\nP = V × I = 12 × 2 = 24W",
+#         "guideline": "- Derivation of P = VI: 2 marks\n- Correct substitution: 1 mark\n- Calculation: 1 mark\n- Units: 1 mark",
+#         "marks": 5
+#       }
+#     }
+#   }
+# }
+
+
+# *Example 6: Programming Questions with Code*
+
+# Input Text:
+
+# Module: CS4100
+# June 2025 Programming Exam - Solutions
+
+# Q1) i) Write a Python function to calculate factorial. [8 marks]
+
+# Question: Write a recursive Python function to calculate the factorial of a number.
+
+# Model Answer:
+# def factorial(n):
+#     if n == 0 or n == 1:
+#         return 1
+#     else:
+#         return n * factorial(n-1)
+
+# Marking Scheme:
+# - Correct function definition: 2 marks
+# - Base case handling (n=0 or n=1): 2 marks  
+# - Recursive call structure: 2 marks
+# - Correct logic and syntax: 2 marks
+# - Deduct 1 mark for syntax errors
+# - Deduct 1 mark for incorrect base case
+
+# Q1) ii) Algorithm complexity [4 marks]
+
+# Question: What is the time complexity of the factorial function above?
+
+# Model Answer: The time complexity is O(n) because the function makes n recursive calls, each doing constant work.
+
+# Marking:
+# - Correct identification of O(n): 2 marks
+# - Proper explanation of reasoning: 2 marks
+# - Accept alternative valid explanations
+
+
+# Output:
+# json
+# {
+#   "metadata": {
+#     "module_code": "CS4100",
+#     "exam_year": 2025,
+#     "exam_month": "June"
+#   },
+#   "answers": {
+#     "Q1": {
+#       "i": {
+#         "question": "Write a recursive Python function to calculate the factorial of a number.",
+#         "answer": "def factorial(n):\n    if n == 0 or n == 1:\n        return 1\n    else:\n        return n * factorial(n-1)",
+#         "guideline": "- Correct function definition: 2 marks\n- Base case handling (n=0 or n=1): 2 marks\n- Recursive call structure: 2 marks\n- Correct logic and syntax: 2 marks\n- Deduct 1 mark for syntax errors\n- Deduct 1 mark for incorrect base case",
+#         "marks": 8
+#       },
+#       "ii": {
+#         "question": "What is the time complexity of the factorial function above?",
+#         "answer": "The time complexity is O(n) because the function makes n recursive calls, each doing constant work.",
+#         "guideline": "- Correct identification of O(n): 2 marks\n- Proper explanation of reasoning: 2 marks\n- Accept alternative valid explanations",
+#         "marks": 4
+#       }
+#     }
+#   }
+# }
+
+
+# *Example 7: Questions Without Explicit Guidelines*
+
+# Input Text:
+
+# Module Code: EE6100
+# Digital Signal Processing - June 2025
+
+# Q1) i) Define sampling theorem. [4 marks]
+
+# The sampling theorem states that a continuous signal can be perfectly reconstructed from its samples if the sampling frequency is at least twice the highest frequency component of the signal (Nyquist rate).
+
+# Q1) ii) What is aliasing? [3 marks]
+
+# Aliasing occurs when the sampling frequency is insufficient, causing high-frequency components to appear as lower frequencies in the sampled signal.
+
+# Q2) FFT Applications [6 marks]
+
+# List and briefly explain three applications of Fast Fourier Transform.
+
+# Model Solutions:
+# 1. Spectrum analysis - analyzing frequency content of signals
+# 2. Digital filtering - implementing filters in frequency domain  
+# 3. Image processing - operations like convolution in frequency domain
+
+
+# Output:
+# json
+# {
+#   "metadata": {
+#     "module_code": "EE6100",
+#     "exam_year": 2025,
+#     "exam_month": "June"
+#   },
+#   "answers": {
+#     "Q1": {
+#       "i": {
+#         "question": "Define sampling theorem.",
+#         "answer": "The sampling theorem states that a continuous signal can be perfectly reconstructed from its samples if the sampling frequency is at least twice the highest frequency component of the signal (Nyquist rate).",
+#         "guideline": "",
+#         "marks": 4
+#       },
+#       "ii": {
+#         "question": "What is aliasing?",
+#         "answer": "Aliasing occurs when the sampling frequency is insufficient, causing high-frequency components to appear as lower frequencies in the sampled signal.",
 #         "question": "Derive the formula for electrical power and calculate power when V=12V and I=2A.",
 #         "answer": "Power is the rate of energy consumption: P = W/t\nSince W = V × I × t, therefore P = V × I\nGiven: V = 12V, I = 2A\nP = V × I = 12 × 2 = 24W",
 #         "guideline": "- Derivation of P = VI: 2 marks\n- Correct substitution: 1 mark\n- Calculation: 1 mark\n- Units: 1 mark",

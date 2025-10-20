@@ -74,27 +74,44 @@
 import argparse
 import logging
 import pathlib
-from typing import Iterable
+import sys
+import os
+from typing import Iterable, List, Dict, Any, Optional
+
 from docx import Document
 import pdfplumber
 from rich import print
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 
+# project imports
 from src.services.model_answer_extractor import ModelAnswerExtractor
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
-from src.services.database_services.model_answer_embedding_db import ModelAnswerEmbeddingDB
+from src.services.database_services.model_answer_embedding_db import (
+    ModelAnswerEmbeddingDB,
+)
+
+# Load environment variables
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def read_text(path: pathlib.Path) -> str:
-    if path.suffix.lower() == ".docx":
+    """Return plain text from .docx or .pdf (raise on others)."""
+    suffix = path.suffix.lower()
+
+    if suffix == ".docx":
         doc = Document(path)
         return "\n".join(p.text for p in doc.paragraphs)
-    elif path.suffix.lower() == ".pdf":
+
+    if suffix == ".pdf":
         with pdfplumber.open(path) as pdf:
             return "\n".join(p.extract_text() or "" for p in pdf.pages)
+
     raise ValueError(f"Unsupported file type: {path.name}")
 
 
@@ -118,9 +135,8 @@ def main() -> None:
         logger.error("Root folder does not exist: %s", root)
         return
 
-    print(f"[bold]⏳ Scanning [cyan]{root}[/] …[/]")
-
-    extractor = ModelAnswerExtractor(args.provider, args.model)
+    # Create extractor - but we'll override the extracted metadata with database data
+    extractor = ModelAnswerExtractor(provider, model)
 
     # Choose embedder
     provider_override = None

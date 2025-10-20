@@ -16,7 +16,7 @@ class ModelAnswer:
 
     answer_text: str = ""
     guideline_text: Optional[str] = None
-    max_marks: Optional[int] = None
+    max_marks: Optional[float] = None
 
 
     module_code: Optional[str] = None

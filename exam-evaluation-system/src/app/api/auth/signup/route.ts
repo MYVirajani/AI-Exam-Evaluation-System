@@ -1,9 +1,8 @@
 // src/app/api/auth/signup/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient, Role } from "@/generated/prisma";
+import { prisma } from '@/lib/prisma';
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
@@ -83,7 +82,7 @@ export async function POST(request: Request) {
         first_name,
         last_name,
         title,
-        role: role as Role,
+        role: role,
         username,
         password: hashed,
         email,

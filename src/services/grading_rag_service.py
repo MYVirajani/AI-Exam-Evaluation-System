@@ -324,6 +324,7 @@
 # # # # # import logging
 # # # # # import os
 # # # # # import re
+# # # # # import re
 # # # # # from typing import List
 
 # # # # # from langchain_community.chat_models import ChatOpenAI
@@ -333,6 +334,7 @@
 # # # # # from langchain.prompts import PromptTemplate
 # # # # # from langchain_community.vectorstores import PGVector
 
+# # # # # from src.utils.prompt_utils import PromptTemplates
 # # # # # from src.utils.prompt_utils import PromptTemplates
 # # # # # from .database_services.student_answer_db import StudentAnswerService
 # # # # # from .database_services.student_embedding_db import StudentAnswerEmbeddingDB
@@ -479,6 +481,22 @@
 # # # # #             return float(data.get("score", 0)), data.get("reason", "No reason provided")
 # # # # #         else:
 # # # # #             log.error("❌ JSON parse error: Could not extract valid JSON\nRaw LLM response: %s", response)
+
+# # # # #         def extract_json_object(text: str):
+# # # # #             try:
+# # # # #                 match = re.search(r'\{.*?\}', text, re.DOTALL)
+# # # # #                 if match:
+# # # # #                     return json.loads(match.group(0))
+# # # # #             except json.JSONDecodeError as e:
+# # # # #                 log.error("❌ JSON decode error: %s", e)
+# # # # #             return None
+
+# # # # #         data = extract_json_object(response)
+
+# # # # #         if data:
+# # # # #             return float(data.get("score", 0)), data.get("reason", "No reason provided")
+# # # # #         else:
+# # # # #             log.error("❌ JSON parse error: Could not extract valid JSON\nRaw LLM response: %s", response)
 # # # # #             return 0.0, "Invalid LLM response"
 
 
@@ -535,6 +553,7 @@
 
 # # # #     def grade_session(self, module: str, year: int, month: str, student: str | None = None):
 # # # #         print(f"\U0001F4D8 Starting grading for: {module} {month} {year}")
+# # # #         print(f"\U0001F4D8 Starting grading for: {module} {month} {year}")
 # # # #         groups = self.stu_db.get_all_answers_grouped(module_code=module, year=year, month=month)
 
 # # # #         count = 0
@@ -544,6 +563,7 @@
 # # # #             if student and stu != student:
 # # # #                 continue
 
+# # # #             print(f"\U0001F4DD Grading student: {stu}")
 # # # #             print(f"\U0001F4DD Grading student: {stu}")
 # # # #             self._grade_paper(stu, mod, yr, mon, ans_list)
 # # # #             count += 1
@@ -595,7 +615,10 @@
 # # # #                     max_marks=ma["max_marks"] or 0,
 # # # #                     feedback=reason,
 # # # #                     similarity_score=0.0,
+# # # #                     feedback=reason,
+# # # #                     similarity_score=0.0,
 # # # #                     grading_method=GradingMethod.RAG,
+# # # #                     confidence_score=1.0
 # # # #                     confidence_score=1.0
 # # # #                 )
 # # # #             )
@@ -603,6 +626,7 @@
 # # # #             total += score
 # # # #             possible += ma["max_marks"] or 0
 
+# # # #         self.result_db.save_paper_total(stu_idx, module, year, month, total, possible)
 # # # #         self.result_db.save_paper_total(stu_idx, module, year, month, total, possible)
 # # # #         self.result_db.commit()
 
@@ -691,8 +715,10 @@
 # # #         )
 
 # # #         self.stu_db = StudentAnswerService(provider_suffix=self.suffix)
+# # #         self.stu_db = StudentAnswerService(provider_suffix=self.suffix)
 # # #         self.stu_embed_db = StudentAnswerEmbeddingDB(embedder)
 # # #         self.mod_db = ModelAnswerEmbeddingDB(embedder)
+# # #         self.result_db = GradingResultDB(provider_suffix=self.suffix)
 # # #         self.result_db = GradingResultDB(provider_suffix=self.suffix)
 
 # # #     def grade_session(self, module: str, year: int, month: str, student: str | None = None):
@@ -924,6 +950,7 @@
 # # #                     exam_year=year,
 # # #                     exam_month=month,
 # # #                     full_question_id=sa.full_question_id,
+# # #                     # mark=score,
 # # #                     score=score,
 # # #                     max_marks=ma["max_marks"] or 0,
 # # #                     feedback=reason,
@@ -977,7 +1004,6 @@
 # # #         else:
 # # #             log.error("\u274c JSON parse error: Could not extract valid JSON\nRaw LLM response: %s", response)
 # # #             return 0.0, "Invalid LLM response"
-
 
 # # import json
 # # import logging
@@ -1125,11 +1151,14 @@
 # #         # ✅ Retrieval cache to ensure consistent context across students
 # #         retrieval_cache = {}
 
+# #         # ✅ Retrieval cache to ensure consistent context across students
+# #         retrieval_cache = {}
+
 # #         for sa in answers:
 # #             ma = self.mod_db.get_model_answer(sa.full_question_id, module)
 # #             if not ma:
 # #                 skipped += 1
-# #                 log.warning("⚠️  Model answer missing for %s – skipping.", sa.full_question_id)
+# #                 log.warning("\u26a0\ufe0f  Model answer missing for %s – skipping.", sa.full_question_id)
 # #                 continue
 
 # #             # ✅ Use cached retrieval if already fetched for this question
@@ -1176,7 +1205,9 @@
 # #                     max_marks=ma["max_marks"] or 0,
 # #                     feedback=reason,
 # #                     similarity_score=similarity,
+# #                     similarity_score=similarity,
 # #                     grading_method=GradingMethod.RAG,
+# #                     confidence_score=1.0 if sa.answer_text and sa.answer_text.strip() else 0.0
 # #                     confidence_score=1.0 if sa.answer_text and sa.answer_text.strip() else 0.0
 # #                 )
 # #             )
@@ -1212,6 +1243,7 @@
 # #             retrieved_chunks=retrieved,
 # #             student_answer=student_answer_text,
 # #             similarity_score=similarity_score
+# #             similarity_score=similarity_score
 # #         )
 
 # #         response = self.chat.invoke(prompt).content
@@ -1222,7 +1254,7 @@
 # #                 if match:
 # #                     return json.loads(match.group(0))
 # #             except json.JSONDecodeError as e:
-# #                 log.error("❌ JSON decode error: %s", e)
+# #                 log.error("\u274c JSON decode error: %s", e)
 # #             return None
 
 # #         data = extract_json_object(response)
@@ -1230,7 +1262,7 @@
 # #         if data:
 # #             return float(data.get("score", 0)), data.get("reason", "No reason provided")
 # #         else:
-# #             log.error("❌ JSON parse error: Could not extract valid JSON\nRaw LLM response: %s", response)
+# #             log.error("\u274c JSON parse error: Could not extract valid JSON\nRaw LLM response: %s", response)
 # #             return 0.0, "Invalid LLM response"
 
 
@@ -1243,12 +1275,12 @@
 # import numpy as np
 # from typing import List
 
-# from langchain_community.chat_models import ChatOpenAI
-# from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
-# from langchain_community.embeddings import OpenAIEmbeddings
-# from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
-# from langchain.prompts import PromptTemplate
-# from langchain_community.vectorstores import PGVector
+# # from langchain_community.chat_models import ChatOpenAI
+# # from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
+# # from langchain_community.embeddings import OpenAIEmbeddings
+# # from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
+# # from langchain.prompts import PromptTemplate
+# # from langchain_community.vectorstores import PGVector
 
 # from src.utils.prompt_utils import PromptTemplates
 # from .database_services.student_answer_db import StudentAnswerService
@@ -1339,21 +1371,21 @@
 #         print(f"\U0001F4D8 Starting grading for: {module} {month} {year}")
 #         groups = self.stu_db.get_all_answers_grouped(module_code=module, year=year, month=month)
 
-#         count = 0
-#         for (stu, mod, yr, mon), ans_list in groups.items():
-#             if (mod, yr, mon) != (module, year, month):
-#                 continue
-#             if student and stu != student:
-#                 continue
+# #         count = 0
+# #         for (stu, mod, yr, mon), ans_list in groups.items():
+# #             if (mod, yr, mon) != (module, year, month):
+# #                 continue
+# #             if student and stu != student:
+# #                 continue
 
-#             print(f"\U0001F4DD Grading student: {stu}")
-#             self._grade_paper(stu, mod, yr, mon, ans_list)
-#             count += 1
+# #             print(f"\U0001F4DD Grading student: {stu}")
+# #             self._grade_paper(stu, mod, yr, mon, ans_list)
+# #             count += 1
 
-#         if count == 0:
-#             print("⚠️ No matching student answers found for this session.")
-#         else:
-#             print(f"✅ Finished grading {count} student(s).")
+# #         if count == 0:
+# #             print("⚠️ No matching student answers found for this session.")
+# #         else:
+# #             print(f"✅ Finished grading {count} student(s).")
 
 #     def _grade_paper(self, stu_idx: str, module: str, year: int, month: str, answers: list):
 #         total = 0.0
@@ -1639,7 +1671,8 @@ class RAGGrader:
         #     raise Exception(f"Ollama grading request failed: {e}")
 
     def grade_session(self, module: str, year: int, month: str, student: str | None = None):
-        print(f"\U0001F4D8 Starting grading for: {module} {month} {year}")
+        """Legacy method - kept for backward compatibility"""
+        print(f"📖 Starting grading for: {module} {month} {year}")
         groups = self.stu_db.get_all_answers_grouped(module_code=module, year=year, month=month)
 
         count = 0
@@ -1649,7 +1682,7 @@ class RAGGrader:
             if student and stu != student:
                 continue
 
-            print(f"\U0001F4DD Grading student: {stu}")
+            print(f"📝 Grading student: {stu}")
             self._grade_paper(stu, mod, yr, mon, ans_list)
             count += 1
 
@@ -1659,11 +1692,13 @@ class RAGGrader:
             print(f"✅ Finished grading {count} student(s).")
 
     def _grade_paper(self, stu_idx: str, module: str, year: int, month: str, answers: list):
+        """Legacy method - kept for backward compatibility"""
         total = 0.0
         possible = 0.0
         graded_ok = 0
         skipped = 0
 
+        # Retrieval cache to ensure consistent context across students
         # Retrieval cache to ensure consistent context across students
         retrieval_cache = {}
 
@@ -1674,6 +1709,7 @@ class RAGGrader:
                 log.warning("⚠️  Model answer missing for %s – skipping.", sa.full_question_id)
                 continue
 
+            # Use cached retrieval if already fetched for this question
             # Use cached retrieval if already fetched for this question
             if sa.full_question_id not in retrieval_cache:
                 retrieved_blocks = self._retrieve(ma["question_text"], module)
@@ -1730,9 +1766,98 @@ class RAGGrader:
         self.result_db.commit()
 
         log.info("✅ %s graded — %.2f / %.2f   (%d graded, %d skipped)",
-                stu_idx, total, possible, graded_ok, skipped)
+                 stu_idx, total, possible, graded_ok, skipped)
+
+    def _grade_paper_with_assessment(self, stu_idx: str, module: str, year: int, month: str, 
+                                   answers: list, assessment_id: str, submission_id: str = None):
+        """NEW: Grade paper with assessment-specific filtering"""
+        total = 0.0
+        possible = 0.0
+        graded_ok = 0
+        skipped = 0
+
+        # Retrieval cache to ensure consistent context across students
+        retrieval_cache = {}
+
+        for sa in answers:
+            # Get model answer for this specific assessment
+            ma = self.mod_db.get_model_answer(sa.full_question_id, module, assessment_id)
+            if not ma:
+                skipped += 1
+                log.warning("⚠️  Model answer missing for %s in assessment %s – skipping.", 
+                           sa.full_question_id, assessment_id)
+                continue
+
+            # Use cached retrieval if already fetched for this question
+            if sa.full_question_id not in retrieval_cache:
+                # Retrieve lecture materials filtered by assessment
+                retrieved_blocks = self._retrieve_by_assessment(ma["question_text"], module, assessment_id)
+                retrieval_cache[sa.full_question_id] = retrieved_blocks
+            else:
+                retrieved_blocks = retrieval_cache[sa.full_question_id]
+
+            # Grade even empty
+            if not sa.answer_text or sa.answer_text.strip() == "":
+                score = 0.0
+                reason = "Student did not provide an answer."
+                similarity = 0.0
+                log.info("📝 Empty student answer for %s – assigning 0 score.", sa.full_question_id)
+            else:
+                # Get student embedding for this specific assessment
+                stu_vec = self.stu_embed_db.get_embedding(
+                    student_index=stu_idx,
+                    full_question_id=sa.full_question_id,
+                    module_code=module,
+                    exam_year=year,
+                    exam_month=month,
+                    assessment_id=assessment_id
+                )
+
+                # Get model embedding for this specific assessment
+                mod_vec = self.mod_db.get_embedding(
+                    full_question_id=sa.full_question_id,
+                    module_code=module,
+                    exam_year=year,
+                    exam_month=month,
+                    assessment_id=assessment_id
+                )
+
+                similarity = self._cosine_similarity(stu_vec, mod_vec) if stu_vec is not None and mod_vec is not None else 0.0
+
+                score, reason = self._call_llm(sa.answer_text, ma, retrieved_blocks, similarity)
+
+            # Save result with assessment context
+            self.result_db.save_question_mark(
+                GradingResult(
+                    student_index=stu_idx,
+                    module_code=module,
+                    exam_year=year,
+                    exam_month=month,
+                    full_question_id=sa.full_question_id,
+                    score=score,
+                    max_marks=ma["max_marks"] or 0,
+                    feedback=reason,
+                    similarity_score=similarity,
+                    grading_method=GradingMethod.RAG,
+                    confidence_score=1.0 if sa.answer_text and sa.answer_text.strip() else 0.0,
+                    assessment_id=assessment_id,
+                    submission_id=submission_id
+                )
+            )
+            graded_ok += 1
+            total += score
+            possible += ma["max_marks"] or 0
+
+        # Save paper total with assessment context
+        self.result_db.save_paper_total(stu_idx, module, year, month, total, possible, assessment_id)
+        self.result_db.commit()
+
+        log.info("✅ %s graded for assessment %s — %.2f / %.2f   (%d graded, %d skipped)",
+                 stu_idx, assessment_id, total, possible, graded_ok, skipped)
 
     def _cosine_similarity(self, v1, v2):
+        if v1 is None or v2 is None:
+            return 0.0
         a = np.array(v1)
         b = np.array(v2)
         a_norm = a / np.linalg.norm(a)
@@ -1740,6 +1865,7 @@ class RAGGrader:
         return float(np.dot(a_norm, b_norm))
 
     def _retrieve(self, question_text: str, module: str) -> str:
+        """Legacy retrieval method"""
         docs = self.vstore.similarity_search(
             question_text, k=self.top_k, filter={"module_code": module}
         )

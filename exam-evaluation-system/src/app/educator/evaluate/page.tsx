@@ -154,8 +154,7 @@ export default function UploadPage() {
           <FileUploadSection
             title="Exam Paper"
             icon={<FileIcon className="w-5 h-5 text-blue-600" />}
-            acceptedTypes="PDF, DOCX"
-            maxSize="10MB"
+            type='QUESTION_PAPER'
             uploadedFile={uploadedFiles.examPaper}
             onTriggerUpload={() => triggerFileInput(examPaperInputRef)}
           />
@@ -175,8 +174,7 @@ export default function UploadPage() {
           <FileUploadSection
             title="Model Answer Sheet"
             icon={<FileIcon className="w-5 h-5 text-blue-600" />}
-            acceptedTypes="PDF, DOCX"
-            maxSize="5MB"
+            type='MODEL_PAPER'
             uploadedFile={uploadedFiles.modelAnswer}
             onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
           />

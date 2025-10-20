@@ -17,8 +17,6 @@ interface MultiFileUploadSectionProps {
 export function MultiFileUploadSection({
   title,
   icon,
-  acceptedTypes,
-  maxSize,
   uploadedFiles,
   onTriggerUpload,
   onRemoveFile,
@@ -29,8 +27,7 @@ export function MultiFileUploadSection({
     <FileUploadSection
       title={title}
       icon={icon}
-      acceptedTypes={acceptedTypes}
-      maxSize={maxSize}
+      type='ANSWER_SCRIPT'
       uploadedFile={uploadedFiles}
       onTriggerUpload={onTriggerUpload}
       onRemoveFile={onRemoveFile}

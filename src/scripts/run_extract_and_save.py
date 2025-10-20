@@ -4,23 +4,37 @@ import time
 from docx import Document
 from pprint import pprint
 
+# Add root path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.services.answer_extractor import AnswerExtractor
 from src.services.database_services.student_answer_db import StudentAnswerService
+from src.services.database_services.student_answer_service_with_media import StudentAnswerServiceWithMedia
+
+
+# --------------------------------------------------------------------------
+# HELPER FUNCTIONS
+# --------------------------------------------------------------------------
 
 def load_docx_text(docx_path: str) -> str:
+    """Read text content from a DOCX file."""
     doc = Document(docx_path)
     return "\n".join([para.text.strip() for para in doc.paragraphs if para.text.strip()])
 
+
 def get_provider_suffix(provider: str) -> str:
-    """Map provider names to database suffixes"""
+    """Map provider names to database suffixes."""
     mapping = {
         "DeepSeek": "deepseek",
         "GoogleGemini": "gemini",
         "OpenAI": "openai"
     }
     return mapping.get(provider, provider.lower())
+
+
+# --------------------------------------------------------------------------
+# MAIN EXTRACTION AND SAVE FUNCTION
+# --------------------------------------------------------------------------
 
 def extract_and_save(docx_path: str, extractor: AnswerExtractor, provider: str):
     filename = os.path.basename(docx_path)
@@ -34,7 +48,9 @@ def extract_and_save(docx_path: str, extractor: AnswerExtractor, provider: str):
             print("❌ No answers extracted.")
             return
 
-        # Preview the result
+        # ------------------------------------------------------------------
+        # PREVIEW EXTRACTED RESULTS
+        # ------------------------------------------------------------------
         print("\n🧾 Extracted Answers Preview:")
         for ans in answers:
             print(f"• {ans.full_question_id}:")
@@ -44,10 +60,12 @@ def extract_and_save(docx_path: str, extractor: AnswerExtractor, provider: str):
             else:
                 print("   🖼️ Media URLs: None")
 
-
-        # Save to database - use the mapped provider suffix from extractor
+        # ------------------------------------------------------------------
+        # SAVE TO PROVIDER-SPECIFIC TABLE
+        # ------------------------------------------------------------------
         first = answers[0]
         provider_suffix = extractor.provider_suffix
+
         db = StudentAnswerService(provider_suffix=provider_suffix)
         db.initialize_table()
         db.save_answers(
@@ -60,8 +78,25 @@ def extract_and_save(docx_path: str, extractor: AnswerExtractor, provider: str):
         db.close()
 
         print(f"✅ Saved answers for {first.student_index} | {first.module_code} | {first.exam_year}-{first.exam_month}")
+
+        # ------------------------------------------------------------------
+        # SAVE TO NORMALIZED TABLES (only if provider == OpenAI)
+        # ------------------------------------------------------------------
+        if provider.lower() == "openai":
+            print("🗄️  Also saving answers in normalized tables (student_answer + student_answer_media)...")
+            db_media = StudentAnswerServiceWithMedia()
+            db_media.initialize_tables()
+            db_media.save_answers(answers)
+            db_media.close()
+            print("✅ Successfully saved in normalized tables.")
+
     except Exception as e:
         print(f"❌ Failed to process {filename}: {e}")
+
+
+# --------------------------------------------------------------------------
+# MAIN SCRIPT ENTRY
+# --------------------------------------------------------------------------
 
 if __name__ == "__main__":
     import argparse
@@ -77,6 +112,7 @@ if __name__ == "__main__":
     if os.path.isfile(args.folder) and args.folder.endswith(".docx"):
         # Single file mode
         extract_and_save(args.folder, extractor, args.provider)
+
     elif os.path.isdir(args.folder):
         # Folder mode
         for filename in os.listdir(args.folder):
@@ -84,11 +120,11 @@ if __name__ == "__main__":
                 filepath = os.path.join(args.folder, filename)
                 extract_and_save(filepath, extractor, args.provider)
 
-                # Delay to respect Gemini rate limits (15 requests/min)
+                # Delay for provider rate limits
                 if args.provider == "GoogleGemini":
                     time.sleep(10)
-                # Add delay for DeepSeek if needed
                 elif args.provider == "DeepSeek":
-                    time.sleep(5)  # Adjust as needed for DeepSeek rate limits
+                    time.sleep(5)
+
     else:
         print("❌ Invalid --folder path. Must be either a .docx file or a directory.")

@@ -39,6 +39,7 @@ class StudentAnswerService(BaseRelationalDB):
             answers JSONB,
             PRIMARY KEY (student_index, module_code, exam_year, exam_month)
         );
+
         """)
         self.commit()
 

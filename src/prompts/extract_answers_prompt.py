@@ -160,11 +160,19 @@
 
 EXTRACT_STUDENT_ANSWERS_PROMPT = """
 You will receive the full text content of a student's typed or handwritten exam script.
-The script may include embedded media references such as images, tables, or equations extracted from the document.
+The script may include embedded media references such as images, tables, equations, or LaTeX tables extracted from the document.
+
 Media items are represented as placeholders such as:
 - [Image: path/to/image.png]
-- [Table: path/to/table.png]
-- [Equation: path/to/equation.png]
+- LaTeX-style table content such as:
+  \\begin{tabular}{|c|c|c|}
+  \\hline
+  Month & Rainfall (mm) & Temperature (°C) \\\\
+  \\hline
+  Jan & 90 & 27 \\\\
+  Feb & 60 & 28 \\\\
+  \\hline
+  \\end{tabular}
 
 ---
 
@@ -185,10 +193,10 @@ Return these inside a `"metadata"` field.
 
 Extract all questions and sub-questions in the structure of the answer script (e.g., Q1) a), Q1) b), Q2) i), etc.).
 
-✅ **Each sub-question must always be represented as an object** containing:
+✅ Each sub-question must be represented as an object containing:
 ```json
 {
-  "answer_text": "<the student's full text answer here>",
+  "answer_text": "<student's full textual answer, including LaTeX tables or any inline LaTeX if present>",
   "media_urls": ["<list of any media paths or URLs found within this answer>"]
 }
 

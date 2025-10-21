@@ -7,13 +7,7 @@ from docx.oxml.ns import qn
 from xml.sax.saxutils import escape
 from docx2pdf import convert
 
-# Optional dependencies
-try:
-    from docx_math import convert_omml
-    DOCX_MATH_AVAILABLE = True
-except ImportError:
-    DOCX_MATH_AVAILABLE = False
-
+# Optional dependency for flowcharts (Windows only)
 try:
     import win32com.client
     WIN32_AVAILABLE = True
@@ -39,35 +33,40 @@ os.makedirs(PDF_DIR, exist_ok=True)
 # HELPER FUNCTIONS
 # -----------------------------
 def save_image(image_blob, doc_basename, counter):
+    """Save embedded image bytes to file and return its path."""
     image_name = f"{doc_basename}_img_{counter}.png"
     image_path = os.path.join(EXTRACT_DIR, image_name)
-    Image.open(BytesIO(image_blob)).save(image_path)
+    image = Image.open(BytesIO(image_blob))
+    image.save(image_path)
     return image_path
 
 
 def export_shapes_to_images(docx_path, output_dir):
-    """Export flowcharts/shapes as PNGs via MS Word COM (Windows only)."""
-    exported = {}
+    """Export flowcharts/shapes as images using MS Word COM (Windows only)."""
+    exported_paths = []
     if not WIN32_AVAILABLE:
-        print("⚠️ win32com not available — skipping flowchart export.")
-        return exported
+        print("⚠️ win32com not available — skipping flowchart extraction.")
+        return exported_paths
 
     word = win32com.client.Dispatch("Word.Application")
     word.Visible = False
     doc = word.Documents.Open(docx_path)
-    for i, shape in enumerate(doc.Shapes, start=1):
+    count = 0
+    for shape in doc.Shapes:
+        count += 1
+        shape_path = os.path.join(output_dir, f"flowchart_{count}.png")
         try:
-            path = os.path.join(output_dir, f"flowchart_{i}.png")
-            shape.Export(path, 1)
-            exported[f"flowchart_{i}"] = path
+            shape.Export(shape_path, 1)  # 1 = PNG
+            exported_paths.append(shape_path)
         except Exception:
             pass
     doc.Close(False)
     word.Quit()
-    return exported
+    return exported_paths
 
 
 def table_to_latex(table):
+    """Convert Word table to LaTeX tabular format."""
     rows = []
     for row in table.rows:
         cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
@@ -79,49 +78,22 @@ def table_to_latex(table):
     return f"{header}\n{body}{footer}"
 
 
-def omml_to_latex(omath):
-    if DOCX_MATH_AVAILABLE:
-        try:
-            return convert_omml(omath)
-        except Exception as e:
-            return f"[Equation conversion error: {e}]"
-    else:
-        return "[Unconverted Equation: OMML detected]"
-
-
-def replace_omml_with_latex(doc):
-    """Replace OMML math elements inline with LaTeX placeholders."""
-    NS = {"m": "http://schemas.openxmlformats.org/officeDocument/2006/math"}
-    omml_nodes = doc.element.body.xpath(".//*[local-name()='oMath'] | .//*[local-name()='oMathPara']")
-    count = 0
-    for omath in omml_nodes:
-        latex = omml_to_latex(omath)
-        safe_latex = escape(latex)
-        para = parse_xml(
-            f'<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-            f'<w:r><w:t>[LaTeX Equation: {safe_latex}]</w:t></w:r></w:p>'
-        )
-        parent = omath.getparent()
-        parent.addnext(para)
-        parent.remove(omath)
-        count += 1
-    return count
-
-
 # -----------------------------
 # CORE PROCESSING FUNCTION
 # -----------------------------
 def process_docx(docx_path):
+    doc = Document(docx_path)
     basename = os.path.splitext(os.path.basename(docx_path))[0]
     print(f"\n📄 Processing: {basename}.docx")
 
-    doc = Document(docx_path)
     img_counter = 0
     tbl_counter = 0
     latex_insertions = 0
 
-    # Export flowcharts
+    # Export flowcharts first
     flowcharts = export_shapes_to_images(docx_path, EXTRACT_DIR)
+    if flowcharts:
+        print(f"🧩 Exported {len(flowcharts)} flowcharts.")
 
     body_elements = list(doc.element.body)
 
@@ -133,26 +105,25 @@ def process_docx(docx_path):
             tbl_counter += 1
             for tbl in doc.tables:
                 if tbl._element is element:
-                    latex = table_to_latex(tbl)
-                    safe_latex = escape(latex)
+                    latex_code = table_to_latex(tbl)
+                    safe_latex = escape(latex_code)
                     parent = element.getparent()
                     idx = parent.index(element)
-                    para = parse_xml(
+                    placeholder = parse_xml(
                         f'<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
                         f'<w:r><w:t>[LaTeX Table: {safe_latex}]</w:t></w:r></w:p>'
                     )
-                    parent.insert(idx + 1, para)
+                    parent.insert(idx + 1, placeholder)
                     parent.remove(element)
                     latex_insertions += 1
                     break
 
-        # ---------- PARAGRAPHS ----------
+        # ---------- PARAGRAPH (check for embedded images) ----------
         elif tag.endswith("p"):
             paragraph = next((p for p in doc.paragraphs if p._element is element), None)
             if not paragraph:
                 continue
 
-            # Embedded images
             for run in paragraph.runs:
                 blips = run.element.xpath(".//a:blip")
                 if blips:
@@ -165,26 +136,20 @@ def process_docx(docx_path):
                     for blip in blips:
                         blip.getparent().remove(blip)
 
-    # ---------- EQUATIONS (OMML) ----------
-    eq_count = replace_omml_with_latex(doc)
-    latex_insertions += eq_count
-    if eq_count:
-        print(f"🧮 Converted {eq_count} equations to LaTeX.")
-
     # ---------- FLOWCHARTS ----------
-    for name, path in flowcharts.items():
+    for fc_path in flowcharts:
         safe_chart = escape(
-            f"\\begin{{figure}}[h]\\centering\\includegraphics[width=0.8\\linewidth]{{{os.path.basename(path)}}}\\caption{{Flowchart extracted}}\\end{{figure}}"
+            f"\\begin{{figure}}[h]\\centering\\includegraphics[width=0.8\\linewidth]{{{os.path.basename(fc_path)}}}\\caption{{Flowchart extracted}}\\end{{figure}}"
         )
         doc.add_paragraph(f"[LaTeX Flowchart: {safe_chart}]")
 
-    # ---------- SAVE ----------
+    # ---------- SAVE UPDATED DOCX ----------
     updated_path = os.path.join(OUTPUT_DIR, f"updated_{basename}.docx")
     doc.save(updated_path)
     print(f"✅ Saved updated Word: {updated_path}")
-    print(f"   Extracted {img_counter} images, {tbl_counter} tables, {latex_insertions} LaTeX inserts.")
+    print(f"   Extracted {img_counter} images, {tbl_counter} tables, {latex_insertions} LaTeX tables inserted.")
 
-    # ---------- PDF ----------
+    # ---------- PDF CONVERSION ----------
     pdf_path = os.path.join(PDF_DIR, f"{basename}.pdf")
     try:
         convert(updated_path, pdf_path)
@@ -196,7 +161,7 @@ def process_docx(docx_path):
 
 
 # -----------------------------
-# MAIN
+# MAIN SCRIPT
 # -----------------------------
 def main():
     docx_files = [f for f in os.listdir(INPUT_DIR) if f.lower().endswith(".docx")]
@@ -208,9 +173,9 @@ def main():
         process_docx(os.path.join(INPUT_DIR, file))
 
     print("\n🎉 All documents processed successfully!")
-    print(f"📂 Extracted media in: {EXTRACT_DIR}")
-    print(f"📄 Updated Word docs in: {OUTPUT_DIR}")
-    print(f"📘 PDFs in: {PDF_DIR}")
+    print(f"📂 Extracted images/tables in: {EXTRACT_DIR}")
+    print(f"📄 Updated .docx files in: {OUTPUT_DIR}")
+    print(f"📘 PDFs saved in: {PDF_DIR}")
 
 
 if __name__ == "__main__":

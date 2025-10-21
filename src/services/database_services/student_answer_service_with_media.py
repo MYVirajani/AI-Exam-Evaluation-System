@@ -42,7 +42,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             student_answer_id UUID REFERENCES student_answer(id) ON DELETE CASCADE,
             submission_id TEXT,
             media_url TEXT,
-            media_summary TEXT
+            media_summary JSONB
         );
         """)
         self.commit()

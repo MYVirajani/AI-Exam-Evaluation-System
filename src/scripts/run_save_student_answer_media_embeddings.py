@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 # Adjust import paths if running directly
-from src.services.embedding.student_answer_media_embedder import StudentAnswerMediaEmbeddingDB
+from src.services.database_services.student_answer_media_embedder import StudentAnswerMediaEmbeddingDB
 from src.services.embedding.openai_embedder import OpenAIEmbedder  # or your actual embedder class
 
 logging.basicConfig(level=logging.INFO)

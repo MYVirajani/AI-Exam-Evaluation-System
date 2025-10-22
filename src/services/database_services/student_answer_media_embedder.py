@@ -36,19 +36,18 @@ class StudentAnswerMediaEmbeddingDB(BaseVectorDBService):
         self._create_table()
 
     def _create_table(self):
-        """Create vector embedding table in the Vector DB."""
+        """Create vector embedding table in the Vector DB with composite PK and CASCADE delete."""
         dim = self.embedder.get_embedding_dimension()
         self.cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.table_name} (
-                id SERIAL PRIMARY KEY,
-                submission_id TEXT,
-                student_answer_id UUID,
+                submission_id TEXT NOT NULL,
+                student_answer_id UUID NOT NULL,
                 embedding vector({dim}),
-                UNIQUE (submission_id, student_answer_id)
+                PRIMARY KEY (submission_id, student_answer_id)
             );
         """)
         self.commit()
-        logger.info(f"[VectorDB] ✅ Ready table: {self.table_name}")
+        logger.info(f"[VectorDB] ✅ Ready table: {self.table_name} (composite PK with CASCADE)")
 
     def _fetch_answers(self, submission_id: str):
         """

@@ -1,10 +1,18 @@
 import uuid
+import json
 import logging
 from typing import List
 from .base_relational_db import BaseRelationalDB
 from ...models.student_answer import StudentAnswer
 
+# --------------------------------------------------------------------------
+# Configure logging
+# --------------------------------------------------------------------------
+logging.basicConfig(level=logging.INFO)
 
+# --------------------------------------------------------------------------
+# CLASS 1: StudentAnswerServiceWithMedia
+# --------------------------------------------------------------------------
 class StudentAnswerServiceWithMedia(BaseRelationalDB):
     """
     Handles saving extracted answers into normalized DB tables:
@@ -18,9 +26,9 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
         logging.info("[DB] Using normalized tables: student_answer, student_answer_media")
         print("⚙️ Using tables: student_answer, student_answer_media")
 
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # CREATE TABLES (if not exist)
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def initialize_tables(self):
         """Ensure both tables exist with UUID-based primary keys."""
         self.cursor.execute("""
@@ -47,9 +55,9 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
         """)
         self.commit()
 
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # HELPER: Build clean question number
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def build_question_number(self, *parts):
         """
         Build a clean question number string by joining non-empty parts with '_'.
@@ -60,9 +68,9 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
         filtered = [str(p).strip() for p in parts if p and str(p).strip() != ""]
         return "_".join(filtered)
 
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # SAVE ANSWERS + MEDIA
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def save_answers(self, answers: List[StudentAnswer]):
         """
         Save all answers to student_answer and student_answer_media tables.
@@ -107,9 +115,9 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
 
         print(f"✅ Saved {len(answers)} answers (with media) to normalized tables.")
 
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # FETCH METHODS
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def get_all_answers(self, submission_id: int):
         """Return all answers and their media for a given submission."""
         self.cursor.execute("""
@@ -129,3 +137,54 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                 result[q_num]["media_urls"].append(media_url)
 
         return result
+
+
+# --------------------------------------------------------------------------
+# CLASS 2: StudentMediaDBService
+# --------------------------------------------------------------------------
+class StudentMediaDBService(BaseRelationalDB):
+    """
+    Database service to handle fetching and updating student_answer_media records.
+    """
+
+    def get_media_by_submission(self, submission_id: str):
+        """
+        Fetch all media records for a given submission_id.
+        Returns a list of dicts: {id, student_answer_id, media_url}
+        """
+        try:
+            self.cursor.execute("""
+                SELECT id, student_answer_id, media_url
+                FROM student_answer_media
+                WHERE submission_id = %s;
+            """, (submission_id,))
+            records = self.cursor.fetchall()
+
+            return [
+                {
+                    "id": r[0],
+                    "student_answer_id": r[1],
+                    "media_url": r[2]
+                }
+                for r in records
+            ]
+        except Exception as e:
+            logging.error(f"[DB] Failed to fetch media for submission_id={submission_id}: {e}")
+            return []
+
+    def update_media_summary(self, media_id: str, summary_text: str):
+        """
+        Update media_summary for a given media record.
+        """
+        try:
+            summary_json = json.dumps({"summary": summary_text})
+            self.cursor.execute("""
+                UPDATE student_answer_media
+                SET media_summary = %s
+                WHERE id = %s;
+            """, (summary_json, media_id))
+            self.commit()
+            logging.info(f"[DB] ✅ Updated summary for media_id={media_id}")
+        except Exception as e:
+            logging.error(f"[DB] ❌ Failed to update media_id={media_id}: {e}")
+            self.conn.rollback()

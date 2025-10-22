@@ -3,11 +3,11 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-from src.services.database_services.student_media_db_service import StudentMediaDBService
+from src.services.database_services.student_answer_service_with_media import StudentAnswerServiceWithMedia
 from src.services.summary.image_summarizer import ImageSummarizerLLM
 
 def summarize_submission(submission_id: str):
-    db_service = StudentMediaDBService()
+    db_service = StudentAnswerServiceWithMedia()
     llm = ImageSummarizerLLM()
 
     media_records = db_service.get_media_by_submission(submission_id)

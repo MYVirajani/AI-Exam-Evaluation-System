@@ -1,14 +1,15 @@
-# src/services/vector/student_answer_media_embedder.py
-
 import logging
 from typing import List
 from pgvector.psycopg2 import register_vector
 import sys
 import os
+from ast import literal_eval
 
+# Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.services.database_services.base_vector_db_service import BaseVectorDBService
+from src.services.database_services.base_relational_db import BaseRelationalDB
 from src.services.embedding.abstract_embedder import AbstractEmbedder
 from src.services.database_services.student_media_db_service import StudentMediaDBService
 
@@ -19,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 class StudentAnswerMediaEmbeddingDB(BaseVectorDBService):
     """
     Handles embedding and storing of concatenated (answer_text + media_summary)
-    for each student answer per question_id.
+    for each student_answer_id.
     """
 
     def __init__(self, embedder: AbstractEmbedder, provider_override: str = None):
@@ -27,6 +28,7 @@ class StudentAnswerMediaEmbeddingDB(BaseVectorDBService):
         self.embedder = embedder
         self.media_db = StudentMediaDBService()
 
+        # Define suffix & table name for vector DB
         self.suffix = provider_override.lower() if provider_override else embedder.get_table_suffix()
         self.table_name = f"student_answer_media_embeddings_{self.suffix}"
 
@@ -34,14 +36,15 @@ class StudentAnswerMediaEmbeddingDB(BaseVectorDBService):
         self._create_table()
 
     def _create_table(self):
+        """Create vector embedding table in the Vector DB."""
         dim = self.embedder.get_embedding_dimension()
         self.cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.table_name} (
                 id SERIAL PRIMARY KEY,
                 submission_id TEXT,
-                question_id TEXT,
+                student_answer_id UUID,
                 embedding vector({dim}),
-                UNIQUE (submission_id, question_id)
+                UNIQUE (submission_id, student_answer_id)
             );
         """)
         self.commit()
@@ -49,39 +52,70 @@ class StudentAnswerMediaEmbeddingDB(BaseVectorDBService):
 
     def _fetch_answers(self, submission_id: str):
         """
-        Fetch all student answers and their media summaries for a submission_id.
-        Returns a list of dicts: {submission_id, question_id, concatenated_text}
+        Fetch all student answers and their media summaries for a given submission_id
+        from the Relational DB (student_answer, student_answer_media tables).
+        Returns a list of dicts: {submission_id, student_answer_id, combined_text}
         """
         try:
-            # Fetch answers
-            self.cursor.execute("""
-                SELECT submission_id, question_id, ans_txt, media_summaries
-                FROM student_answer_openai_with_media
+            # ✅ Create a new Relational DB connection (separate from vector DB)
+            rel_db = BaseRelationalDB()
+            rel_cursor = rel_db.cursor
+
+            # ✅ Fetch all answers for the given submission
+            rel_cursor.execute("""
+                SELECT id, answer_text
+                FROM student_answer
                 WHERE submission_id = %s;
             """, (submission_id,))
-            rows = self.cursor.fetchall()
+            answer_rows = rel_cursor.fetchall()
 
-            results = []
-            for row in rows:
-                sub_id, q_id, ans_txt, media_summaries = row
-                media_summary_text = ""
+            # Map: {student_answer_id: answer_text}
+            answer_dict = {row[0]: (row[1] or "") for row in answer_rows}
 
-                # media_summaries might be a JSON list of strings
-                if media_summaries:
+            # ✅ Fetch all media summaries for the same submission
+            rel_cursor.execute("""
+                SELECT student_answer_id, media_summary
+                FROM student_answer_media
+                WHERE submission_id = %s;
+            """, (submission_id,))
+            media_rows = rel_cursor.fetchall()
+
+            # Map: {student_answer_id: concatenated media summary text}
+            media_dict = {}
+            for ans_id, media_summary in media_rows:
+                if media_summary:
                     try:
-                        from ast import literal_eval
-                        summaries = literal_eval(media_summaries) if isinstance(media_summaries, str) else media_summaries
-                        media_summary_text = " ".join(summaries)
+                        if isinstance(media_summary, list):
+                            summaries = media_summary
+                        elif isinstance(media_summary, str):
+                            summaries = literal_eval(media_summary)
+                        else:
+                            summaries = [str(media_summary)]
+                        media_dict[ans_id] = " ".join(map(str, summaries))
                     except Exception:
-                        media_summary_text = str(media_summaries)
+                        media_dict[ans_id] = str(media_summary)
+                else:
+                    media_dict[ans_id] = ""
 
-                combined_text = f"{ans_txt.strip()} {media_summary_text.strip()}".strip()
+            rel_db.close()  # ✅ Always close the relational DB connection
+
+            # ✅ Combine both answers and media summaries
+            results = []
+            all_answer_ids = set(answer_dict.keys()) | set(media_dict.keys())
+
+            for ans_id in all_answer_ids:
+                ans_txt = answer_dict.get(ans_id, "").strip()
+                media_summary_text = media_dict.get(ans_id, "").strip()
+                combined_text = f"{ans_txt} {media_summary_text}".strip()
+
                 results.append({
-                    "submission_id": sub_id,
-                    "question_id": q_id,
+                    "submission_id": submission_id,
+                    "student_answer_id": ans_id,
                     "combined_text": combined_text
                 })
+
             return results
+
         except Exception as e:
             logger.error(f"[DB] ❌ Failed to fetch answers for submission_id={submission_id}: {e}")
             return []
@@ -100,32 +134,32 @@ class StudentAnswerMediaEmbeddingDB(BaseVectorDBService):
             logger.warning("[VectorDB] ⚠️ No answers found to embed.")
             return
 
+        # Generate embeddings
         texts = [r["combined_text"] for r in all_records]
         vectors = self.embedder.embed(texts)
 
+        # Save each embedding to Vector DB
         for rec, vec in zip(all_records, vectors):
             self.cursor.execute(f"""
-                INSERT INTO {self.table_name} (submission_id, question_id, embedding)
+                INSERT INTO {self.table_name} (submission_id, student_answer_id, embedding)
                 VALUES (%s, %s, %s)
-                ON CONFLICT (submission_id, question_id)
+                ON CONFLICT (submission_id, student_answer_id)
                 DO UPDATE SET embedding = EXCLUDED.embedding;
-            """, (rec["submission_id"], rec["question_id"], vec))
+            """, (rec["submission_id"], rec["student_answer_id"], vec))
 
         self.commit()
         logger.info(f"[VectorDB] ✅ Saved {len(all_records)} embeddings to {self.table_name}")
 
-    def get_embeddings_by_question(self, question_id: str):
-        """
-        Retrieve all embeddings for a given question_id.
-        """
+    def get_embeddings_by_answer(self, student_answer_id: str):
+        """Retrieve embedding for a given student_answer_id from Vector DB."""
         try:
             self.cursor.execute(f"""
                 SELECT submission_id, embedding
                 FROM {self.table_name}
-                WHERE question_id = %s;
-            """, (question_id,))
+                WHERE student_answer_id = %s;
+            """, (student_answer_id,))
             rows = self.cursor.fetchall()
             return [{"submission_id": r[0], "embedding": r[1]} for r in rows]
         except Exception as e:
-            logger.error(f"[VectorDB] ❌ Failed to retrieve embeddings for question_id={question_id}: {e}")
+            logger.error(f"[VectorDB] ❌ Failed to retrieve embedding for student_answer_id={student_answer_id}: {e}")
             return []

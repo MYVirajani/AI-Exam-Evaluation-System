@@ -1,7 +1,7 @@
-
-
 EXTRACT_MODEL_ANSWERS_PROMPT = """
 You will receive the full text of an *official model-answer or marking guide*.
+The document may include embedded media references represented as:
+[Image: <absolute_or_relative_path_to_image>]
 
 -----------------------------
 **Your Tasks:**
@@ -11,19 +11,21 @@ You will receive the full text of an *official model-answer or marking guide*.
    - "exam_year": e.g., 2025
    - "exam_month": e.g., "June"
 
-2. Extract all answers using the **exact question hierarchy** from the document.
+2. Extract all answers following the **exact question hierarchy** as it appears in the document.
    Example structure: Q1 → Q1.i → Q1.i.a
 
 3. For each lowest-level question node, extract:
-   - "question": The actual question text (if available, else use "")
-   - "answer": The model answer content
-   - "guideline": Bullet points or marking instructions (or empty string if not present)
-   - "marks": Maximum marks (as an integer, or null if not available)
+   - "question": The question text (or "" if unavailable)
+   - "answer": The corresponding model answer or explanation text
+   - "guideline": Marking instructions, key points, or evaluation criteria (or "")
+   - "marks": Maximum marks (integer, or null if not found)
+   - "media_urls": An array of all image paths (from [Image: ...] tags) appearing in that answer block.  
+     Example: ["E:/data/extracted_media/Model_answer_diagram_img_4.png"]
 
 -----------------------------
 **Output Format (JSON only)**
 
-Your response **must** be a single valid JSON object with this structure:
+Return a **single valid JSON object** in this structure:
 
 {
   "metadata": {
@@ -38,14 +40,16 @@ Your response **must** be a single valid JSON object with this structure:
           "question": "Define supervised learning.",
           "answer": "Supervised learning is ...",
           "guideline": "Include mention of labeled data and prediction tasks.",
-          "marks": 5
+          "marks": 5,
+          "media_url": ["E:/path/to/image1.png", "E:/path/to/image2.png"]
         }
       },
       "ii": {
         "question": "Explain overfitting in ML.",
         "answer": "Overfitting happens when ...",
         "guideline": "",
-        "marks": 3
+        "marks": 3,
+        "media_urls": []
       }
     },
     "Q2": { ... }
@@ -55,12 +59,14 @@ Your response **must** be a single valid JSON object with this structure:
 -----------------------------
 **Strict Rules:**
 
-*  Return only valid JSON. No markdown, no triple backticks.
-*  Do NOT use flat keys like "Q1_i_answer". Use nested objects only.
-*  Every answer leaf must include **all 4 fields**: question, answer, guideline, marks.
-*  Return empty strings ("") or null for missing fields.
-*  Clean up spacing and ensure well-formatted output.
+* Return only valid JSON — no markdown, no triple backticks.
+* Do NOT flatten nested question structures; maintain hierarchical keys (e.g., "Q1" → "i" → "a").
+* Every answer node must include **all 5 fields**: question, answer, guideline, marks, media_urls.
+* `media_urls` must always be an **array**, even if empty.
+* Clean up extra spaces and ensure well-formatted, syntactically correct JSON.
+* Do not modify or shorten any image paths inside `[Image: ...]` tags.
 """
+
 
 
 # EXTRACT_MODEL_ANSWERS_PROMPT = """

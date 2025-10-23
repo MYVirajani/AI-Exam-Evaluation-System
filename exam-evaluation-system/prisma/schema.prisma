@@ -160,13 +160,36 @@ model Question_Paper {
 }
 
 model Model_Answer_Paper {
-  model_answer_paper_id String     @id
-  assessment_id         String     @unique
-  assessment            Assessment @relation(fields: [assessment_id], references: [assessment_id])
+  model_answer_paper_id String         @id
+  assessment_id         String         @unique
+  assessment            Assessment     @relation(fields: [assessment_id], references: [assessment_id])
+  file_url              String
+  created_on            DateTime       @default(now()) @db.Timestamptz(6)
 
-  file_url   String
-  created_on DateTime @default(now()) @db.Timestamptz(6)
+  model_answers Model_Answer[]         @relation("PaperToAnswers")
 }
+
+model Model_Answer {
+  id                      String              @id @default(uuid())
+  assessment_id           String
+  model_answer_paper_id   String
+  question_number         String
+  question_text           String?
+  answer_text             String?
+  guideline_text          String?
+  max_marks               Int?
+  media_urls               String?           
+  media_summary           Json?               
+  created_on              DateTime            @default(now()) @db.Timestamptz(6)
+
+  // Relation correction:
+  model_answer_paper      Model_Answer_Paper  @relation("PaperToAnswers", fields: [model_answer_paper_id], references: [id])
+
+  @@index([assessment_id])
+  @@index([model_answer_paper_id])
+}
+
+
 
 model Marking_Scheme {
   marking_scheme_id String     @id

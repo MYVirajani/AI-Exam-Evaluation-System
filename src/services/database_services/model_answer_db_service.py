@@ -5,7 +5,6 @@ from datetime import datetime
 import sys
 import os
 
-# Ensure project root is in the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.services.database_services.base_relational_db import BaseRelationalDB
@@ -42,6 +41,7 @@ class ModelAnswerDBService(BaseRelationalDB):
         CREATE TABLE IF NOT EXISTS model_answer_media (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             model_answer_id UUID REFERENCES model_answer(id) ON DELETE CASCADE,
+            assessment_id VARCHAR(255) NOT NULL,
             media_url TEXT NOT NULL,
             media_summary TEXT,
             created_on TIMESTAMP DEFAULT NOW()
@@ -122,6 +122,7 @@ class ModelAnswerDBService(BaseRelationalDB):
                         summary = ans.media_summary.get(url)
                     media_values.append((
                         model_answer_id,
+                        assessment_id,  # Add assessment_id here
                         url,
                         summary,
                         datetime.now()
@@ -132,6 +133,7 @@ class ModelAnswerDBService(BaseRelationalDB):
                 media_insert_query = """
                     INSERT INTO model_answer_media (
                         model_answer_id,
+                        assessment_id,
                         media_url,
                         media_summary,
                         created_on

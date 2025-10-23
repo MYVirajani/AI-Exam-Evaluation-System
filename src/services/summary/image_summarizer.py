@@ -2,15 +2,15 @@ import os
 import base64
 import logging
 from openai import OpenAI
-from src.prompts.media_summarizer_prompt import SUMMARY_PROMPT
+from src.prompts.media_summarizer_prompt import SUMMARY_PROMPT, MODEL_SUMMARY_PROMPT  
 
 logging.basicConfig(level=logging.INFO)
 
 
 class ImageSummarizerLLM:
     """
-    Summarizes local student answer images (charts, diagrams, tables, etc.)
-    using GPT-4-Vision (gpt-4o-mini) and a structured academic summarization prompt.
+    Summarizes images (charts, diagrams, tables, etc.) from either
+    student answer scripts or model answer papers using GPT-4-Vision.
     """
 
     def __init__(self):
@@ -22,14 +22,30 @@ class ImageSummarizerLLM:
     # ----------------------------------------------------------------------
     # Summarize local image using GPT-4-Vision
     # ----------------------------------------------------------------------
-    def summarize_image(self, image_path: str) -> str | None:
+    def summarize_image(self, image_path: str, mode: str = "student") -> str | None:
         """
         Describe a local image by encoding it to Base64 and sending it inline.
+        mode: "student" | "model"
         Returns a textual descriptive summary.
         """
         if not os.path.exists(image_path):
             logging.error(f"[LLM] ❌ File not found: {image_path}")
             return None
+
+        # Select prompt based on mode
+        if mode == "model":
+            system_prompt = MODEL_SUMMARY_PROMPT.strip()
+            user_context = (
+                "Analyze this image extracted from a model answer paper. "
+                "Provide a structured academic summary focusing on key solution steps, "
+                "diagrams, formulas, and technical clarity."
+            )
+        else:
+            system_prompt = SUMMARY_PROMPT.strip()
+            user_context = (
+                "Analyze this image extracted from a student's handwritten or typed exam script. "
+                "Follow all steps in the system prompt to provide a structured description."
+            )
 
         try:
             # --- Encode image as base64 ---
@@ -47,24 +63,13 @@ class ImageSummarizerLLM:
                 messages=[
                     {
                         "role": "system",
-                        "content": SUMMARY_PROMPT.strip(),
+                        "content": system_prompt,
                     },
                     {
                         "role": "user",
                         "content": [
-                            {
-                                "type": "text",
-                                "text": (
-                                    "Analyze this image extracted from a student's handwritten or typed exam script. "
-                                    "Follow all steps in the system prompt to provide a structured description."
-                                ),
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{base64_image}"
-                                },
-                            },
+                            {"type": "text", "text": user_context},
+                            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}},
                         ],
                     },
                 ],
@@ -72,7 +77,7 @@ class ImageSummarizerLLM:
             )
 
             summary = response.choices[0].message.content.strip()
-            logging.info(f"[LLM] ✅ Successfully summarized: {os.path.basename(image_path)}")
+            logging.info(f"[LLM] ✅ Successfully summarized ({mode}): {os.path.basename(image_path)}")
             return summary
 
         except Exception as e:
@@ -88,10 +93,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Test GPT-4 Vision summarizer on a local image file.")
     parser.add_argument("--image_path", required=True, help="Path to a local image (e.g., ./sample.png)")
+    parser.add_argument("--mode", default="student", choices=["student", "model"], help="Image type to summarize")
     args = parser.parse_args()
 
     summarizer = ImageSummarizerLLM()
-    summary = summarizer.summarize_image(args.image_path)
+    summary = summarizer.summarize_image(args.image_path, mode=args.mode)
 
     print("\n🧠 IMAGE SUMMARY RESULT\n" + "-" * 60)
     print(summary or "❌ No summary generated.")

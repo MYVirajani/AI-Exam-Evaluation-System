@@ -15,12 +15,18 @@ logger.setLevel(logging.INFO)
 
 
 class ModelAnswerDBService(BaseRelationalDB):
-    """Handles saving extracted model answers and their media into the database."""
+    """
+    Handles saving, fetching, and updating model answers and their media
+    in the database.
+    """
 
     def __init__(self):
         super().__init__()
         self._ensure_tables_exist()
 
+    # ------------------------------------------------------------------
+    # Table Setup
+    # ------------------------------------------------------------------
     def _ensure_tables_exist(self):
         """Create both model_answer and model_answer_media tables if they do not exist."""
         create_tables_query = """
@@ -56,6 +62,9 @@ class ModelAnswerDBService(BaseRelationalDB):
             self.conn.rollback()
             raise
 
+    # ------------------------------------------------------------------
+    # Save Model Answers and Media
+    # ------------------------------------------------------------------
     def save_model_answers(
         self,
         model_answers: List[ModelAnswer],
@@ -63,13 +72,13 @@ class ModelAnswerDBService(BaseRelationalDB):
         model_answer_paper_id: str
     ):
         """
-        Save model answers and related media into two normalized tables:
+        Save model answers and their associated media into:
         - model_answer
         - model_answer_media
         """
 
         if not model_answers:
-            logger.warning("No model answers to save.")
+            logger.warning("⚠️ No model answers to save.")
             return
 
         model_answer_query = """
@@ -87,7 +96,6 @@ class ModelAnswerDBService(BaseRelationalDB):
             RETURNING id, question_number;
         """
 
-        # Prepare data for model_answer table
         model_answer_values = [
             (
                 assessment_id,
@@ -103,32 +111,31 @@ class ModelAnswerDBService(BaseRelationalDB):
         ]
 
         try:
-            # Insert model_answer records and get their IDs
             execute_values(self.cursor, model_answer_query, model_answer_values)
             inserted_rows = self.cursor.fetchall()  # [(id, question_number), ...]
 
             # Map question_number → model_answer_id
             id_map = {row[1]: row[0] for row in inserted_rows}
 
-            # Prepare media entries
+            # Prepare model_answer_media entries
             media_values = []
             for ans in model_answers:
                 model_answer_id = id_map.get(ans.full_question_id)
                 if not model_answer_id or not ans.media_urls:
                     continue
+
                 for url in ans.media_urls:
                     summary = None
                     if ans.media_summary and isinstance(ans.media_summary, dict):
                         summary = ans.media_summary.get(url)
                     media_values.append((
                         model_answer_id,
-                        assessment_id,  # Add assessment_id here
+                        assessment_id,
                         url,
                         summary,
                         datetime.now()
                     ))
 
-            # Insert media records if available
             if media_values:
                 media_insert_query = """
                     INSERT INTO model_answer_media (
@@ -143,7 +150,52 @@ class ModelAnswerDBService(BaseRelationalDB):
 
             self.commit()
             logger.info(f"✅ Saved {len(model_answer_values)} model answers and {len(media_values)} media items.")
+
         except Exception as e:
             logger.error(f"❌ Failed to save model answers and media: {e}")
             self.conn.rollback()
             raise
+
+    # ------------------------------------------------------------------
+    # Fetch All Media for an Assessment
+    # ------------------------------------------------------------------
+    def get_media_by_assessment(self, assessment_id: str):
+        """
+        Fetch all model answer media records for a given assessment ID.
+        Returns a list of dicts with keys: id, media_url.
+        """
+        query = """
+        SELECT id, media_url
+        FROM model_answer_media
+        WHERE assessment_id = %s;
+        """
+        try:
+            self.cursor.execute(query, (assessment_id,))
+            rows = self.cursor.fetchall()
+            results = [{"id": row[0], "media_url": row[1]} for row in rows]
+            logger.info(f"📘 Retrieved {len(results)} media items for assessment_id={assessment_id}")
+            return results
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch media for assessment_id={assessment_id}: {e}")
+            self.conn.rollback()
+            return []
+
+    # ------------------------------------------------------------------
+    # Update Media Summary
+    # ------------------------------------------------------------------
+    def update_media_summary(self, media_id: str, summary: str):
+        """
+        Update the media_summary field for a specific media item.
+        """
+        query = """
+        UPDATE model_answer_media
+        SET media_summary = %s
+        WHERE id = %s;
+        """
+        try:
+            self.cursor.execute(query, (summary, media_id))
+            self.conn.commit()
+            logger.info(f"✅ Updated summary for media_id: {media_id}")
+        except Exception as e:
+            logger.error(f"❌ Failed to update media summary for {media_id}: {e}")
+            self.conn.rollback()

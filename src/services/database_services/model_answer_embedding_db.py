@@ -529,6 +529,8 @@
 #                 answer_text    TEXT,
 #                 guideline_text TEXT,
 #                 max_marks      FLOAT,
+
+#                 -- metadata
 #                 module_code TEXT,
 #                 exam_year   INT,
 #                 exam_month  TEXT,
@@ -633,21 +635,27 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
                 sub_question_id TEXT,
                 sub_sub_question_id TEXT,
                 sub_sub_sub_question_id TEXT,
-                full_question_id TEXT UNIQUE,
+                full_question_id TEXT,
                 question_text  TEXT,
                 answer_text    TEXT,
                 guideline_text TEXT,
                 max_marks      FLOAT,
+
+                -- metadata
                 module_code TEXT,
                 exam_year   INT,
                 exam_month  TEXT,
+                assessment_id TEXT,
                 question_embedding vector({dim}),
-                answer_embedding   vector({dim})
+                answer_embedding   vector({dim}),
+                
+                -- Unique constraint on combination of full_question_id and assessment_id
+                UNIQUE(full_question_id, assessment_id)
             );
         """)
         self.commit()
 
-    def save_embeddings(self, answers: list[ModelAnswer]) -> None:
+    def save_embeddings(self, answers: list[ModelAnswer], assessment_id: str) -> None:
         if not answers:
             logger.warning("No model answers provided for embedding.")
             return
@@ -660,22 +668,25 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
                 INSERT INTO {self.table} (
                     question_id, sub_question_id, sub_sub_question_id, sub_sub_sub_question_id,
                     full_question_id, question_text, answer_text, guideline_text, max_marks,
-                    module_code, exam_year, exam_month,
+                    module_code, exam_year, exam_month, assessment_id,
                     question_embedding, answer_embedding
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (full_question_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (full_question_id, assessment_id)
                 DO UPDATE SET
                     question_text      = EXCLUDED.question_text,
                     answer_text        = EXCLUDED.answer_text,
                     guideline_text     = EXCLUDED.guideline_text,
                     max_marks          = EXCLUDED.max_marks,
+                    module_code        = EXCLUDED.module_code,
+                    exam_year          = EXCLUDED.exam_year,
+                    exam_month         = EXCLUDED.exam_month,
                     question_embedding = EXCLUDED.question_embedding,
                     answer_embedding   = EXCLUDED.answer_embedding
             """, (
                 ans.question_id, ans.sub_question_id, ans.sub_sub_question_id, ans.sub_sub_sub_question_id,
                 ans.full_question_id, ans.question_text, ans.answer_text, ans.guideline_text, ans.max_marks,
-                ans.module_code, ans.exam_year, ans.exam_month,
+                ans.module_code, ans.exam_year, ans.exam_month, assessment_id,
                 q_vec, a_vec
             ))
 
@@ -686,8 +697,8 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
         self.cursor.execute(f"""
             SELECT question_text, answer_text, guideline_text, max_marks
             FROM {self.table}
-            WHERE full_question_id = %s AND module_code = %s
-        """, (full_question_id, module_code))
+            WHERE full_question_id = %s AND module_code = %s AND assessment_id = %s
+        """, (full_question_id, module_code, assessment_id))
 
         row = self.cursor.fetchone()
         if row:
@@ -710,4 +721,3 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
         if row and row[0] is not None:
             return list(row[0])  # Convert from vector to Python list
         return None
-

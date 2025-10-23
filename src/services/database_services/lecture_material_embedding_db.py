@@ -319,14 +319,15 @@ class LectureMaterialEmbeddingDB(BaseVectorDBService):
                 module_code  TEXT,
                 source_file  TEXT,
                 chunk_id     INT,
+                assessment_id TEXT,
                 text         TEXT,
                 embedding    vector({dim}),
-                UNIQUE(module_code, source_file, chunk_id)
+                UNIQUE(module_code, source_file, chunk_id, assessment_id)
             );
         """)
         self.commit()
 
-    def save_chunks(self, chunks: list[LectureChunk]) -> None:
+    def save_chunks(self, chunks: list[LectureChunk], assessment_id: str = None) -> None:
         if not chunks:
             return
 
@@ -335,27 +336,38 @@ class LectureMaterialEmbeddingDB(BaseVectorDBService):
         for ck, vec in zip(chunks, vectors):
             self.cursor.execute(f"""
                 INSERT INTO {self.table} (
-                  module_code, source_file, chunk_id, text, embedding
-                ) VALUES (%s,%s,%s,%s,%s)
-                ON CONFLICT (module_code, source_file, chunk_id)
+                  module_code, source_file, chunk_id, assessment_id, text, embedding
+                ) VALUES (%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (module_code, source_file, chunk_id, assessment_id)
                 DO UPDATE SET text = EXCLUDED.text, embedding = EXCLUDED.embedding;
-            """, (ck.module_code, ck.source_file, ck.chunk_id, ck.text, vec))
+            """, (ck.module_code, ck.source_file, ck.chunk_id, assessment_id, ck.text, vec))
 
         self.commit()
         logger.info("✅ Saved %d lecture chunks to table: %s", len(chunks), self.table)
 
-    def search(self, query: str, module_code: str | None = None, top_k: int = 5):
+    def search(self, query: str, module_code: str | None = None, assessment_id: str = None, top_k: int = 5):
         q_vec = self.embedder.embed([query])[0]
 
+        where_conditions = []
+        params = []
+        
         if module_code:
-            where_clause = "WHERE module_code = %s"
-            params = [module_code, q_vec, q_vec]
-        else:
-            where_clause = ""
-            params = [q_vec, q_vec]
+            where_conditions.append("module_code = %s")
+            params.append(module_code)
+            
+        if assessment_id:
+            where_conditions.append("assessment_id = %s")
+            params.append(assessment_id)
+        
+        where_clause = ""
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+        
+        # Add embedding vector parameters
+        params.extend([q_vec, q_vec])
 
         self.cursor.execute(f"""
-            SELECT module_code, source_file, chunk_id, text,
+            SELECT module_code, source_file, chunk_id, assessment_id, text,
                    1 - (embedding <=> %s) AS sim
             FROM {self.table}
             {where_clause}

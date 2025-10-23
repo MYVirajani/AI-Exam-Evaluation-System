@@ -89,7 +89,6 @@
 import logging
 from typing import List
 from pgvector.psycopg2 import register_vector
-
 from .base_vector_db_service import BaseVectorDBService
 from ..embedding.abstract_embedder import AbstractEmbedder
 from ...models.student_answer import StudentAnswer
@@ -125,13 +124,68 @@ class StudentAnswerEmbeddingDB(BaseVectorDBService):
                 module_code TEXT,
                 exam_year INT,
                 exam_month TEXT,
+                assessment_id TEXT,
+                submission_id TEXT,
                 embedding vector({dim}),
-                UNIQUE (student_index, module_code, exam_year, exam_month, full_question_id)
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (student_index, module_code, exam_year, exam_month, full_question_id, assessment_id)
             );
         """)
+        
+        # Add indexes for better performance
+        self.cursor.execute(f"""
+        CREATE INDEX IF NOT EXISTS idx_{self.table_name.replace('student_answer_embeddings_', '')}_assessment 
+        ON {self.table_name} (assessment_id);
+        """)
+        
+        self.cursor.execute(f"""
+        CREATE INDEX IF NOT EXISTS idx_{self.table_name.replace('student_answer_embeddings_', '')}_submission 
+        ON {self.table_name} (submission_id);
+        """)
+        
+        # Migration: Add columns to existing tables if they don't exist
+        self.cursor.execute(f"""
+        DO $$ 
+        BEGIN
+            BEGIN
+                ALTER TABLE {self.table_name} ADD COLUMN assessment_id TEXT;
+            EXCEPTION
+                WHEN duplicate_column THEN
+                    -- Column already exists, do nothing
+            END;
+            BEGIN
+                ALTER TABLE {self.table_name} ADD COLUMN submission_id TEXT;
+            EXCEPTION
+                WHEN duplicate_column THEN
+                    -- Column already exists, do nothing
+            END;
+            BEGIN
+                ALTER TABLE {self.table_name} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+            EXCEPTION
+                WHEN duplicate_column THEN
+                    -- Column already exists, do nothing
+            END;
+            BEGIN
+                ALTER TABLE {self.table_name} ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+            EXCEPTION
+                WHEN duplicate_column THEN
+                    -- Column already exists, do nothing
+            END;
+        END $$;
+        """)
+        
         self.commit()
 
-    def save_embeddings(self, answers: List[StudentAnswer]):
+    def save_embeddings(self, answers: List[StudentAnswer], assessment_id: str = None, submission_id: str = None):
+        """
+        Save embeddings with assessment and submission tracking.
+        
+        Args:
+            answers: List of StudentAnswer objects
+            assessment_id: Assessment ID for tracking
+            submission_id: Submission ID for tracking
+        """
         if not answers:
             logger.warning("No answers provided for embedding.")
             return
@@ -143,10 +197,14 @@ class StudentAnswerEmbeddingDB(BaseVectorDBService):
             self.cursor.execute(f"""
                 INSERT INTO {self.table_name} (
                     student_index, question_id, sub_question_id, sub_sub_question_id,
-                    full_question_id, module_code, exam_year, exam_month, embedding
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (student_index, module_code, exam_year, exam_month, full_question_id)
-                DO UPDATE SET embedding = EXCLUDED.embedding
+                    full_question_id, module_code, exam_year, exam_month, 
+                    assessment_id, submission_id, embedding
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (student_index, module_code, exam_year, exam_month, full_question_id, assessment_id)
+                DO UPDATE SET 
+                    embedding = EXCLUDED.embedding,
+                    submission_id = EXCLUDED.submission_id,
+                    updated_at = CURRENT_TIMESTAMP
             """, (
                 answer.student_index,
                 answer.question_id,
@@ -156,22 +214,38 @@ class StudentAnswerEmbeddingDB(BaseVectorDBService):
                 answer.module_code,
                 answer.exam_year,
                 answer.exam_month,
+                assessment_id,
+                submission_id,
                 vector
             ))
 
         self.commit()
         logger.info(f"✅ Saved embeddings for {len(answers)} answers to table: {self.table_name}")
-   
-    def get_embedding(self, student_index: str, full_question_id: str, module_code: str, exam_year: int, exam_month: str) -> list[float] | None:
-        self.cursor.execute(f"""
-            SELECT embedding FROM {self.table_name}
-            WHERE student_index = %s
-            AND full_question_id = %s
-            AND module_code = %s
-            AND exam_year = %s
-            AND exam_month = %s
-        """, (student_index, full_question_id, module_code, exam_year, exam_month))
+        print(f"💾 Saved embeddings: Assessment {assessment_id} | Submission {submission_id} | {len(answers)} answers")
 
+    def get_embedding(self, student_index: str, full_question_id: str, module_code: str, 
+                     exam_year: int, exam_month: str, assessment_id: str = None) -> list[float] | None:
+        """Get embedding with optional assessment filtering."""
+        if assessment_id:
+            self.cursor.execute(f"""
+                SELECT embedding FROM {self.table_name}
+                WHERE student_index = %s
+                AND full_question_id = %s
+                AND module_code = %s
+                AND exam_year = %s
+                AND exam_month = %s
+                AND assessment_id = %s
+            """, (student_index, full_question_id, module_code, exam_year, exam_month, assessment_id))
+        else:
+            self.cursor.execute(f"""
+                SELECT embedding FROM {self.table_name}
+                WHERE student_index = %s
+                AND full_question_id = %s
+                AND module_code = %s
+                AND exam_year = %s
+                AND exam_month = %s
+            """, (student_index, full_question_id, module_code, exam_year, exam_month))
+        
         row = self.cursor.fetchone()
         if row:
             return row[0]  # Returns the vector

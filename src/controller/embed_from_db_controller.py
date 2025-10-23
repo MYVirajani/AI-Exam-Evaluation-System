@@ -75,7 +75,21 @@
 # from src.services.database_services.student_answer_db import StudentAnswerService
 
 
-# def embed_student_answers(provider: str, model: str, module_code: str, year: int, month: str):
+# def embed_student_answers(provider: str, model: str, module_code: str, year: int, month: str,
+#                          student_indexes: list = None, assessment_id: str = None):
+#     """
+#     Embed student answers with assessment-specific filtering and database mapping.
+    
+#     Args:
+#         provider: LLM provider ("OpenAI" or "GoogleGemini")
+#         model: Embedding model name
+#         module_code: Module code from database mapping
+#         year: Year from database mapping
+#         month: Month from database mapping
+#         student_indexes: List of student registration numbers to filter (from page selection)
+#         assessment_id: Assessment ID for filtering (from page context)
+#     """
+    
 #     # Step 1: Select the correct embedder
 #     provider_override = None
 
@@ -121,9 +135,25 @@ from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
 from src.services.database_services.student_embedding_db import StudentAnswerEmbeddingDB
 from src.services.database_services.student_answer_db import StudentAnswerService
+import logging
 
+logger = logging.getLogger(__name__)
 
-def embed_student_answers(provider: str, model: str, module_code: str, year: int, month: str):
+def embed_student_answers(provider: str, model: str, module_code: str, year: int, month: str,
+                         student_indexes: list = None, assessment_id: str = None):
+    """
+    Embed student answers with assessment-specific filtering and database mapping.
+    
+    Args:
+        provider: LLM provider ("OpenAI" or "GoogleGemini")
+        model: Embedding model name
+        module_code: Module code from database mapping
+        year: Year from database mapping
+        month: Month from database mapping
+        student_indexes: List of student registration numbers to filter (from page selection)
+        assessment_id: Assessment ID for filtering (from page context)
+    """
+    
     # Step 1: Select the correct embedder
     if provider == "OpenAI":
         embedder = OpenAIEmbedder(model_name=model, provider_suffix="openai")
@@ -153,7 +183,7 @@ def embed_student_answers(provider: str, model: str, module_code: str, year: int
     )
     
     if not grouped_answers:
-        print("⚠️ No student answers found to embed.")
+        print("⚠️ No student answers found to embed after filtering.")
         return
     
     # Step 4: Save embeddings

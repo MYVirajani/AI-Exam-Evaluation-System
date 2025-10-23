@@ -1,0 +1,25 @@
+@echo off
+REM Set UTF-8 encoding to handle Unicode characters
+set PYTHONIOENCODING=utf-8
+
+REM Run embed_lecture_materials
+echo Running embed_lecture_materials...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.embed_lecture_materials --provider OpenAI --model text-embedding-3-small --embedder text-embedding-3-small"
+
+REM Run extract_and_save
+echo Running extract_and_save...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --from-db"
+
+REM Run embed_from_db
+echo Running embed_from_db...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-small --module_code EE3350 --year 2025 --month June"
+
+REM Run embed_model_answers
+echo Running embed_model_answers...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small"
+
+REM Run mark_all_papers
+echo Running mark_all_papers...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June"
+
+echo All commands completed!

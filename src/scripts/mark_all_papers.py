@@ -387,9 +387,11 @@ def main():
     ap.add_argument("--timeout", type=int, default=600, 
                     help="Request timeout in seconds (for DeepSeek only)")
     args = ap.parse_args()
-
-    logger.info(f"📚 Starting grading for {args.module} {args.month} {args.year} using {args.provider}")
-
+    
+    logger.info(f"📚 Starting assessment-specific grading for assessment {args.assessment_id}")
+    logger.info(f"Module: {args.module}, Year: {args.year}, Month: {args.month}")
+    logger.info(f"Provider: {args.provider}, Student indexes: {args.student_indexes}")
+    
     # Initialize correct embedder based on provider
     if args.provider == "OpenAI":
         embedder = OpenAIEmbedder(model_name=args.embedder, provider_suffix="openai")

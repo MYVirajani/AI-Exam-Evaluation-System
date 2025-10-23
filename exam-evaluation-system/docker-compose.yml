@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    container_name: ai-exam-evaluation-db
+    environment:
+      POSTGRES_DB: AI-exam-evaluation-system
+      POSTGRES_USER: nethmi
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

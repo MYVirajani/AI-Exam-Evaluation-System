@@ -24,8 +24,8 @@ interface SiteConfig {
 
 // Default configuration
 export const defaultConfig: SiteConfig = {
-  title: "AutoEval360",
-  description: "Exam evaluation web application",
+  title: " AutoEval360°",
+  description: "Smart Learning Management System ",
   theme: {
     colors: {
       primary: "#2563eb", // blue-600
@@ -63,3 +63,4 @@ export const siteConfig: SiteConfig = {
   ...defaultConfig,
   ...envConfig,
 };
+

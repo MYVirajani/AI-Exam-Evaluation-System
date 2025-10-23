@@ -23,6 +23,8 @@ python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder 
 
 python -m src.scripts.run_save_student_answer_media_embeddings --submissions <submission_id_1> <submission_id_2> ...
 
+python -m  src.scripts.extract_and_save_model_answers "src\data\updated_answer_scripts_docs\updated_Model answer_diagram.docx" "EE6250_2025_JUNE" "PAPER1"
+python -m  src.scripts.extract_and_save_model_answers "src\data\updated_answer_scripts_docs\updated_Model answer_diagram.docx" "<assessment_id>" "<model_answer_paper_id>"
 
 
 **for single paper**

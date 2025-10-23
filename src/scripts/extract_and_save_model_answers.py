@@ -1,22 +1,18 @@
 import os
 import sys
 import logging
-from io import BytesIO
-from PIL import Image
 from docx import Document
 
-# Local imports (adjust paths if needed)
+# Local imports
 from src.services.model_answer_extractor import ModelAnswerExtractor
 from src.services.database_services.model_answer_db_service import ModelAnswerDBService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def read_docx_text(file_path: str) -> str:
-    """
-    Reads all text from a DOCX file, including paragraphs and table content.
-    Returns the combined text as a single string.
-    """
+    """Reads all text from a DOCX file, including paragraphs and table content."""
     doc = Document(file_path)
     full_text = []
 
@@ -25,7 +21,7 @@ def read_docx_text(file_path: str) -> str:
         if para.text.strip():
             full_text.append(para.text.strip())
 
-    # Extract table content as text
+    # Extract table content
     for table in doc.tables:
         table_text = []
         for row in table.rows:
@@ -35,10 +31,9 @@ def read_docx_text(file_path: str) -> str:
 
     return "\n".join(full_text)
 
+
 def extract_and_save_model_answers(file_path: str, assessment_id: str, model_answer_paper_id: str):
-    """
-    Extract model answers using OpenAI (gpt-4o-mini) and save them to the database.
-    """
+    """Extract model answers using LLM and save them to the database."""
     if not os.path.exists(file_path):
         logger.error(f"❌ File not found: {file_path}")
         sys.exit(1)
@@ -46,17 +41,17 @@ def extract_and_save_model_answers(file_path: str, assessment_id: str, model_ans
     logger.info(f"📘 Reading DOCX file: {file_path}")
     raw_text = read_docx_text(file_path)
 
-    logger.info("🚀 Initializing ModelAnswerExtractor with OpenAI (gpt-4o-mini)...")
+    logger.info("🚀 Initializing ModelAnswerExtractor (OpenAI gpt-4o-mini)...")
     extractor = ModelAnswerExtractor(selected_provider="OpenAI", selected_model="gpt-4o-mini")
 
     logger.info("🧠 Extracting structured model answers...")
     model_answers = extractor.extract(raw_text)
 
     if not model_answers:
-        logger.warning("⚠️ No model answers were extracted.")
+        logger.warning("⚠️ No model answers extracted.")
         return
 
-    logger.info(f"✅ Extracted {len(model_answers)} model answers. Now saving to database...")
+    logger.info(f"✅ Extracted {len(model_answers)} model answers. Saving to database...")
 
     db_service = ModelAnswerDBService()
     db_service.save_model_answers(
@@ -64,9 +59,10 @@ def extract_and_save_model_answers(file_path: str, assessment_id: str, model_ans
         assessment_id=assessment_id,
         model_answer_paper_id=model_answer_paper_id
     )
-
     db_service.close()
-    logger.info("🎯 All model answers saved successfully!")
+
+    logger.info("🎯 All model answers and media saved successfully!")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:

@@ -48,3 +48,14 @@ class ModelAnswer:
     def answer_embedding_payload(self) -> str:
         """Return only the answer text (guideline/marks excluded) for embeddings."""
         return self.answer_text.strip()
+
+@dataclass
+class ModelAnswerMedia:
+    """
+    Represents one media item (image/table/etc.) linked to a model answer.
+    """
+    media_url: str
+    summary: Optional[str] = None
+    media_type: Optional[str] = None  # e.g. "image", "table", "chart"
+
+

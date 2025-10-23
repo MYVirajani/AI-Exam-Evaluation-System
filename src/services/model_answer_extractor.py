@@ -6,11 +6,12 @@ from dotenv import load_dotenv
 from openai import OpenAI as OpenAIClient
 import google.generativeai as genai
 
-from ..models.model_answer import ModelAnswer
+from ..models.model_answer_with_media import ModelAnswer
 from ..prompts.extract_model_answers_prompt import EXTRACT_MODEL_ANSWERS_PROMPT
 
 logger = logging.getLogger(__name__)
 load_dotenv()
+
 
 class ModelAnswerExtractor:
     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.2):
@@ -32,8 +33,7 @@ class ModelAnswerExtractor:
 
         elif self.provider == "DeepSeek":
             logger.warning(
-                "⚠️ DeepSeek does not support model answer extraction. "
-                "Falling back to OpenAI (gpt-4o-mini)."
+                "⚠️ DeepSeek does not support model answer extraction. Falling back to OpenAI (gpt-4o-mini)."
             )
             self.provider = "OpenAI"
             self.model = "gpt-4o-mini"
@@ -41,6 +41,9 @@ class ModelAnswerExtractor:
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
+    # ----------------------------------------------------------
+    # 🔹 Extract structured answers from raw text
+    # ----------------------------------------------------------
     def extract(self, raw_text: str) -> List[ModelAnswer]:
         """Extract a flat list of ModelAnswer objects from input text."""
         json_obj = self._call_llm(raw_text)
@@ -54,6 +57,9 @@ class ModelAnswerExtractor:
             exam_month=meta.get("exam_month")
         )
 
+    # ----------------------------------------------------------
+    # 🔹 Call LLM and parse JSON
+    # ----------------------------------------------------------
     def _call_llm(self, raw_text: str) -> dict:
         """Send text + extraction prompt to LLM and return parsed JSON."""
         if self.provider == "OpenAI":
@@ -82,7 +88,7 @@ class ModelAnswerExtractor:
         if content.startswith("```"):
             content = content.strip("`").replace("json", "").strip()
 
-        # 🔹 Print LLM response to command line for debugging
+        # Print LLM response for debugging
         print("\n===== LLM RAW RESPONSE START =====\n")
         print(content)
         print("\n===== LLM RAW RESPONSE END =====\n")
@@ -93,6 +99,9 @@ class ModelAnswerExtractor:
             logger.error(f"Failed to parse LLM output: {e}\nContent was:\n{content}")
             raise
 
+    # ----------------------------------------------------------
+    # 🔹 Flatten hierarchical answer structure
+    # ----------------------------------------------------------
     def _flatten(
         self,
         nested: dict,
@@ -100,12 +109,31 @@ class ModelAnswerExtractor:
         exam_year: Optional[int],
         exam_month: Optional[str]
     ) -> List[ModelAnswer]:
-        """Flatten nested JSON into a list of ModelAnswer objects (with media URLs)."""
+        """
+        Flatten nested JSON into a list of ModelAnswer objects.
+        Handles both legacy and structured media formats.
+        """
         flat: List[ModelAnswer] = []
 
         def recurse(keys: list[str], node):
-            # ✅ Case 1: Full model answer object
-            if isinstance(node, dict) and {"question", "answer", "guideline", "marks", "media_urls"}.issubset(node.keys()):
+            # ✅ Case 1: Full model answer with optional media
+            if isinstance(node, dict) and {"question", "answer", "guideline", "marks"}.issubset(node.keys()):
+                media_urls = []
+                media_summary = {}
+
+                # Handle structured media objects (preferred format)
+                if "media" in node and isinstance(node["media"], list):
+                    for m in node["media"]:
+                        url = m.get("url") or m.get("media_url")
+                        if url:
+                            media_urls.append(url)
+                            if "summary" in m:
+                                media_summary[url] = m["summary"]
+
+                # Handle legacy media_urls list
+                elif "media_urls" in node and isinstance(node["media_urls"], list):
+                    media_urls = node["media_urls"]
+
                 flat.append(ModelAnswer(
                     question_id=keys[0] if len(keys) > 0 else None,
                     sub_question_id=keys[1] if len(keys) > 1 else None,
@@ -115,57 +143,24 @@ class ModelAnswerExtractor:
                     answer_text=node.get("answer", "").strip(),
                     guideline_text=node.get("guideline", "").strip(),
                     max_marks=node.get("marks"),
+                    media_urls=media_urls,
+                    media_summary=media_summary,
                     module_code=module_code,
                     exam_year=exam_year,
-                    exam_month=exam_month,
-                    media_urls=node.get("media_urls", [])
+                    exam_month=exam_month
                 ))
                 return
 
-            # ✅ Case 2: Older responses (without media_urls)
-            elif isinstance(node, dict) and {"question", "answer", "guideline", "marks"}.issubset(node.keys()):
-                flat.append(ModelAnswer(
-                    question_id=keys[0] if len(keys) > 0 else None,
-                    sub_question_id=keys[1] if len(keys) > 1 else None,
-                    sub_sub_question_id=keys[2] if len(keys) > 2 else None,
-                    sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
-                    question_text=node.get("question", "").strip(),
-                    answer_text=node.get("answer", "").strip(),
-                    guideline_text=node.get("guideline", "").strip(),
-                    max_marks=node.get("marks"),
-                    module_code=module_code,
-                    exam_year=exam_year,
-                    exam_month=exam_month,
-                    media_urls=[]
-                ))
-                return
-
-            # ✅ Case 3: Raw string leaf (no structure)
-            elif isinstance(node, str):
-                flat.append(ModelAnswer(
-                    question_id=keys[0] if len(keys) > 0 else None,
-                    sub_question_id=keys[1] if len(keys) > 1 else None,
-                    sub_sub_question_id=keys[2] if len(keys) > 2 else None,
-                    sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
-                    answer_text=node.strip(),
-                    module_code=module_code,
-                    exam_year=exam_year,
-                    exam_month=exam_month,
-                    media_urls=[]
-                ))
-                logger.warning(
-                    "Leaf '%s' had no question/guideline/marks; stored answer only.",
-                    "_".join(keys)
-                )
-                return
-
-            # ✅ Case 4: Nested dictionary — keep digging
+            # ✅ Case 2: Nested dictionary — recurse deeper
             elif isinstance(node, dict):
                 for k, v in node.items():
                     recurse(keys + [k], v)
+
+            # ✅ Case 3: Unexpected type
             else:
                 logger.warning("Unexpected node type under %s: %r", "_".join(keys), node)
 
+        # Start recursion for each top-level question
         for main_q, subtree in nested.items():
             recurse([main_q], subtree)
 

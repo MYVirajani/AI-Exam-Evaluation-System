@@ -200,7 +200,6 @@ class AnswerExtractor:
         module_code: Optional[str],
         exam_year: Optional[int],
         exam_month: Optional[str]
-        exam_month: Optional[str]
     ) -> List[StudentAnswer]:
         """
         Convert nested LLM output (answers + media URLs) into flat StudentAnswer objects.

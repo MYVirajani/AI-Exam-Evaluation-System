@@ -54,7 +54,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             created_on TIMESTAMP DEFAULT NOW()
         );
         """
-        
+
         try:
             self.cursor.execute(create_tables_query)
             self.conn.commit()
@@ -78,11 +78,6 @@ class ModelAnswerDBService(BaseRelationalDB):
         Save model answers and their associated media into:
         - model_answer
         - model_answer_media
-
-        Args:
-            model_answers: List of ModelAnswer objects to save
-            assessment_id: The assessment identifier
-            model_answer_paper_id: The model answer paper identifier
         """
         if not model_answers:
             logger.warning("⚠️ No model answers to save.")
@@ -118,19 +113,13 @@ class ModelAnswerDBService(BaseRelationalDB):
         ]
 
         try:
-            # Insert model answers
             execute_values(self.cursor, model_answer_query, model_answer_values)
             inserted_rows = self.cursor.fetchall()  # [(id, question_number), ...]
 
-            # Map question_number → model_answer_id
             id_map = {row[1]: row[0] for row in inserted_rows}
 
-            # Prepare model_answer_media entries
-            media_values = self._prepare_media_values(
-                model_answers, id_map, assessment_id
-            )
+            media_values = self._prepare_media_values(model_answers, id_map, assessment_id)
 
-            # Insert media entries if any
             if media_values:
                 media_insert_query = """
                     INSERT INTO model_answer_media (
@@ -162,7 +151,7 @@ class ModelAnswerDBService(BaseRelationalDB):
     ) -> List[tuple]:
         """Prepare media values for insertion."""
         media_values = []
-        
+
         for ans in model_answers:
             model_answer_id = id_map.get(ans.full_question_id)
             if not model_answer_id or not ans.media_urls:
@@ -172,7 +161,7 @@ class ModelAnswerDBService(BaseRelationalDB):
                 summary = None
                 if ans.media_summary and isinstance(ans.media_summary, dict):
                     summary = ans.media_summary.get(url)
-                
+
                 media_values.append((
                     model_answer_id,
                     assessment_id,
@@ -180,7 +169,7 @@ class ModelAnswerDBService(BaseRelationalDB):
                     summary,
                     datetime.now()
                 ))
-        
+
         return media_values
 
     # ------------------------------------------------------------------
@@ -188,20 +177,11 @@ class ModelAnswerDBService(BaseRelationalDB):
     # ------------------------------------------------------------------
 
     def get_media_by_assessment(
-        self, 
-        assessment_id: str, 
+        self,
+        assessment_id: str,
         model_paper_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """
-        Fetch all model answer media records for a given assessment ID and optional model paper ID.
-
-        Args:
-            assessment_id: The assessment identifier
-            model_paper_id: Optional model paper identifier
-
-        Returns:
-            List of dicts with keys: id, media_url
-        """
+        """Fetch all model answer media for a given assessment."""
         try:
             if model_paper_id:
                 query = """
@@ -211,10 +191,6 @@ class ModelAnswerDBService(BaseRelationalDB):
                 WHERE ma.assessment_id = %s AND ma.model_answer_paper_id = %s;
                 """
                 params = (assessment_id, model_paper_id)
-                logger.info(
-                    f"📘 Fetching media for assessment_id={assessment_id} "
-                    f"and model_paper_id={model_paper_id}"
-                )
             else:
                 query = """
                 SELECT mam.id, mam.media_url
@@ -223,23 +199,14 @@ class ModelAnswerDBService(BaseRelationalDB):
                 WHERE ma.assessment_id = %s;
                 """
                 params = (assessment_id,)
-                logger.info(f"📘 Fetching media for assessment_id={assessment_id}")
 
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
-            results = [{"id": row[0], "media_url": row[1]} for row in rows]
-            logger.info(
-                f"✅ Retrieved {len(results)} media items "
-                f"(assessment_id={assessment_id}, model_paper_id={model_paper_id})"
-            )
-            return results
+            return [{"id": row[0], "media_url": row[1]} for row in rows]
 
         except Exception as e:
-            logger.error(
-                f"❌ Failed to fetch media "
-                f"(assessment_id={assessment_id}, model_paper_id={model_paper_id}): {e}"
-            )
+            logger.error(f"❌ Failed to fetch media: {e}")
             self.conn.rollback()
             return []
 
@@ -248,22 +215,12 @@ class ModelAnswerDBService(BaseRelationalDB):
     # ------------------------------------------------------------------
 
     def update_media_summary(self, media_id: str, summary: str) -> bool:
-        """
-        Update the media_summary field for a specific media item.
-
-        Args:
-            media_id: The media record identifier
-            summary: The summary text to update
-
-        Returns:
-            True if update was successful, False otherwise
-        """
+        """Update the media_summary field for a specific media item."""
         query = """
         UPDATE model_answer_media
         SET media_summary = %s
         WHERE id = %s;
         """
-        
         try:
             self.cursor.execute(query, (summary, media_id))
             self.conn.commit()
@@ -273,3 +230,89 @@ class ModelAnswerDBService(BaseRelationalDB):
             logger.error(f"❌ Failed to update media summary for {media_id}: {e}")
             self.conn.rollback()
             return False
+
+    # ------------------------------------------------------------------
+    # FETCH MODEL ANSWERS BY PAPER AND ASSESSMENT
+    # ------------------------------------------------------------------
+
+    def get_model_answers_by_paper_and_assessment(
+        self,
+        model_answer_paper_id: str,
+        assessment_id: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve model answers with their question, guideline, and media summaries
+        for a specific model_answer_paper_id and assessment_id.
+        """
+        if not (model_answer_paper_id and assessment_id):
+            logger.warning("⚠️ Missing required parameters (model_answer_paper_id or assessment_id).")
+            return []
+
+        try:
+            query = """
+                SELECT 
+                    ma.id AS model_answer_id,
+                    ma.question_number,
+                    ma.question_text,
+                    ma.guideline_text,
+                    ma.answer_text,
+                    mam.media_summary
+                FROM model_answer ma
+                LEFT JOIN model_answer_media mam 
+                    ON ma.id = mam.model_answer_id
+                WHERE ma.model_answer_paper_id = %s
+                  AND ma.assessment_id = %s
+                ORDER BY ma.question_number;
+            """
+
+            self.cursor.execute(query, (model_answer_paper_id, assessment_id))
+            rows = self.cursor.fetchall()
+
+            if not rows:
+                logger.info(
+                    f"📭 No model answers found for model_answer_paper_id={model_answer_paper_id}, "
+                    f"assessment_id={assessment_id}"
+                )
+                return []
+
+            result_map: Dict[str, Dict[str, Any]] = {}
+
+            for (
+                model_answer_id,
+                question_number,
+                question_text,
+                guideline_text,
+                answer_text,
+                media_summary,
+            ) in rows:
+                if question_number not in result_map:
+                    result_map[question_number] = {
+                        "question_number": question_number,
+                        "question_text": question_text,
+                        "guideline_text": guideline_text,
+                        "model_answer": {
+                            "answer_text": answer_text,
+                            "media_summaries": [],
+                        },
+                    }
+
+                if media_summary:
+                    result_map[question_number]["model_answer"]["media_summaries"].append(media_summary)
+
+            results = list(result_map.values())
+
+            logger.info(
+                f"✅ Retrieved {len(results)} model answers for "
+                f"model_answer_paper_id={model_answer_paper_id}, assessment_id={assessment_id}"
+            )
+
+            return results
+
+        except Exception as e:
+            logger.error(
+                f"❌ Failed to fetch model answers for "
+                f"model_answer_paper_id={model_answer_paper_id}, assessment_id={assessment_id}: {e}",
+                exc_info=True
+            )
+            self.conn.rollback()
+            return []

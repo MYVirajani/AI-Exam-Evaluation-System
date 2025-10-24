@@ -106,6 +106,7 @@ class StudentAnswerMediaEmbeddingDB(BaseVectorDBService):
                 ans_txt = answer_dict.get(ans_id, "").strip()
                 media_summary_text = media_dict.get(ans_id, "").strip()
                 combined_text = f"{ans_txt} {media_summary_text}".strip()
+                print('combined_text', combined_text)
 
                 results.append({
                     "submission_id": submission_id,

@@ -25,7 +25,12 @@ python -m src.scripts.run_save_student_answer_media_embeddings --submissions <su
 
 python -m  src.scripts.extract_and_save_model_answers "src\data\updated_answer_scripts_docs\updated_Model answer_diagram.docx" "EE6250_2025_JUNE" "PAPER1"
 python -m  src.scripts.extract_and_save_model_answers "src\data\updated_answer_scripts_docs\updated_Model answer_diagram.docx" "<assessment_id>" "<model_answer_paper_id>"
-
+Summarize student media
+python -m src.scripts.summarize_media_and_embed --mode student --submission_id SUB_123
+Summarize model media
+python -m src.scripts.summarize_media_and_embed --mode model --assessment_id EE6250_2025_JUNE --model_paper_id PAPER2
+Embed model answers
+python -m src.scripts.summarize_media_and_embed --mode embed --assessment_id EE6250_2025_JUNE --model_paper_id PAPER2
 
 **for single paper**
 

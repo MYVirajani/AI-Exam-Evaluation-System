@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Dict, Any, Optional
 from psycopg2.extras import execute_values
 from datetime import datetime
 import sys
@@ -27,7 +27,8 @@ class ModelAnswerDBService(BaseRelationalDB):
     # ------------------------------------------------------------------
     # Table Setup
     # ------------------------------------------------------------------
-    def _ensure_tables_exist(self):
+
+    def _ensure_tables_exist(self) -> None:
         """Create both model_answer and model_answer_media tables if they do not exist."""
         create_tables_query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -53,6 +54,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             created_on TIMESTAMP DEFAULT NOW()
         );
         """
+        
         try:
             self.cursor.execute(create_tables_query)
             self.conn.commit()
@@ -65,18 +67,23 @@ class ModelAnswerDBService(BaseRelationalDB):
     # ------------------------------------------------------------------
     # Save Model Answers and Media
     # ------------------------------------------------------------------
+
     def save_model_answers(
         self,
         model_answers: List[ModelAnswer],
         assessment_id: str,
         model_answer_paper_id: str
-    ):
+    ) -> None:
         """
         Save model answers and their associated media into:
         - model_answer
         - model_answer_media
-        """
 
+        Args:
+            model_answers: List of ModelAnswer objects to save
+            assessment_id: The assessment identifier
+            model_answer_paper_id: The model answer paper identifier
+        """
         if not model_answers:
             logger.warning("⚠️ No model answers to save.")
             return
@@ -111,6 +118,7 @@ class ModelAnswerDBService(BaseRelationalDB):
         ]
 
         try:
+            # Insert model answers
             execute_values(self.cursor, model_answer_query, model_answer_values)
             inserted_rows = self.cursor.fetchall()  # [(id, question_number), ...]
 
@@ -118,24 +126,11 @@ class ModelAnswerDBService(BaseRelationalDB):
             id_map = {row[1]: row[0] for row in inserted_rows}
 
             # Prepare model_answer_media entries
-            media_values = []
-            for ans in model_answers:
-                model_answer_id = id_map.get(ans.full_question_id)
-                if not model_answer_id or not ans.media_urls:
-                    continue
+            media_values = self._prepare_media_values(
+                model_answers, id_map, assessment_id
+            )
 
-                for url in ans.media_urls:
-                    summary = None
-                    if ans.media_summary and isinstance(ans.media_summary, dict):
-                        summary = ans.media_summary.get(url)
-                    media_values.append((
-                        model_answer_id,
-                        assessment_id,
-                        url,
-                        summary,
-                        datetime.now()
-                    ))
-
+            # Insert media entries if any
             if media_values:
                 media_insert_query = """
                     INSERT INTO model_answer_media (
@@ -149,53 +144,132 @@ class ModelAnswerDBService(BaseRelationalDB):
                 execute_values(self.cursor, media_insert_query, media_values)
 
             self.commit()
-            logger.info(f"✅ Saved {len(model_answer_values)} model answers and {len(media_values)} media items.")
+            logger.info(
+                f"✅ Saved {len(model_answer_values)} model answers "
+                f"and {len(media_values)} media items."
+            )
 
         except Exception as e:
             logger.error(f"❌ Failed to save model answers and media: {e}")
             self.conn.rollback()
             raise
 
+    def _prepare_media_values(
+        self,
+        model_answers: List[ModelAnswer],
+        id_map: Dict[str, str],
+        assessment_id: str
+    ) -> List[tuple]:
+        """Prepare media values for insertion."""
+        media_values = []
+        
+        for ans in model_answers:
+            model_answer_id = id_map.get(ans.full_question_id)
+            if not model_answer_id or not ans.media_urls:
+                continue
+
+            for url in ans.media_urls:
+                summary = None
+                if ans.media_summary and isinstance(ans.media_summary, dict):
+                    summary = ans.media_summary.get(url)
+                
+                media_values.append((
+                    model_answer_id,
+                    assessment_id,
+                    url,
+                    summary,
+                    datetime.now()
+                ))
+        
+        return media_values
+
     # ------------------------------------------------------------------
     # Fetch All Media for an Assessment
     # ------------------------------------------------------------------
-    def get_media_by_assessment(self, assessment_id: str):
+
+    def get_media_by_assessment(
+        self, 
+        assessment_id: str, 
+        model_paper_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
-        Fetch all model answer media records for a given assessment ID.
-        Returns a list of dicts with keys: id, media_url.
-        """
-        query = """
-        SELECT id, media_url
-        FROM model_answer_media
-        WHERE assessment_id = %s;
+        Fetch all model answer media records for a given assessment ID and optional model paper ID.
+
+        Args:
+            assessment_id: The assessment identifier
+            model_paper_id: Optional model paper identifier
+
+        Returns:
+            List of dicts with keys: id, media_url
         """
         try:
-            self.cursor.execute(query, (assessment_id,))
+            if model_paper_id:
+                query = """
+                SELECT mam.id, mam.media_url
+                FROM model_answer_media mam
+                JOIN model_answer ma ON mam.model_answer_id = ma.id
+                WHERE ma.assessment_id = %s AND ma.model_answer_paper_id = %s;
+                """
+                params = (assessment_id, model_paper_id)
+                logger.info(
+                    f"📘 Fetching media for assessment_id={assessment_id} "
+                    f"and model_paper_id={model_paper_id}"
+                )
+            else:
+                query = """
+                SELECT mam.id, mam.media_url
+                FROM model_answer_media mam
+                JOIN model_answer ma ON mam.model_answer_id = ma.id
+                WHERE ma.assessment_id = %s;
+                """
+                params = (assessment_id,)
+                logger.info(f"📘 Fetching media for assessment_id={assessment_id}")
+
+            self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
+
             results = [{"id": row[0], "media_url": row[1]} for row in rows]
-            logger.info(f"📘 Retrieved {len(results)} media items for assessment_id={assessment_id}")
+            logger.info(
+                f"✅ Retrieved {len(results)} media items "
+                f"(assessment_id={assessment_id}, model_paper_id={model_paper_id})"
+            )
             return results
+
         except Exception as e:
-            logger.error(f"❌ Failed to fetch media for assessment_id={assessment_id}: {e}")
+            logger.error(
+                f"❌ Failed to fetch media "
+                f"(assessment_id={assessment_id}, model_paper_id={model_paper_id}): {e}"
+            )
             self.conn.rollback()
             return []
 
     # ------------------------------------------------------------------
     # Update Media Summary
     # ------------------------------------------------------------------
-    def update_media_summary(self, media_id: str, summary: str):
+
+    def update_media_summary(self, media_id: str, summary: str) -> bool:
         """
         Update the media_summary field for a specific media item.
+
+        Args:
+            media_id: The media record identifier
+            summary: The summary text to update
+
+        Returns:
+            True if update was successful, False otherwise
         """
         query = """
         UPDATE model_answer_media
         SET media_summary = %s
         WHERE id = %s;
         """
+        
         try:
             self.cursor.execute(query, (summary, media_id))
             self.conn.commit()
             logger.info(f"✅ Updated summary for media_id: {media_id}")
+            return True
         except Exception as e:
             logger.error(f"❌ Failed to update media summary for {media_id}: {e}")
             self.conn.rollback()
+            return False

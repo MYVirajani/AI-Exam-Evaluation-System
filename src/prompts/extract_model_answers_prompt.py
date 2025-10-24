@@ -40,13 +40,11 @@ Return a single, valid JSON object strictly following this structure:
   "answers": {
     "Q1": {
       "i": {
-        "a": {
           "question": "Define supervised learning.",
           "answer": "Supervised learning is ...",
           "guideline": "Include mention of labeled data and prediction tasks. Key Points: labeled dataset, prediction of outcomes. Instructions for checking: verify both terms are present.",
           "marks": 5,
           "media_urls": ["E:/path/to/image1.png", "E:/path/to/image2.png"]
-        }
       },
       "ii": {
         "question": "Explain overfitting in ML.",

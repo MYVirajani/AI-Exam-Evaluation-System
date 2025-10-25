@@ -32,6 +32,9 @@ python -m src.scripts.summarize_media_and_embed --mode model --assessment_id EE6
 Embed model answers
 python -m src.scripts.summarize_media_and_embed --mode embed --assessment_id EE6250_2025_JUNE --model_paper_id PAPER2
 
+
+mark_all_papers
+python -m src.scripts.grade_student_answers PAPER2 EE6250_2025_JUNE 1234 
 **for single paper**
 
 python -m src.scripts.mark_single_paper --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June --student EG/2020/4011

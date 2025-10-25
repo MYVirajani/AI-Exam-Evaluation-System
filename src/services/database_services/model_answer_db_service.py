@@ -74,11 +74,7 @@ class ModelAnswerDBService(BaseRelationalDB):
         assessment_id: str,
         model_answer_paper_id: str
     ) -> None:
-        """
-        Save model answers and their associated media into:
-        - model_answer
-        - model_answer_media
-        """
+        """Save model answers and their associated media."""
         if not model_answers:
             logger.warning("⚠️ No model answers to save.")
             return
@@ -117,7 +113,6 @@ class ModelAnswerDBService(BaseRelationalDB):
             inserted_rows = self.cursor.fetchall()  # [(id, question_number), ...]
 
             id_map = {row[1]: row[0] for row in inserted_rows}
-
             media_values = self._prepare_media_values(model_answers, id_map, assessment_id)
 
             if media_values:
@@ -181,7 +176,7 @@ class ModelAnswerDBService(BaseRelationalDB):
         assessment_id: str,
         model_paper_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Fetch all model answer media for a given assessment."""
+        """Fetch all model answer media for a given assessment"""
         try:
             if model_paper_id:
                 query = """
@@ -203,7 +198,10 @@ class ModelAnswerDBService(BaseRelationalDB):
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
-            return [{"id": row[0], "media_url": row[1]} for row in rows]
+            return [
+                {"id": row[0], "media_url": row[1]}
+                for row in rows
+            ]
 
         except Exception as e:
             logger.error(f"❌ Failed to fetch media: {e}")
@@ -232,21 +230,22 @@ class ModelAnswerDBService(BaseRelationalDB):
             return False
 
     # ------------------------------------------------------------------
-    # FETCH MODEL ANSWERS BY PAPER AND ASSESSMENT
+    # FETCH SINGLE MODEL ANSWER BY PAPER, ASSESSMENT & QUESTION NUMBER
     # ------------------------------------------------------------------
 
-    def get_model_answers_by_paper_and_assessment(
+    def get_model_answer(
         self,
         model_answer_paper_id: str,
-        assessment_id: str
-    ) -> List[Dict[str, Any]]:
+        assessment_id: str,
+        question_number: str
+    ) -> Optional[Dict[str, Any]]:
         """
-        Retrieve model answers with their question, guideline, and media summaries
-        for a specific model_answer_paper_id and assessment_id.
+        Retrieve a single model answer (question, guideline, answer, media summaries, and max_marks)
+        filtered by model_answer_paper_id, assessment_id, and question_number.
         """
-        if not (model_answer_paper_id and assessment_id):
-            logger.warning("⚠️ Missing required parameters (model_answer_paper_id or assessment_id).")
-            return []
+        if not (model_answer_paper_id and assessment_id and question_number):
+            logger.warning("⚠️ Missing required parameters for get_model_answer().")
+            return None
 
         try:
             query = """
@@ -256,63 +255,64 @@ class ModelAnswerDBService(BaseRelationalDB):
                     ma.question_text,
                     ma.guideline_text,
                     ma.answer_text,
+                    ma.max_marks,
                     mam.media_summary
                 FROM model_answer ma
                 LEFT JOIN model_answer_media mam 
                     ON ma.id = mam.model_answer_id
                 WHERE ma.model_answer_paper_id = %s
                   AND ma.assessment_id = %s
-                ORDER BY ma.question_number;
+                  AND ma.question_number = %s;
             """
 
-            self.cursor.execute(query, (model_answer_paper_id, assessment_id))
+            self.cursor.execute(query, (model_answer_paper_id, assessment_id, question_number))
             rows = self.cursor.fetchall()
 
             if not rows:
                 logger.info(
-                    f"📭 No model answers found for model_answer_paper_id={model_answer_paper_id}, "
-                    f"assessment_id={assessment_id}"
+                    f"📭 No model answer found for "
+                    f"model_answer_paper_id={model_answer_paper_id}, "
+                    f"assessment_id={assessment_id}, question_number={question_number}"
                 )
-                return []
+                return None
 
-            result_map: Dict[str, Dict[str, Any]] = {}
-
-            for (
-                model_answer_id,
+            (
+                _,
                 question_number,
                 question_text,
                 guideline_text,
                 answer_text,
-                media_summary,
-            ) in rows:
-                if question_number not in result_map:
-                    result_map[question_number] = {
-                        "question_number": question_number,
-                        "question_text": question_text,
-                        "guideline_text": guideline_text,
-                        "model_answer": {
-                            "answer_text": answer_text,
-                            "media_summaries": [],
-                        },
-                    }
+                max_marks,
+                first_media_summary,
+            ) = rows[0]
 
-                if media_summary:
-                    result_map[question_number]["model_answer"]["media_summaries"].append(media_summary)
+            media_summaries = [r[6] for r in rows if r[6]]
 
-            results = list(result_map.values())
+            result = {
+                "question_number": question_number,
+                "question_text": question_text,
+                "guideline_text": guideline_text,
+                "max_marks": max_marks,
+                "model_answer": {
+                    "answer_text": answer_text,
+                    "media_summaries": media_summaries,
+                },
+            }
 
             logger.info(
-                f"✅ Retrieved {len(results)} model answers for "
-                f"model_answer_paper_id={model_answer_paper_id}, assessment_id={assessment_id}"
+                f"✅ Retrieved model answer for "
+                f"model_answer_paper_id={model_answer_paper_id}, "
+                f"assessment_id={assessment_id}, question_number={question_number}"
             )
 
-            return results
+            return result
 
         except Exception as e:
             logger.error(
-                f"❌ Failed to fetch model answers for "
-                f"model_answer_paper_id={model_answer_paper_id}, assessment_id={assessment_id}: {e}",
+                f"❌ Failed to fetch model answer for "
+                f"model_answer_paper_id={model_answer_paper_id}, "
+                f"assessment_id={assessment_id}, question_number={question_number}: {e}",
                 exc_info=True
             )
             self.conn.rollback()
-            return []
+            return None

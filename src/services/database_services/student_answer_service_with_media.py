@@ -27,7 +27,6 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
 
     def __init__(self):
         super().__init__()
-        self.submission_id = "1234"  # Default placeholder
         logging.info("[DB] Using tables: student_answer, student_answer_media")
         print("⚙️ Using tables: student_answer, student_answer_media")
 
@@ -71,8 +70,11 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
     # ----------------------------------------------------------------------
     # SAVE ANSWERS + MEDIA
     # ----------------------------------------------------------------------
-    def save_answers(self, answers: List[StudentAnswer]):
-        """Save all answers and their media entries into DB."""
+    def save_answers(self, answers: List[StudentAnswer], submission_id: str):
+        """
+        Save all answers and their media entries into DB.
+        Accepts a `submission_id` argument and stores it in both tables.
+        """
         for idx, ans in enumerate(answers, start=1):
             try:
                 answer_id = str(uuid.uuid4())
@@ -84,13 +86,13 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                     getattr(ans, "sub_sub_sub_question_id", None)
                 )
 
-                # Insert into student_answer
+                # ✅ Insert into student_answer
                 self.cursor.execute("""
                     INSERT INTO student_answer (id, submission_id, question_number, answer_text)
                     VALUES (%s, %s, %s, %s);
-                """, (answer_id, self.submission_id, question_number, ans.answer_text))
+                """, (answer_id, submission_id, question_number, ans.answer_text))
 
-                # Insert related media
+                # ✅ Insert related media (if any)
                 if getattr(ans, "media_urls", None):
                     for url in ans.media_urls:
                         media_id = str(uuid.uuid4())
@@ -98,7 +100,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                             INSERT INTO student_answer_media (
                                 id, student_answer_id, submission_id, media_url, media_summary
                             ) VALUES (%s, %s, %s, %s, %s);
-                        """, (media_id, answer_id, self.submission_id, url, None))
+                        """, (media_id, answer_id, submission_id, url, None))
 
                 self.commit()
 
@@ -106,7 +108,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                 logging.error(f"[DB] Failed to insert answer {idx}: {e}")
                 self.rollback()
 
-        print(f"✅ Saved {len(answers)} answers (with media).")
+        print(f"✅ Saved {len(answers)} answers (with media) for submission_id={submission_id}.")
 
     # ----------------------------------------------------------------------
     # FETCH (SINGLE SUBMISSION)

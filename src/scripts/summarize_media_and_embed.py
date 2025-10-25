@@ -5,7 +5,7 @@ import logging
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-from src.services.database_services.student_answer_service_with_media import StudentAnswerServiceWithMedia
+from src.services.database_services.student_media_db_service import StudentMediaDBService
 from src.services.database_services.model_answer_db_service import ModelAnswerDBService
 from src.services.database_services.model_answer_vector_service import ModelAnswerVectorService
 from src.services.summary.image_summarizer import ImageSummarizerLLM
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------
 def summarize_student_submission(submission_id: str):
     """Summarize media from student submissions."""
-    db_service = StudentAnswerServiceWithMedia()
+    db_service = StudentMediaDBService()
     llm = ImageSummarizerLLM()
 
     media_records = db_service.get_media_by_submission(submission_id)

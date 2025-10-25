@@ -112,7 +112,7 @@ def process_docx(docx_path):
                             blip.getparent().remove(blip)
 
     # Save updated document
-    updated_path = os.path.join(OUTPUT_DIR, f"updated_{basename}.docx")
+    updated_path = os.path.join(OUTPUT_DIR, f"{basename}.docx")
     doc.save(updated_path)
     print(f"✅ Saved updated Word: {updated_path}")
     print(f"   Extracted {img_counter} images, {tbl_counter} tables.")

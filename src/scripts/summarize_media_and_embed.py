@@ -30,7 +30,7 @@ def summarize_student_submission(submission_id: str):
         media_id = media["id"]
 
         logger.info(f"🖼️ Summarizing student media: {image_url}")
-        summary = llm.summarize_image(image_url, mode="student")
+        summary = llm.summarize_image(image_url, mode="student", domain="Computer Science Algorithm Design")
 
         if summary:
             db_service.update_media_summary(media_id, summary)
@@ -68,7 +68,7 @@ def summarize_model_answers(assessment_id: str, model_paper_id: str = None):
         media_id = media["id"]
 
         logger.info(f"🖼️ Summarizing model answer media: {image_url}")
-        summary = llm.summarize_image(image_url, mode="model")
+        summary = llm.summarize_image(image_url, mode="model", domain="Computer Science Algorithm Design")
 
         if summary:
             db_service.update_media_summary(media_id, summary)

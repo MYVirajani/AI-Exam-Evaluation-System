@@ -19,57 +19,49 @@ class ImageSummarizerLLM:
             raise ValueError("❌ OPENAI_API_KEY not found in environment variables.")
         self.client = OpenAI(api_key=self.api_key)
 
-    # ----------------------------------------------------------------------
-    # Summarize local image using GPT-4-Vision
-    # ----------------------------------------------------------------------
-    def summarize_image(self, image_path: str, mode: str = "student") -> str | None:
+    def summarize_image(self, image_path: str, mode: str = "student", domain: str = "General") -> str | None:
         """
         Describe a local image by encoding it to Base64 and sending it inline.
         mode: "student" | "model"
+        domain: subject or academic domain (e.g., Physics, Civil Engineering)
         Returns a textual descriptive summary.
         """
         if not os.path.exists(image_path):
             logging.error(f"[LLM] ❌ File not found: {image_path}")
             return None
 
-        # Select prompt based on mode
+        # Format domain into the system prompt
         if mode == "model":
-            system_prompt = MODEL_SUMMARY_PROMPT.strip()
+            system_prompt = MODEL_SUMMARY_PROMPT.format(domain=domain).strip()
             user_context = (
-                "Analyze this image extracted from a model answer paper. "
-                "Provide a structured academic summary focusing on key solution steps, "
-                "diagrams, formulas, and technical clarity."
+                f"Analyze this model answer image within the domain of {domain}. "
+                "Provide a structured summary using proper domain-specific notation, "
+                "focusing on accuracy, steps, and technical clarity."
             )
         else:
-            system_prompt = SUMMARY_PROMPT.strip()
+            system_prompt = SUMMARY_PROMPT.format(domain=domain).strip()
             user_context = (
-                "Analyze this image extracted from a student's handwritten or typed exam script. "
-                "Follow all steps in the system prompt to provide a structured description."
+                f"Analyze this student's answer image within the domain of {domain}. "
+                "Summarize it based on notations and conventions standard to that field."
             )
 
         try:
-            # --- Encode image as base64 ---
             with open(image_path, "rb") as img_file:
                 image_bytes = img_file.read()
             base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
-            # Detect MIME type
             ext = os.path.splitext(image_path)[-1].lower().replace(".", "")
             mime_type = f"image/{'jpeg' if ext in ['jpg', 'jpeg'] else ext}"
 
-            # --- Send to model ---
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",  # Vision-capable model
+                model="gpt-4o-mini",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt,
-                    },
+                    {"role": "system", "content": system_prompt},
                     {
                         "role": "user",
                         "content": [
                             {"type": "text", "text": user_context},
-                            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}},
+                            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_image}" }},
                         ],
                     },
                 ],
@@ -77,7 +69,7 @@ class ImageSummarizerLLM:
             )
 
             summary = response.choices[0].message.content.strip()
-            logging.info(f"[LLM] ✅ Successfully summarized ({mode}): {os.path.basename(image_path)}")
+            logging.info(f"[LLM] ✅ Summarized ({mode}, domain={domain}): {os.path.basename(image_path)}")
             return summary
 
         except Exception as e:
@@ -97,7 +89,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     summarizer = ImageSummarizerLLM()
-    summary = summarizer.summarize_image(args.image_path, mode=args.mode)
+    summary = summarizer.summarize_image(args.image_path, mode=args.mode, domain="")
 
     print("\n🧠 IMAGE SUMMARY RESULT\n" + "-" * 60)
     print(summary or "❌ No summary generated.")

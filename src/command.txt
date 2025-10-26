@@ -34,7 +34,9 @@ python -m src.scripts.summarize_media_and_embed --mode embed --assessment_id EE6
 
 
 mark_all_papers
+send image summary
 python -m src.scripts.grade_student_answers PAPER1 EE6250_2025_JUNE updated_EG_2020_4010 --mode summary
+send image directly
 python -m src.scripts.grade_student_answers PAPER1 EE6250_2025_JUNE updated_EG_2020_4010 --mode image
 **for single paper**
 

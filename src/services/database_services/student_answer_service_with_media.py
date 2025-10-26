@@ -4,6 +4,7 @@ import os
 import sys
 import logging
 from typing import List, Dict, Any
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from src.services.database_services.base_relational_db import BaseRelationalDB
 from ...models.student_answer import StudentAnswer
@@ -120,6 +121,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                 a.id AS student_answer_id,
                 a.question_number,
                 a.answer_text,
+                m.media_url,
                 m.media_summary
             FROM student_answer a
             LEFT JOIN student_answer_media m 
@@ -130,15 +132,18 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
         rows = self.cursor.fetchall()
 
         result = {}
-        for ans_id, q_num, text, media_summary in rows:
+        for ans_id, q_num, text, media_url, media_summary in rows:
             if q_num not in result:
                 result[q_num] = {
                     "student_answer_id": ans_id,
                     "answer_text": text,
-                    "media_summaries": []
+                    "media_items": []
                 }
-            if media_summary:
-                result[q_num]["media_summaries"].append(media_summary)
+            if media_url or media_summary:
+                result[q_num]["media_items"].append({
+                    "media_url": media_url,
+                    "media_summary": media_summary
+                })
 
         return result
 
@@ -147,8 +152,12 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
     # ----------------------------------------------------------------------
     def get_all_answers_by_submission_ids(self, submission_ids: List[str]) -> List[Dict[str, Any]]:
         """
-        Return all answers (student_answer_id, question_number, answer_text, [media_summaries])
-        for multiple submissions.
+        Return all answers for multiple submissions, including:
+        - submission_id
+        - student_answer_id
+        - question_number
+        - answer_text
+        - media_items: [{ media_url, media_summary }]
         """
         if not submission_ids:
             logging.warning("[DB] No submission_ids provided.")
@@ -161,6 +170,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                     a.id AS student_answer_id,
                     a.question_number,
                     a.answer_text,
+                    m.media_url,
                     m.media_summary
                 FROM student_answer a
                 LEFT JOIN student_answer_media m 
@@ -172,7 +182,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             rows = self.cursor.fetchall()
 
             result_map = {}
-            for sub_id, ans_id, q_num, text, media_summary in rows:
+            for sub_id, ans_id, q_num, text, media_url, media_summary in rows:
                 key = (sub_id, ans_id)
                 if key not in result_map:
                     result_map[key] = {
@@ -180,10 +190,13 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                         "student_answer_id": ans_id,
                         "question_number": q_num,
                         "answer_text": text,
-                        "media_summaries": []
+                        "media_items": []
                     }
-                if media_summary:
-                    result_map[key]["media_summaries"].append(media_summary)
+                if media_url or media_summary:
+                    result_map[key]["media_items"].append({
+                        "media_url": media_url,
+                        "media_summary": media_summary
+                    })
 
             return list(result_map.values())
 

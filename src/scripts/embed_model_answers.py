@@ -34,7 +34,7 @@
 # # #     ap = argparse.ArgumentParser(description="Extract & embed model answers")
 # # #     ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini"])
 # # #     ap.add_argument("--model", required=True, help="LLM model name (e.g. gpt-4o, gemini-1.5-pro)")
-# # #     ap.add_argument("--embedder", default="text-embedding-3-small", help="Embedding model name")
+# # #     ap.add_argument("--embedder", default="text-embedding-3-large", help="Embedding model name")
 # # #     ap.add_argument("--root", default="data/Model_Answers", help="Root folder of model answers")
 # # #     ap.add_argument("--ext", nargs="*", default=[".pdf", ".docx"], help="File extensions (default: .pdf .docx)")
 # # #     args = ap.parse_args()
@@ -78,7 +78,7 @@
 # #   python -m src.scripts.embed_model_answers \
 # #          --provider OpenAI \
 # #          --model gpt-4o \
-# #          --embedder text-embedding-3-small
+# #          --embedder text-embedding-3-large
 # # """
 
 # # import argparse
@@ -223,7 +223,7 @@
 # #     )
 # #     ap.add_argument(
 # #         "--embedder",
-# #         default="text-embedding-3-small",
+# #         default="text-embedding-3-large",
 # #         help="Embedding model name (OpenAI or Gemini)",
 # #     )
 # #     args = ap.parse_args()
@@ -306,7 +306,7 @@
 #   python -m src.scripts.embed_model_answers \
 #          --provider OpenAI \
 #          --model gpt-4o \
-#          --embedder text-embedding-3-small \
+#          --embedder text-embedding-3-large \
 #          --assessment-id ASSESSMENT_ID
 # """
 
@@ -482,7 +482,7 @@
 #         )
 #         ap.add_argument(
 #             "--embedder",
-#             default="text-embedding-3-small",
+#             default="text-embedding-3-large",
 #             help="Embedding model name (OpenAI or Gemini)",
 #         )
 #         ap.add_argument(
@@ -498,7 +498,7 @@
 
 #     # Set defaults if not provided
 #     if not embedder_name:
-#         embedder_name = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+#         embedder_name = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
 
 #     logger.info(f"Processing model answer files from database with provider: {provider}")
 #     if assessment_id:
@@ -612,7 +612,7 @@ Run from the project root:
   python -m src.scripts.embed_model_answers \
          --provider OpenAI \
          --model gpt-4o \
-         --embedder text-embedding-3-small \
+         --embedder text-embedding-3-large \
          --assessment-id ASSESSMENT_ID
 """
 
@@ -792,7 +792,7 @@ def main(assessment_id: Optional[str] = None, provider: Optional[str] = None,
         )
         ap.add_argument(
             "--embedder",
-            default="text-embedding-3-small",
+            default="text-embedding-3-large",
             help="Embedding model name (OpenAI or Gemini)",
         )
         ap.add_argument(

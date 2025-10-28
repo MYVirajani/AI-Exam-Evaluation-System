@@ -14,7 +14,7 @@ def chunk_text(text, chunk_size=1000):
 
 def embed_lecture_materials(directory: str, module_code: str):
    
-    embedder = OpenAIEmbedder(model_name="text-embedding-3-small")
+    embedder = OpenAIEmbedder(model_name="text-embedding-3-large")
     # embedder = GeminiEmbedder(model_name="models/embedding-001")
 
     db = LectureMaterialEmbeddingDB(embedder)

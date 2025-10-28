@@ -66,7 +66,7 @@
         
 # # # #         # Set default embedders based on provider
 # # # #         if not embedder:
-# # # #             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+# # # #             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 # # # #         # Prepare arguments for the script
 # # # #         args = ['embed_lecture_materials.py', '--provider', provider, '--model', model, '--embedder', embedder]
@@ -132,7 +132,7 @@
 # # # #     try:
 # # # #         data = request.get_json() or {}
 # # # #         provider = data.get('provider', 'OpenAI')
-# # # #         model = data.get('model', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# # # #         model = data.get('model', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
 # # # #         module_code = data.get('module_code', 'EE3350')
 # # # #         year = data.get('year', '2025')
 # # # #         month = data.get('month', 'June')
@@ -173,7 +173,7 @@
 # # # #         data = request.get_json() or {}
 # # # #         provider = data.get('provider', 'OpenAI')
 # # # #         model = data.get('model', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# # # #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# # # #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
         
 # # # #         # Prepare arguments for the script
 # # # #         args = ['embed_model_answers.py', '--provider', provider, '--model', model, '--embedder', embedder]
@@ -206,7 +206,7 @@
 # # # #         data = request.get_json() or {}
 # # # #         provider = data.get('provider', 'OpenAI')
 # # # #         llm = data.get('llm', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# # # #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'embedding-001')
+# # # #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'embedding-001')
 # # # #         module = data.get('module', 'EE3350')
 # # # #         year = data.get('year', '2025')
 # # # #         month = data.get('month', 'June')
@@ -256,13 +256,13 @@
 # # # #         # Set default models based on provider
 # # # #         if provider == 'OpenAI':
 # # # #             llm_model = 'gpt-4o'
-# # # #             embed_model = 'text-embedding-3-small'
+# # # #             embed_model = 'text-embedding-3-large'
 # # # #         elif provider == 'GoogleGemini':
 # # # #             llm_model = 'gemini-2.0-flash'
 # # # #             embed_model = 'models/embedding-001'
 # # # #         else:
 # # # #             llm_model = 'gpt-4o'
-# # # #             embed_model = 'text-embedding-3-small'
+# # # #             embed_model = 'text-embedding-3-large'
         
 # # # #         steps = [
 # # # #             ('embed_lecture_materials', embed_lecture_materials_main),
@@ -394,7 +394,7 @@
 # # # #         if script_name == 'embed_lecture_materials':
 # # # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # # # #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-# # # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# # # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 # # # #             if kwargs.get('module_code'):
 # # # #                 args.extend(['--module', kwargs.get('module_code')])
                 
@@ -406,7 +406,7 @@
                 
 # # # #         elif script_name == 'embed_from_db':
 # # # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
-# # # #             args.extend(['--model', kwargs.get('model', 'text-embedding-3-small')])
+# # # #             args.extend(['--model', kwargs.get('model', 'text-embedding-3-large')])
 # # # #             args.extend(['--module_code', kwargs.get('module_code', 'EE3350')])
 # # # #             args.extend(['--year', kwargs.get('year', '2025')])
 # # # #             args.extend(['--month', kwargs.get('month', 'June')])
@@ -414,12 +414,12 @@
 # # # #         elif script_name == 'embed_model_answers':
 # # # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # # # #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-# # # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# # # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             
 # # # #         elif script_name == 'mark_papers':
 # # # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # # # #             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-# # # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# # # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 # # # #             args.extend(['--module', kwargs.get('module', 'EE3350')])
 # # # #             args.extend(['--year', kwargs.get('year', '2025')])
 # # # #             args.extend(['--month', kwargs.get('month', 'June')])
@@ -480,7 +480,7 @@
         
 # # # #         # Set default embedders based on provider
 # # # #         if not embedder:
-# # # #             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+# # # #             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 # # # #         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
 # # # #         result = execute_script_with_args(
@@ -551,7 +551,7 @@
 # # # #     try:
 # # # #         data = request.get_json() or {}
 # # # #         provider = data.get('provider', 'OpenAI')
-# # # #         model = data.get('model', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# # # #         model = data.get('model', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
 # # # #         module_code = data.get('module_code', 'EE3350')
 # # # #         year = data.get('year', '2025')
 # # # #         month = data.get('month', 'June')
@@ -594,7 +594,7 @@
 # # # #         data = request.get_json() or {}
 # # # #         provider = data.get('provider', 'OpenAI')
 # # # #         model = data.get('model', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# # # #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# # # #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
         
 # # # #         logger.info(f"Embedding model answers with provider: {provider}, model: {model}")
 # # # #         result = execute_script_with_args(
@@ -630,7 +630,7 @@
 # # # #         data = request.get_json() or {}
 # # # #         provider = data.get('provider', 'OpenAI')
 # # # #         llm = data.get('llm', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# # # #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'embedding-001')
+# # # #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'embedding-001')
 # # # #         module = data.get('module', 'EE3350')
 # # # #         year = data.get('year', '2025')
 # # # #         month = data.get('month', 'June')
@@ -683,13 +683,13 @@
 # # # #         # Set default models based on provider
 # # # #         if provider == 'OpenAI':
 # # # #             llm_model = 'gpt-4o'
-# # # #             embed_model = 'text-embedding-3-small'
+# # # #             embed_model = 'text-embedding-3-large'
 # # # #         elif provider == 'GoogleGemini':
 # # # #             llm_model = 'gemini-2.0-flash'
 # # # #             embed_model = 'models/embedding-001'
 # # # #         else:
 # # # #             llm_model = 'gpt-4o'
-# # # #             embed_model = 'text-embedding-3-small'
+# # # #             embed_model = 'text-embedding-3-large'
         
 # # # #         steps = [
 # # # #             ('embed_lecture_materials', embed_lecture_materials_main, {
@@ -785,7 +785,7 @@
 # # # #         'default_models': {
 # # # #             'OpenAI': {
 # # # #                 'llm': 'gpt-4o',
-# # # #                 'embedder': 'text-embedding-3-small'
+# # # #                 'embedder': 'text-embedding-3-large'
 # # # #             },
 # # # #             'GoogleGemini': {
 # # # #                 'llm': 'gemini-2.0-flash',
@@ -871,7 +871,7 @@
 # # #         if script_name == 'embed_lecture_materials':
 # # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # # #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-# # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 # # #             if kwargs.get('module_code'):
 # # #                 args.extend(['--module', kwargs.get('module_code')])
                 
@@ -884,12 +884,12 @@
 # # #         elif script_name == 'embed_model_answers':
 # # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # # #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-# # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             
 # # #         elif script_name == 'mark_papers':
 # # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # # #             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-# # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# # #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 # # #             args.extend(['--module', kwargs.get('module', 'EE3350')])
 # # #             args.extend(['--year', kwargs.get('year', '2025')])
 # # #             args.extend(['--month', kwargs.get('month', 'June')])
@@ -950,7 +950,7 @@
         
 # # #         # Set default embedders based on provider
 # # #         if not embedder:
-# # #             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+# # #             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 # # #         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
 # # #         result = execute_script_with_args(
@@ -1021,7 +1021,7 @@
 # # #     try:
 # # #         data = request.get_json() or {}
 # # #         provider = data.get('provider', 'OpenAI')
-# # #         model = data.get('model', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# # #         model = data.get('model', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
 # # #         module_code = data.get('module_code', 'EE3350')
 # # #         year = data.get('year', '2025')
 # # #         month = data.get('month', 'June')
@@ -1065,7 +1065,7 @@
 # # #         data = request.get_json() or {}
 # # #         provider = data.get('provider', 'OpenAI')
 # # #         model = data.get('model', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# # #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# # #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
         
 # # #         logger.info(f"Embedding model answers with provider: {provider}, model: {model}")
 # # #         result = execute_script_with_args(
@@ -1101,7 +1101,7 @@
 # # #         data = request.get_json() or {}
 # # #         provider = data.get('provider', 'OpenAI')
 # # #         llm = data.get('llm', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# # #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'embedding-001')
+# # #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'embedding-001')
 # # #         module = data.get('module', 'EE3350')
 # # #         year = data.get('year', '2025')
 # # #         month = data.get('month', 'June')
@@ -1154,13 +1154,13 @@
 # # #         # Set default models based on provider
 # # #         if provider == 'OpenAI':
 # # #             llm_model = 'gpt-4o'
-# # #             embed_model = 'text-embedding-3-small'
+# # #             embed_model = 'text-embedding-3-large'
 # # #         elif provider == 'GoogleGemini':
 # # #             llm_model = 'gemini-2.0-flash'
 # # #             embed_model = 'models/embedding-001'
 # # #         else:
 # # #             llm_model = 'gpt-4o'
-# # #             embed_model = 'text-embedding-3-small'
+# # #             embed_model = 'text-embedding-3-large'
         
 # # #         steps = [
 # # #             ('embed_lecture_materials', embed_lecture_materials_main, {
@@ -1264,7 +1264,7 @@
 # # #         'default_models': {
 # # #             'OpenAI': {
 # # #                 'llm': 'gpt-4o',
-# # #                 'embedder': 'text-embedding-3-small'
+# # #                 'embedder': 'text-embedding-3-large'
 # # #             },
 # # #             'GoogleGemini': {
 # # #                 'llm': 'gemini-2.0-flash',
@@ -1376,7 +1376,7 @@
 # #         if script_name == 'embed_lecture_materials':
 # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 # #             if kwargs.get('module_code'):
 # #                 args.extend(['--module', kwargs.get('module_code')])
                 
@@ -1389,12 +1389,12 @@
 # #         elif script_name == 'embed_model_answers':
 # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             
 # #         elif script_name == 'mark_papers':
 # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # #             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 # #             args.extend(['--module', kwargs.get('module', 'EE3350')])
 # #             args.extend(['--year', kwargs.get('year', '2025')])
 # #             args.extend(['--month', kwargs.get('month', 'June')])
@@ -1455,7 +1455,7 @@
         
 # #         # Set default embedders based on provider
 # #         if not embedder:
-# #             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+# #             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 # #         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
 # #         result = execute_script_with_args(
@@ -1526,7 +1526,7 @@
 # #     try:
 # #         data = request.get_json() or {}
 # #         provider = data.get('provider', 'OpenAI')
-# #         model = data.get('model', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# #         model = data.get('model', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
 # #         module_code = data.get('module_code', 'EE3350')
 # #         year = data.get('year', '2025')
 # #         month = data.get('month', 'June')
@@ -1570,7 +1570,7 @@
 # #         data = request.get_json() or {}
 # #         provider = data.get('provider', 'OpenAI')
 # #         model = data.get('model', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
         
 # #         logger.info(f"Embedding model answers with provider: {provider}, model: {model}")
 # #         result = execute_script_with_args(
@@ -1606,7 +1606,7 @@
 # #         data = request.get_json() or {}
 # #         provider = data.get('provider', 'OpenAI')
 # #         llm = data.get('llm', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'embedding-001')
+# #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'embedding-001')
 # #         module = data.get('module', 'EE3350')
 # #         year = data.get('year', '2025')
 # #         month = data.get('month', 'June')
@@ -1660,13 +1660,13 @@
 # #         # Set default models based on provider
 # #         if provider == 'OpenAI':
 # #             llm_model = 'gpt-4o'
-# #             embed_model = 'text-embedding-3-small'
+# #             embed_model = 'text-embedding-3-large'
 # #         elif provider == 'GoogleGemini':
 # #             llm_model = 'gemini-2.0-flash'
 # #             embed_model = 'models/embedding-001'
 # #         else:
 # #             llm_model = 'gpt-4o'
-# #             embed_model = 'text-embedding-3-small'
+# #             embed_model = 'text-embedding-3-large'
         
 # #         # Extract actual module code if it's a UUID (for embed_from_db and mark_papers)
 # #         # These steps need the actual module code (like EE3350), not the UUID
@@ -1776,7 +1776,7 @@
 # #         'default_models': {
 # #             'OpenAI': {
 # #                 'llm': 'gpt-4o',
-# #                 'embedder': 'text-embedding-3-small'
+# #                 'embedder': 'text-embedding-3-large'
 # #             },
 # #             'GoogleGemini': {
 # #                 'llm': 'gemini-2.0-flash',
@@ -1888,7 +1888,7 @@
 # #         if script_name == 'embed_lecture_materials':
 # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 # #             if kwargs.get('module_code'):
 # #                 args.extend(['--module', kwargs.get('module_code')])
                 
@@ -1901,12 +1901,12 @@
 # #         elif script_name == 'embed_model_answers':
 # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             
 # #         elif script_name == 'mark_papers':
 # #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 # #             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+# #             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 # #             args.extend(['--module', kwargs.get('module', 'EE3350')])
 # #             args.extend(['--year', kwargs.get('year', '2025')])
 # #             args.extend(['--month', kwargs.get('month', 'June')])
@@ -1967,7 +1967,7 @@
         
 # #         # Set default embedders based on provider
 # #         if not embedder:
-# #             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+# #             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 # #         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
 # #         result = execute_script_with_args(
@@ -2038,7 +2038,7 @@
 # #     try:
 # #         data = request.get_json() or {}
 # #         provider = data.get('provider', 'OpenAI')
-# #         model = data.get('model', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# #         model = data.get('model', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
 # #         module_code = data.get('module_code', 'EE3350')
 # #         year = data.get('year', '2025')
 # #         month = data.get('month', 'June')
@@ -2082,7 +2082,7 @@
 # #         data = request.get_json() or {}
 # #         provider = data.get('provider', 'OpenAI')
 # #         model = data.get('model', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+# #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
         
 # #         logger.info(f"Embedding model answers with provider: {provider}, model: {model}")
 # #         result = execute_script_with_args(
@@ -2118,7 +2118,7 @@
 # #         data = request.get_json() or {}
 # #         provider = data.get('provider', 'OpenAI')
 # #         llm = data.get('llm', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-# #         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'embedding-001')
+# #         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'embedding-001')
 # #         module = data.get('module', 'EE3350')
 # #         year = data.get('year', '2025')
 # #         month = data.get('month', 'June')
@@ -2172,13 +2172,13 @@
 # #         # Set default models based on provider
 # #         if provider == 'OpenAI':
 # #             llm_model = 'gpt-4o'
-# #             embed_model = 'text-embedding-3-small'
+# #             embed_model = 'text-embedding-3-large'
 # #         elif provider == 'GoogleGemini':
 # #             llm_model = 'gemini-2.0-flash'
 # #             embed_model = 'models/embedding-001'
 # #         else:
 # #             llm_model = 'gpt-4o'
-# #             embed_model = 'text-embedding-3-small'
+# #             embed_model = 'text-embedding-3-large'
         
 # #         # Extract actual module code if it's a UUID (for embed_from_db and mark_papers)
 # #         # These steps need the actual module code (like EE3350), not the UUID
@@ -2288,7 +2288,7 @@
 # #         'default_models': {
 # #             'OpenAI': {
 # #                 'llm': 'gpt-4o',
-# #                 'embedder': 'text-embedding-3-small'
+# #                 'embedder': 'text-embedding-3-large'
 # #             },
 # #             'GoogleGemini': {
 # #                 'llm': 'gemini-2.0-flash',
@@ -2401,7 +2401,7 @@
 #         if script_name == 'embed_lecture_materials':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             if kwargs.get('module_code'):
 #                 args.extend(['--module', kwargs.get('module_code')])
                 
@@ -2415,12 +2415,12 @@
 #         elif script_name == 'embed_model_answers':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             
 #         elif script_name == 'mark_papers':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             args.extend(['--module', kwargs.get('module')])
 #             args.extend(['--year', kwargs.get('year')])
 #             args.extend(['--month', kwargs.get('month')])
@@ -2481,7 +2481,7 @@
         
 #         # Set default embedders based on provider
 #         if not embedder:
-#             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+#             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 #         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
 #         # result = execute_script_with_args(
@@ -2561,7 +2561,7 @@
 #     try:
 #         data = request.get_json() or {}
 #         provider = data.get('provider', 'OpenAI')
-#         model = data.get('model', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+#         model = data.get('model', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
 #         module_code = data.get('module_code')
 #         year = data.get('year')
 #         month = data.get('month')
@@ -2605,7 +2605,7 @@
 #         data = request.get_json() or {}
 #         provider = data.get('provider', 'OpenAI')
 #         model = data.get('model', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-#         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+#         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
         
 #         logger.info(f"Embedding model answers with provider: {provider}, model: {model}")
 #         result = execute_script_with_args(
@@ -2641,7 +2641,7 @@
 #         data = request.get_json() or {}
 #         provider = data.get('provider', 'OpenAI')
 #         llm = data.get('llm', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-#         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'embedding-001')
+#         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'embedding-001')
 #         module = data.get('module')
 #         year = data.get('year')
 #         month = data.get('month')
@@ -2695,13 +2695,13 @@
 #         # Set default models based on provider
 #         if provider == 'OpenAI':
 #             llm_model = 'gpt-4o'
-#             embed_model = 'text-embedding-3-small'
+#             embed_model = 'text-embedding-3-large'
 #         elif provider == 'GoogleGemini':
 #             llm_model = 'gemini-2.0-flash'
 #             embed_model = 'models/embedding-001'
 #         else:
 #             llm_model = 'gpt-4o'
-#             embed_model = 'text-embedding-3-small'
+#             embed_model = 'text-embedding-3-large'
         
 #         # Extract actual module code if it's a UUID (for embed_from_db and mark_papers)
 #         # These steps need the actual module code (like EE3350), not the UUID
@@ -2822,7 +2822,7 @@
 #         'default_models': {
 #             'OpenAI': {
 #                 'llm': 'gpt-4o',
-#                 'embedder': 'text-embedding-3-small'
+#                 'embedder': 'text-embedding-3-large'
 #             },
 #             'GoogleGemini': {
 #                 'llm': 'gemini-2.0-flash',
@@ -3031,7 +3031,7 @@
 #         if script_name == 'embed_lecture_materials':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             if kwargs.get('module_id'):
 #                 args.extend(['--module', kwargs.get('module_id')])
                 
@@ -3044,12 +3044,12 @@
 #         elif script_name == 'embed_model_answers':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             
 #         elif script_name == 'mark_papers':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             args.extend(['--module', kwargs.get('module_code', 'EE3350')])
 #             args.extend(['--year', str(kwargs.get('year', 2025))])
 #             args.extend(['--month', kwargs.get('month', 'June')])
@@ -3121,13 +3121,13 @@
 #         # Set default models based on provider
 #         if provider == 'OpenAI':
 #             llm_model = 'gpt-4o'
-#             embed_model = 'text-embedding-3-small'
+#             embed_model = 'text-embedding-3-large'
 #         elif provider == 'GoogleGemini':
 #             llm_model = 'gemini-2.0-flash'
 #             embed_model = 'models/embedding-001'
 #         else:
 #             llm_model = 'gpt-4o'
-#             embed_model = 'text-embedding-3-small'
+#             embed_model = 'text-embedding-3-large'
         
 #         provider_suffix = 'openai' if provider == 'OpenAI' else 'gemini'
         
@@ -3232,7 +3232,7 @@
 #         module_id = data.get('module_id')
         
 #         if not embedder:
-#             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+#             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 #         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
 #         result = execute_script_with_args(
@@ -3303,7 +3303,7 @@
 #     try:
 #         data = request.get_json() or {}
 #         provider = data.get('provider', 'OpenAI')
-#         model = data.get('model', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+#         model = data.get('model', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
 #         module_code = data.get('module_code')
 #         year = data.get('year')
 #         month = data.get('month')
@@ -3346,7 +3346,7 @@
 #         data = request.get_json() or {}
 #         provider = data.get('provider', 'OpenAI')
 #         model = data.get('model', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-#         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001')
+#         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001')
         
 #         logger.info(f"Embedding model answers with provider: {provider}, model: {model}")
 #         result = execute_script_with_args(
@@ -3382,7 +3382,7 @@
 #         data = request.get_json() or {}
 #         provider = data.get('provider', 'OpenAI')
 #         llm = data.get('llm', 'gpt-4o' if provider == 'OpenAI' else 'gemini-2.0-flash')
-#         embedder = data.get('embedder', 'text-embedding-3-small' if provider == 'OpenAI' else 'embedding-001')
+#         embedder = data.get('embedder', 'text-embedding-3-large' if provider == 'OpenAI' else 'embedding-001')
 #         module_code = data.get('module_code')
 #         year = data.get('year')
 #         month = data.get('month')
@@ -3691,7 +3691,7 @@
 #         if script_name == 'embed_lecture_materials':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             if kwargs.get('assessment_id'):
 #                 args.extend(['--assessment-id', kwargs.get('assessment_id')])
                 
@@ -3707,14 +3707,14 @@
 #         elif script_name == 'embed_model_answers':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             if kwargs.get('assessment_id'):
 #                 args.extend(['--assessment-id', kwargs.get('assessment_id')])
             
 #         elif script_name == 'mark_papers':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             args.extend(['--module', kwargs.get('module_code', 'EE3350')])
 #             args.extend(['--year', str(kwargs.get('year', 2025))])
 #             args.extend(['--month', kwargs.get('month', 'June')])
@@ -3788,13 +3788,13 @@
 #         # Set default models based on provider
 #         if provider == 'OpenAI':
 #             llm_model = 'gpt-4o'
-#             embed_model = 'text-embedding-3-small'
+#             embed_model = 'text-embedding-3-large'
 #         elif provider == 'GoogleGemini':
 #             llm_model = 'gemini-2.0-flash'
 #             embed_model = 'models/embedding-001'
 #         else:
 #             llm_model = 'gpt-4o'
-#             embed_model = 'text-embedding-3-small'
+#             embed_model = 'text-embedding-3-large'
         
 #         provider_suffix = 'openai' if provider == 'OpenAI' else 'gemini'
         
@@ -3917,7 +3917,7 @@
 #         assessment_id = data.get('assessment_id')  # Added assessment_id support
         
 #         if not embedder:
-#             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+#             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 #         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
 #         result = execute_script_with_args(
@@ -4221,7 +4221,7 @@
 #         if script_name == 'embed_lecture_materials':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             if kwargs.get('assessment_id'):
 #                 args.extend(['--assessment-id', kwargs.get('assessment_id')])
                 
@@ -4238,14 +4238,14 @@
 #         elif script_name == 'embed_model_answers':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             if kwargs.get('assessment_id'):
 #                 args.extend(['--assessment-id', kwargs.get('assessment_id')])
             
 #         elif script_name == 'mark_papers':
 #             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
 #             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+#             args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
 #             args.extend(['--module', kwargs.get('module_code', 'EE3350')])
 #             args.extend(['--year', str(kwargs.get('year', 2025))])
 #             args.extend(['--month', kwargs.get('month', 'June')])
@@ -4434,13 +4434,13 @@
 #         # Set default models based on provider
 #         if provider == 'OpenAI':
 #             llm_model = 'gpt-4o'
-#             embed_model = 'text-embedding-3-small'
+#             embed_model = 'text-embedding-3-large'
 #         elif provider == 'GoogleGemini':
 #             llm_model = 'gemini-2.0-flash'
 #             embed_model = 'models/embedding-001'
 #         else:
 #             llm_model = 'gpt-4o'
-#             embed_model = 'text-embedding-3-small'
+#             embed_model = 'text-embedding-3-large'
         
 #         provider_suffix = 'openai' if provider == 'OpenAI' else 'gemini'
         
@@ -4644,7 +4644,7 @@
 #         assessment_id = data.get('assessment_id')
         
 #         if not embedder:
-#             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+#             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 #         logger.info(f"Marking papers with provider: {provider}")
 #         logger.info(f"Assessment ID: {assessment_id}, Module: {module_code}")
@@ -4750,7 +4750,7 @@
 #         assessment_id = data.get('assessment_id')
         
 #         if not embedder:
-#             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+#             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
 #         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
 #         result = execute_script_with_args(
@@ -5059,7 +5059,7 @@ def execute_script_with_args(script_func, script_name, **kwargs):
         if script_name == 'embed_lecture_materials':
             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-            args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+            args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             if kwargs.get('assessment_id'):
                 args.extend(['--assessment-id', kwargs.get('assessment_id')])
                 
@@ -5076,14 +5076,14 @@ def execute_script_with_args(script_func, script_name, **kwargs):
         elif script_name == 'embed_model_answers':
             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
             args.extend(['--model', kwargs.get('model', 'gpt-4o')])
-            args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+            args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             if kwargs.get('assessment_id'):
                 args.extend(['--assessment-id', kwargs.get('assessment_id')])
             
         elif script_name == 'mark_papers':
             args.extend(['--provider', kwargs.get('provider', 'OpenAI')])
             args.extend(['--llm', kwargs.get('llm', 'gpt-4o')])
-            args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-small')])
+            args.extend(['--embedder', kwargs.get('embedder', 'text-embedding-3-large')])
             args.extend(['--module', kwargs.get('module_code', 'EE3350')])
             args.extend(['--year', str(kwargs.get('year', 2025))])
             args.extend(['--month', kwargs.get('month', 'June')])
@@ -5199,13 +5199,13 @@ def run_full_evaluation():
         # Set default models based on provider
         if provider == 'OpenAI':
             llm_model = 'gpt-4o'
-            embed_model = 'text-embedding-3-small'
+            embed_model = 'text-embedding-3-large'
         elif provider == 'GoogleGemini':
             llm_model = 'gemini-2.0-flash'
             embed_model = 'models/embedding-001'
         else:
             llm_model = 'gpt-4o'
-            embed_model = 'text-embedding-3-small'
+            embed_model = 'text-embedding-3-large'
         
         provider_suffix = 'openai' if provider == 'OpenAI' else 'gemini'
         
@@ -5343,7 +5343,7 @@ def mark_papers():
         assessment_id = data.get('assessment_id')
         
         if not embedder:
-            embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+            embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
         logger.info(f"Marking papers with provider: {provider}")
         logger.info(f"Assessment ID: {assessment_id}, Module: {module_code}")
@@ -5449,7 +5449,7 @@ def embed_lecture_materials():
         assessment_id = data.get('assessment_id')
         
         if not embedder:
-            embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+            embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
         
         logger.info(f"Embedding lecture materials with provider: {provider}, model: {model}")
         result = execute_script_with_args(

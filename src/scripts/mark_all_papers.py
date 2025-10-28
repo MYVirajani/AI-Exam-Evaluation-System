@@ -9,7 +9,7 @@
 # # python -m src.scripts.mark_all_papers ^
 # #   --provider OpenAI ^
 # #   --llm gpt-4o ^
-# #   --embedder text-embedding-3-small ^
+# #   --embedder text-embedding-3-large ^
 # #   --module EE6250 ^
 # #   --year 2024 ^
 # #   --month June
@@ -55,7 +55,7 @@
 # python -m src.scripts.mark_all_papers ^
 #   --provider OpenAI ^
 #   --llm gpt-4o ^
-#   --embedder text-embedding-3-small ^
+#   --embedder text-embedding-3-large ^
 #   --module EE6250 ^
 #   --year 2024 ^
 #   --month June

@@ -27,7 +27,7 @@ class OpenAIConfig:
     """OpenAI configuration settings."""
     api_key: str
     model: str = "gpt-4o"
-    embedding_model: str = "text-embedding-3-small"
+    embedding_model: str = "text-embedding-3-large"
     temperature: float = 0
     max_tokens: Optional[int] = None
     
@@ -40,7 +40,7 @@ class OpenAIConfig:
         return cls(
             api_key=api_key,
             model=os.getenv("OPENAI_MODEL", "gpt-4o"),
-            embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
+            embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-large"),
             temperature=float(os.getenv("OPENAI_TEMPERATURE", "0")),
         )
 

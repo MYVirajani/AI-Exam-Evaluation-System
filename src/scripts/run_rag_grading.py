@@ -3,12 +3,12 @@ Run RAG grading.
 
 • One paper:
   python -m src.scripts.run_rag_grading --provider OpenAI --llm gpt-4o \
-         --embedder text-embedding-3-small --module EE6250 --year 2025 \
+         --embedder text-embedding-3-large --module EE6250 --year 2025 \
          --month June --student EG/2020/4247
 
 • Whole exam session:
   python -m src.scripts.run_rag_grading --provider OpenAI --llm gpt-4o \
-         --embedder text-embedding-3-small --module EE6250 --year 2025 \
+         --embedder text-embedding-3-large --module EE6250 --year 2025 \
          --month June --all
 """
 import argparse

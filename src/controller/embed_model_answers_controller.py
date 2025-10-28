@@ -12,7 +12,7 @@ def embed_model_answers(provider: str, model_name: str, file_text: str):
 
     # Choose embedder
     if provider == "OpenAI":
-        embedder = OpenAIEmbedder(model_name="text-embedding-3-small")
+        embedder = OpenAIEmbedder(model_name="text-embedding-3-large")
     elif provider == "GoogleGemini":
         embedder = GeminiEmbedder()
     else:

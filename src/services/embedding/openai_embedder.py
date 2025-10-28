@@ -8,7 +8,7 @@
 # load_dotenv()
 
 # class OpenAIEmbedder(AbstractEmbedder):
-#     def __init__(self, model_name="text-embedding-3-small"):
+#     def __init__(self, model_name="text-embedding-3-large"):
 #         self.model_name = model_name
 #         self.api_key = os.getenv("OPENAI_API_KEY")
 #         self.client = OpenAI(api_key=self.api_key)
@@ -24,7 +24,7 @@
 #         return self.model_name
 
 #     def get_embedding_dimension(self):
-#         if self.model_name == "text-embedding-3-small":
+#         if self.model_name == "text-embedding-3-large":
 #             return 1536
 #         return 1536  
 
@@ -41,7 +41,7 @@
 # logger = logging.getLogger(__name__)
 
 # class OpenAIEmbedder(AbstractEmbedder):
-#     def __init__(self, model_name="text-embedding-3-small"):
+#     def __init__(self, model_name="text-embedding-3-large"):
 #         self.model_name = model_name
 #         self.api_key = os.getenv("OPENAI_API_KEY")
 #         self.client = OpenAI(api_key=self.api_key)
@@ -68,7 +68,7 @@
 
 #     def get_embedding_dimension(self):
 #         # You can expand this for more models
-#         if self.model_name == "text-embedding-3-small":
+#         if self.model_name == "text-embedding-3-large":
 #             return 1536
 #         return 1536
 
@@ -84,7 +84,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 class OpenAIEmbedder(AbstractEmbedder):
-    def __init__(self, model_name="text-embedding-3-small"):
+    def __init__(self, model_name="text-embedding-3-large"):
         self.model_name = model_name
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.client = OpenAI(api_key=self.api_key)
@@ -109,7 +109,7 @@ class OpenAIEmbedder(AbstractEmbedder):
         return self.model_name
 
     def get_embedding_dimension(self):
-        return 1536
+        return 3072
 
     def get_table_suffix(self) -> str:
         return "openai"

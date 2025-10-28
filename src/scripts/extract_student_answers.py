@@ -24,7 +24,7 @@ def main() -> None:
     ap.add_argument("--model",    required=True)
     ap.add_argument("--path",     required=True,
                     help="PDF / DOCX answer script")
-    ap.add_argument("--embedder", default="text-embedding-3-small")
+    ap.add_argument("--embedder", default="text-embedding-3-large")
     args = ap.parse_args()
 
     extractor = AnswerExtractor(args.provider, args.model)

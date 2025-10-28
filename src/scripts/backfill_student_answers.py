@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 def main() -> None:
-    dummy_embedder = OpenAIEmbedder("text-embedding-3-small")  # 👈 new
+    dummy_embedder = OpenAIEmbedder("text-embedding-3-large")  # 👈 new
     vec_db  = StudentAnswerEmbeddingDB(dummy_embedder)         # pass it
     rel_db  = StudentAnswerService()
 

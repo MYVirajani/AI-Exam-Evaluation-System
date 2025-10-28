@@ -11,20 +11,20 @@ pip install -r requirements_gemini.txt
 
 
 *******************openai commands******************
-python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answers --ext pdf docx
+python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-large --root data/Model_Answers --ext pdf docx
 
-python -m src.scripts.embed_lecture_materials --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --module EE3350 --root data/Lecture_Materials
+python -m src.scripts.embed_lecture_materials --provider OpenAI --model gpt-4o --embedder text-embedding-3-large --module EE3350 --root data/Lecture_Materials
 
 python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --folder data/Answer_Scripts
 
-python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-small --module_code EE3350 --year 2025 --month June
+python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-large --module_code EE3350 --year 2025 --month June
 
-python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June
+python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-large --module EE3350 --year 2025 --month June
 
 
 **for single paper**
 
-python -m src.scripts.mark_single_paper --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June --student EG/2020/4011
+python -m src.scripts.mark_single_paper --provider OpenAI --llm gpt-4o --embedder text-embedding-3-large --module EE3350 --year 2025 --month June --student EG/2020/4011
 
 
 
@@ -47,15 +47,15 @@ python -m src.scripts.mark_single_paper --provider GoogleGemini --llm gemini-2.0
 
 -------------------------------------------------------------------------------------------------------------------
 
-python -m src.scripts.embed_lecture_materials --provider OpenAI --model text-embedding-3-small --embedder text-embedding-3-small
+python -m src.scripts.embed_lecture_materials --provider OpenAI --model text-embedding-3-large --embedder text-embedding-3-large
 
-python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small
+python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-large
 
 python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --from-db
 
-python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-small --module_code EE3350 --year 2025 --month June
+python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-large --module_code EE3350 --year 2025 --month June
 
-python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June
+python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-large --module EE3350 --year 2025 --month June
 
 -------------------------------------------------------------------------------------------------------------------
 

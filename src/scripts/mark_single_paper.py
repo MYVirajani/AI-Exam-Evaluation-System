@@ -6,7 +6,7 @@
 # python -m src.scripts.mark_single_paper ^
 #   --provider OpenAI ^
 #   --llm gpt-4o ^
-#   --embedder text-embedding-3-small ^
+#   --embedder text-embedding-3-large ^
 #   --index EG/2020/4247 ^
 #   --module EE6250 ^
 #   --year 2024 ^
@@ -64,7 +64,7 @@ Example:
 python -m src.scripts.mark_single_paper ^
   --provider OpenAI ^
   --llm gpt-4o ^
-  --embedder text-embedding-3-small ^
+  --embedder text-embedding-3-large ^
   --module EE3350 ^
   --year 2025 ^
   --month June ^

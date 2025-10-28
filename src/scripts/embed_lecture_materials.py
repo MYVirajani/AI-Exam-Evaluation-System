@@ -30,7 +30,7 @@
 # # # #     ap = argparse.ArgumentParser(description="Embed lecture materials into vector DB")
 # # # #     ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini"], help="Embedding provider")
 # # # #     ap.add_argument("--model", required=True, help="LLM model name (unused here, for logging)")
-# # # #     ap.add_argument("--embedder", default="text-embedding-3-small", help="Embedding model ID (e.g., text-embedding-3-small or embedding-001)")
+# # # #     ap.add_argument("--embedder", default="text-embedding-3-large", help="Embedding model ID (e.g., text-embedding-3-large or embedding-001)")
 # # # #     ap.add_argument("--root", default="data/Lecture_Material", help="Root directory containing module folders")
 # # # #     ap.add_argument("--module", help="Target module code (e.g., EE6250)")
 # # # #     ap.add_argument("--max_tokens", type=int, default=1000)
@@ -103,8 +103,8 @@
 # # # Example (PowerShell one-liner):
 # # #   python -m src.scripts.embed_lecture_materials `
 # # #     --provider OpenAI `
-# # #     --model text-embedding-3-small `
-# # #     --embedder text-embedding-3-small
+# # #     --model text-embedding-3-large `
+# # #     --embedder text-embedding-3-large
 # # # """
 
 # # # import argparse
@@ -271,8 +271,8 @@
 # # #                    help="Embedding provider")
 # # #     ap.add_argument("--model", required=True, 
 # # #                    help="LLM model name (unused here, for logging)")
-# # #     ap.add_argument("--embedder", default="text-embedding-3-small", 
-# # #                    help="Embedding model ID (e.g., text-embedding-3-small or embedding-001)")
+# # #     ap.add_argument("--embedder", default="text-embedding-3-large", 
+# # #                    help="Embedding model ID (e.g., text-embedding-3-large or embedding-001)")
 # # #     ap.add_argument("--module", 
 # # #                    help="Target module code (e.g., EE6250). If not provided, all modules will be processed.")
 # # #     ap.add_argument("--max_tokens", type=int, default=1000)
@@ -588,7 +588,7 @@
 # #                        help="Embedding provider")
 # #         ap.add_argument("--model", required=True, 
 # #                        help="LLM model name (unused here, for logging)")
-# #         ap.add_argument("--embedder", default="text-embedding-3-small", 
+# #         ap.add_argument("--embedder", default="text-embedding-3-large", 
 # #                        help="Embedding model ID")
 # #         ap.add_argument("--module", 
 # #                        help="Target module code or ID. If not provided, all modules will be processed.")
@@ -605,7 +605,7 @@
 # #     else:
 # #         # Called from Flask API
 # #         if not embedder:
-# #             embedder = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+# #             embedder = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
 # #         max_tokens = kwargs.get('max_tokens', 1000)
 # #         overlap = kwargs.get('overlap', 200)
 
@@ -864,7 +864,7 @@
 
 #     # Set default embedder if not provided
 #     if not embedder_name:
-#         embedder_name = 'text-embedding-3-small' if provider == 'OpenAI' else 'models/embedding-001'
+#         embedder_name = 'text-embedding-3-large' if provider == 'OpenAI' else 'models/embedding-001'
 
 #     logger.info(f"🔧 Starting lecture material embedding with provider: {provider}")
 #     if module_id:
@@ -994,7 +994,7 @@
 #     logger.warning("Using legacy directory processing mode")
     
 #     # Use OpenAI as default for legacy mode
-#     embedder = OpenAIEmbedder(model_name="text-embedding-3-small")
+#     embedder = OpenAIEmbedder(model_name="text-embedding-3-large")
 #     db = LectureMaterialEmbeddingDB(embedder)
 
 #     if not os.path.exists(directory):
@@ -1058,8 +1058,8 @@
 # Example (PowerShell one-liner):
 #   python -m src.scripts.embed_lecture_materials `
 #     --provider OpenAI `
-#     --model text-embedding-3-small `
-#     --embedder text-embedding-3-small `
+#     --model text-embedding-3-large `
+#     --embedder text-embedding-3-large `
 #     --assessment-id ASS123
 # """
 
@@ -1268,8 +1268,8 @@
 #                    help="Embedding provider")
 #     ap.add_argument("--model", required=True, 
 #                    help="LLM model name (unused here, for logging)")
-#     ap.add_argument("--embedder", default="text-embedding-3-small", 
-#                    help="Embedding model ID (e.g., text-embedding-3-small or embedding-001)")
+#     ap.add_argument("--embedder", default="text-embedding-3-large", 
+#                    help="Embedding model ID (e.g., text-embedding-3-large or embedding-001)")
 #     ap.add_argument("--module", 
 #                    help="Target module code (e.g., EE6250). If not provided, all modules will be processed.")
 #     ap.add_argument("--assessment-id", 
@@ -1403,8 +1403,8 @@ Embed all lecture materials from database with assessment-specific filtering.
 Example (PowerShell one-liner):
   python -m src.scripts.embed_lecture_materials `
     --provider OpenAI `
-    --model text-embedding-3-small `
-    --embedder text-embedding-3-small `
+    --model text-embedding-3-large `
+    --embedder text-embedding-3-large `
     --assessment-id ASS123
 """
 
@@ -1613,8 +1613,8 @@ def main() -> None:
                    help="Embedding provider")
     ap.add_argument("--model", required=True, 
                    help="LLM model name (unused here, for logging)")
-    ap.add_argument("--embedder", default="text-embedding-3-small", 
-                   help="Embedding model ID (e.g., text-embedding-3-small or embedding-001)")
+    ap.add_argument("--embedder", default="text-embedding-3-large", 
+                   help="Embedding model ID (e.g., text-embedding-3-large or embedding-001)")
     ap.add_argument("--module", 
                    help="Target module code (e.g., EE6250). If not provided, all modules will be processed.")
     ap.add_argument("--assessment-id", 

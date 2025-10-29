@@ -1,16 +1,18 @@
 import os
 import html
+import re
 from io import BytesIO
 from PIL import Image
 from docx import Document
 from docx.oxml import parse_xml
 from docx.oxml.ns import qn
+from lxml import etree
 from docx2pdf import convert  # pip install docx2pdf
 
 # -----------------------------
 # CONFIGURATION
 # -----------------------------
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # Go up one level
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 INPUT_DIR = os.path.join(DATA_DIR, "raw_answer_scripts_docs")
 EXTRACT_DIR = os.path.join(DATA_DIR, "extracted_media")
@@ -21,15 +23,11 @@ os.makedirs(EXTRACT_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(PDF_DIR, exist_ok=True)
 
-
 # -----------------------------
 # HELPER FUNCTIONS
 # -----------------------------
 def xml_escape(text: str) -> str:
-    """
-    Escape XML special characters (&, <, >, ", ')
-    so that LaTeX code can safely be placed inside XML tags.
-    """
+    """Escape XML special characters (&, <, >, ", ')"""
     return (
         text.replace("&", "&amp;")
         .replace("<", "&lt;")
@@ -64,36 +62,85 @@ def table_to_latex(table):
     return latex
 
 
+def extract_text_from_omml(xml_fragment: str) -> str:
+    """Extract readable text from OMML XML (remove tags, keep symbols)."""
+    xml_fragment = re.sub(r"<.*?>", "", xml_fragment)
+    xml_fragment = html.unescape(xml_fragment)
+    return xml_fragment.strip()
+
+
+def omml_to_latex(omml_xml: str) -> str:
+    """
+    Convert Word OMML (Office Math Markup Language) equations to simplified LaTeX.
+    This works for most typical engineering/science expressions.
+    """
+    omml_xml = re.sub(r"\s+", " ", omml_xml)
+
+    # Fractions
+    omml_xml = re.sub(
+        r"<m:f>.*?<m:num>(.*?)</m:num>.*?<m:den>(.*?)</m:den>.*?</m:f>",
+        lambda m: f"\\frac{{{extract_text_from_omml(m.group(1))}}}{{{extract_text_from_omml(m.group(2))}}}",
+        omml_xml,
+    )
+
+    # Superscripts
+    omml_xml = re.sub(
+        r"<m:sSup>.*?<m:e>(.*?)</m:e>.*?<m:sup>(.*?)</m:sup>.*?</m:sSup>",
+        lambda m: f"{extract_text_from_omml(m.group(1))}^{{{extract_text_from_omml(m.group(2))}}}",
+        omml_xml,
+    )
+
+    # Subscripts
+    omml_xml = re.sub(
+        r"<m:sSub>.*?<m:e>(.*?)</m:e>.*?<m:sub>(.*?)</m:sub>.*?</m:sSub>",
+        lambda m: f"{extract_text_from_omml(m.group(1))}_{{{extract_text_from_omml(m.group(2))}}}",
+        omml_xml,
+    )
+
+    # Roots
+    omml_xml = re.sub(
+        r"<m:rad>.*?<m:deg>(.*?)</m:deg>.*?<m:e>(.*?)</m:e>.*?</m:rad>",
+        lambda m: f"\\sqrt[{extract_text_from_omml(m.group(1))}]{{{extract_text_from_omml(m.group(2))}}}",
+        omml_xml,
+    )
+    omml_xml = re.sub(
+        r"<m:rad>.*?<m:e>(.*?)</m:e>.*?</m:rad>",
+        lambda m: f"\\sqrt{{{extract_text_from_omml(m.group(1))}}}",
+        omml_xml,
+    )
+
+    # Strip remaining tags and wrap in inline math
+    clean_text = extract_text_from_omml(omml_xml)
+    return f"\\({clean_text}\\)"
+
+
 # -----------------------------
 # CORE PROCESSING FUNCTION
 # -----------------------------
 def process_docx(docx_path):
-    """Extract images & convert tables to inline LaTeX placeholders in Word."""
+    """Extract images, tables, and equations; convert to LaTeX placeholders."""
     doc = Document(docx_path)
     basename = os.path.splitext(os.path.basename(docx_path))[0]
     print(f"\n📄 Processing: {basename}.docx")
 
     img_counter = 0
     tbl_counter = 0
+    eqn_counter = 0
 
-    # Iterate through all body elements in order
     body_elements = list(doc.element.body)
 
     for element in body_elements:
         tag = element.tag
 
-        # Handle Tables → convert to inline LaTeX
+        # Handle Tables
         if tag.endswith("tbl"):
             tbl_counter += 1
             for tbl in doc.tables:
                 if tbl._element is element:
                     latex_code = table_to_latex(tbl)
                     safe_latex = xml_escape(latex_code)
-
                     parent = element.getparent()
                     idx = parent.index(element)
-
-                    # Insert escaped LaTeX as paragraph
                     placeholder = parse_xml(
                         f'<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
                         f'<w:r><w:t>{safe_latex}</w:t></w:r></w:p>'
@@ -102,35 +149,49 @@ def process_docx(docx_path):
                     parent.remove(element)
                     break
 
-        # Handle Paragraphs (with embedded images)
+        # Handle Paragraphs
         elif tag.endswith("p"):
-            paragraph = None
-            for p in doc.paragraphs:
-                if p._element is element:
-                    paragraph = p
-                    break
+            paragraph = next((p for p in doc.paragraphs if p._element is element), None)
+            if not paragraph:
+                continue
 
-            if paragraph:
-                for run in paragraph.runs:
-                    blips = run.element.xpath(".//a:blip")
-                    if blips:
-                        img_counter += 1
-                        embed_rid = blips[0].get(qn("r:embed"))
-                        image_part = doc.part.related_parts[embed_rid]
-                        image_data = image_part.blob
-                        img_path = save_image(image_data, basename, img_counter)
-                        run.text = f"[Image: {img_path}]"
-                        # Remove the image XML reference
-                        for blip in blips:
-                            blip.getparent().remove(blip)
+            # Convert images
+            for run in paragraph.runs:
+                blips = run.element.xpath(".//a:blip")
+                if blips:
+                    img_counter += 1
+                    embed_rid = blips[0].get(qn("r:embed"))
+                    image_part = doc.part.related_parts[embed_rid]
+                    image_data = image_part.blob
+                    img_path = save_image(image_data, basename, img_counter)
+                    run.text = f"[Image: {img_path}]"
+                    for blip in blips:
+                        blip.getparent().remove(blip)
 
-    # Save updated Word document
+            # Convert equations (OMML)
+            math_elems = paragraph._element.xpath(".//m:oMath | .//m:oMathPara")
+            for math_elem in math_elems:
+                eqn_counter += 1
+                # FIX: etree.tostring() instead of .xml
+                eqn_xml = etree.tostring(math_elem, encoding="unicode")
+                latex_code = omml_to_latex(eqn_xml)
+                safe_latex = xml_escape(latex_code)
+                # Replace the math XML with LaTeX text node
+                math_elem.getparent().replace(
+                    math_elem,
+                    parse_xml(
+                        f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                        f'<w:t>{safe_latex}</w:t></w:r>'
+                    ),
+                )
+
+    # Save updated document
     updated_path = os.path.join(OUTPUT_DIR, f"{basename}.docx")
     doc.save(updated_path)
     print(f"✅ Saved updated Word: {updated_path}")
-    print(f"   Extracted {img_counter} images, replaced {tbl_counter} tables with LaTeX code.")
+    print(f"   Extracted {img_counter} images, replaced {tbl_counter} tables, converted {eqn_counter} equations.")
 
-    # Convert to PDF (optional)
+    # Convert to PDF
     pdf_path = os.path.join(PDF_DIR, f"{basename}.pdf")
     try:
         convert(updated_path, pdf_path)

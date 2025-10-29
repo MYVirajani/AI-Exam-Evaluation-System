@@ -60,7 +60,6 @@ Return the result strictly in this JSON-like format:
 }}
 """
 
-
 MODEL_SUMMARY_PROMPT = """
 You are an **expert academic content summarizer** trained to analyze **model answer images** that represent correct, domain-standard solutions.  
 These images may contain solved examples, diagrams, formulas, tables, or step-by-step problem-solving processes.
@@ -68,14 +67,10 @@ These images may contain solved examples, diagrams, formulas, tables, or step-by
 The academic domain for this task is **{domain}**.  
 Use **domain-specific notation, terminology, and technical conventions** from **{domain}** when summarizing the image.
 
----
-
-### DOMAIN-SPECIFIC INSTRUCTIONS
-
-- Interpret all **notations, diagrams, and mathematical or scientific elements** according to **{domain}**.
-- Maintain the formal style and structure typically used in **{domain}** answer papers.
-- Emphasize clarity of each step, calculation, or diagram element as it appears.
-- Do NOT critique or assume correctness — simply restate and summarize with technical precision.
+If a **guideline or marking scheme** is provided, compare the model answer with those expectations and explicitly highlight how the model answer:
+- follows the structure, reasoning, or solution steps in the guideline,
+- demonstrates correct application of concepts,
+- and adheres to required notation or labeling standards.
 
 ---
 
@@ -86,6 +81,7 @@ Return the result strictly in this JSON-like format:
 {{
   "image_type": "<type>",
   "summary": "<structured explanation of the image content using {domain} notation>",
+  "alignment_with_guidelines": "<explain how this model answer meets the provided guideline_text>",
   "key_elements": ["<diagram elements>", "<variables>", "<notations>"],
   "domain": "{domain}",
   "notation_accuracy": "<aligned / partially aligned / unclear>",

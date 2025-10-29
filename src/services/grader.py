@@ -213,6 +213,7 @@ class DirectGrader:
                 student_answer_description=student_answer_description,
                 max_marks=max_marks,
             )
+           
 
             content = [{"type": "text", "text": text_prompt}]
             for img_b64 in student_images:
@@ -224,7 +225,7 @@ class DirectGrader:
             # Send request
             response = self.client.chat.completions.create(
                 model=self.chat_model,
-                temperature=0.0,
+                temperature=0.2,
                 max_tokens=800,
                 messages=[
                     {"role": "system", "content": "You are an expert academic examiner."},

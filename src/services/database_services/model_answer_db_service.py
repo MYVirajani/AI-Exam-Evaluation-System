@@ -168,7 +168,7 @@ class ModelAnswerDBService(BaseRelationalDB):
         return media_values
 
     # ------------------------------------------------------------------
-    # Fetch All Media for an Assessment
+    # Fetch All Media for an Assessment (✅ Updated)
     # ------------------------------------------------------------------
 
     def get_media_by_assessment(
@@ -176,11 +176,14 @@ class ModelAnswerDBService(BaseRelationalDB):
         assessment_id: str,
         model_paper_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Fetch all model answer media for a given assessment"""
+        """Fetch all model answer media for a given assessment, including guideline text."""
         try:
             if model_paper_id:
                 query = """
-                SELECT mam.id, mam.media_url
+                SELECT 
+                    mam.id AS media_id,
+                    mam.media_url,
+                    ma.guideline_text
                 FROM model_answer_media mam
                 JOIN model_answer ma ON mam.model_answer_id = ma.id
                 WHERE ma.assessment_id = %s AND ma.model_answer_paper_id = %s;
@@ -188,7 +191,10 @@ class ModelAnswerDBService(BaseRelationalDB):
                 params = (assessment_id, model_paper_id)
             else:
                 query = """
-                SELECT mam.id, mam.media_url
+                SELECT 
+                    mam.id AS media_id,
+                    mam.media_url,
+                    ma.guideline_text
                 FROM model_answer_media mam
                 JOIN model_answer ma ON mam.model_answer_id = ma.id
                 WHERE ma.assessment_id = %s;
@@ -198,13 +204,22 @@ class ModelAnswerDBService(BaseRelationalDB):
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
-            return [
-                {"id": row[0], "media_url": row[1]}
+            results = [
+                {
+                    "id": row[0],
+                    "media_url": row[1],
+                    "guideline_text": row[2]
+                }
                 for row in rows
             ]
 
+            logger.info(
+                f"✅ Retrieved {len(results)} media items (with guideline text) for assessment_id={assessment_id}"
+            )
+            return results
+
         except Exception as e:
-            logger.error(f"❌ Failed to fetch media: {e}")
+            logger.error(f"❌ Failed to fetch media with guideline text: {e}", exc_info=True)
             self.conn.rollback()
             return []
 

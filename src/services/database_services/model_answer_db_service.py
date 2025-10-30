@@ -69,7 +69,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             raise
 
     # ------------------------------------------------------------------
-    # Save Model Answers and Media
+    # Save Model Answers and Media (with deletion of existing data)
     # ------------------------------------------------------------------
     def save_model_answers(
         self,
@@ -77,44 +77,61 @@ class ModelAnswerDBService(BaseRelationalDB):
         assessment_id: str,
         model_answer_paper_id: str
     ) -> None:
-        """Save model answers and their associated media."""
+        """Save model answers and their associated media, replacing existing ones if present."""
         if not model_answers:
             logger.warning("⚠️ No model answers to save.")
             return
 
-        model_answer_query = f"""
-            INSERT INTO {self.model_answer_table} (
-                assessment_id,
-                model_answer_paper_id,
-                question_number,
-                question_text,
-                answer_text,
-                guideline_text,
-                max_marks,
-                created_on
-            )
-            VALUES %s
-            RETURNING id, question_number;
-        """
-
-        model_answer_values = [
-            (
-                assessment_id,
-                model_answer_paper_id,
-                ans.full_question_id,
-                ans.question_text,
-                ans.answer_text,
-                ans.guideline_text,
-                ans.max_marks,
-                datetime.now()
-            )
-            for ans in model_answers
-        ]
-
         try:
+            # 🔹 Step 1: Delete existing data for same assessment_id & paper_id
+            logger.info(
+                f"🧹 Deleting existing model answers for assessment_id='{assessment_id}' "
+                f"and model_answer_paper_id='{model_answer_paper_id}'..."
+            )
+
+            delete_query = f"""
+                DELETE FROM {self.model_answer_table}
+                WHERE assessment_id = %s AND model_answer_paper_id = %s;
+            """
+            self.cursor.execute(delete_query, (assessment_id, model_answer_paper_id))
+            self.conn.commit()
+            logger.info("✅ Old data deleted successfully before inserting new records.")
+
+            # 🔹 Step 2: Insert new model answers
+            model_answer_query = f"""
+                INSERT INTO {self.model_answer_table} (
+                    assessment_id,
+                    model_answer_paper_id,
+                    question_number,
+                    question_text,
+                    answer_text,
+                    guideline_text,
+                    max_marks,
+                    created_on
+                )
+                VALUES %s
+                RETURNING id, question_number;
+            """
+
+            model_answer_values = [
+                (
+                    assessment_id,
+                    model_answer_paper_id,
+                    ans.full_question_id,
+                    ans.question_text,
+                    ans.answer_text,
+                    ans.guideline_text,
+                    ans.max_marks,
+                    datetime.now()
+                )
+                for ans in model_answers
+            ]
+
             execute_values(self.cursor, model_answer_query, model_answer_values)
             inserted_rows = self.cursor.fetchall()  # [(id, question_number), ...]
             id_map = {row[1]: row[0] for row in inserted_rows}
+
+            # 🔹 Step 3: Insert associated media
             media_values = self._prepare_media_values(model_answers, id_map, assessment_id)
 
             if media_values:
@@ -136,7 +153,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             )
 
         except Exception as e:
-            logger.error(f"❌ Failed to save model answers and media: {e}")
+            logger.error(f"❌ Failed to save model answers and media: {e}", exc_info=True)
             self.conn.rollback()
             raise
 
@@ -281,12 +298,13 @@ class ModelAnswerDBService(BaseRelationalDB):
                 return None
 
             (
-                _,
+                model_answer_id,
                 question_number,
                 question_text,
                 guideline_text,
                 answer_text,
                 max_marks,
+                media_summary,
             ) = rows[0]
 
             media_summaries = [r[6] for r in rows if r[6]]

@@ -287,7 +287,6 @@ class ModelAnswerDBService(BaseRelationalDB):
                 guideline_text,
                 answer_text,
                 max_marks,
-                first_media_summary,
             ) = rows[0]
 
             media_summaries = [r[6] for r in rows if r[6]]

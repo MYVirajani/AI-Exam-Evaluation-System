@@ -17,23 +17,25 @@ logger.setLevel(logging.INFO)
 class ModelAnswerDBService(BaseRelationalDB):
     """
     Handles saving, fetching, and updating model answers and their media
-    in the database.
+    in dynamically named tables based on the AI model (e.g., model_answer_openai).
     """
 
-    def __init__(self):
+    def __init__(self, ai_model: str = "openai"):
         super().__init__()
+        self.ai_model = ai_model.lower().replace("-", "_").replace(".", "_")
+        self.model_answer_table = f"model_answer_{self.ai_model}"
+        self.model_answer_media_table = f"model_answer_media_{self.ai_model}"
         self._ensure_tables_exist()
 
     # ------------------------------------------------------------------
     # Table Setup
     # ------------------------------------------------------------------
-
     def _ensure_tables_exist(self) -> None:
-        """Create both model_answer and model_answer_media tables if they do not exist."""
-        create_tables_query = """
+        """Create model_answer_<model> and model_answer_media_<model> tables if they do not exist."""
+        create_tables_query = f"""
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-        CREATE TABLE IF NOT EXISTS model_answer (
+        CREATE TABLE IF NOT EXISTS {self.model_answer_table} (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             assessment_id VARCHAR(255) NOT NULL,
             model_answer_paper_id VARCHAR(255) NOT NULL,
@@ -45,9 +47,9 @@ class ModelAnswerDBService(BaseRelationalDB):
             created_on TIMESTAMP DEFAULT NOW()
         );
 
-        CREATE TABLE IF NOT EXISTS model_answer_media (
+        CREATE TABLE IF NOT EXISTS {self.model_answer_media_table} (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            model_answer_id UUID REFERENCES model_answer(id) ON DELETE CASCADE,
+            model_answer_id UUID REFERENCES {self.model_answer_table}(id) ON DELETE CASCADE,
             assessment_id VARCHAR(255) NOT NULL,
             media_url TEXT NOT NULL,
             media_summary TEXT,
@@ -58,7 +60,9 @@ class ModelAnswerDBService(BaseRelationalDB):
         try:
             self.cursor.execute(create_tables_query)
             self.conn.commit()
-            logger.info("✅ Checked/created tables 'model_answer' and 'model_answer_media'.")
+            logger.info(
+                f"✅ Checked/created tables '{self.model_answer_table}' and '{self.model_answer_media_table}'."
+            )
         except Exception as e:
             logger.error(f"❌ Failed to create tables: {e}")
             self.conn.rollback()
@@ -67,7 +71,6 @@ class ModelAnswerDBService(BaseRelationalDB):
     # ------------------------------------------------------------------
     # Save Model Answers and Media
     # ------------------------------------------------------------------
-
     def save_model_answers(
         self,
         model_answers: List[ModelAnswer],
@@ -79,8 +82,8 @@ class ModelAnswerDBService(BaseRelationalDB):
             logger.warning("⚠️ No model answers to save.")
             return
 
-        model_answer_query = """
-            INSERT INTO model_answer (
+        model_answer_query = f"""
+            INSERT INTO {self.model_answer_table} (
                 assessment_id,
                 model_answer_paper_id,
                 question_number,
@@ -111,13 +114,12 @@ class ModelAnswerDBService(BaseRelationalDB):
         try:
             execute_values(self.cursor, model_answer_query, model_answer_values)
             inserted_rows = self.cursor.fetchall()  # [(id, question_number), ...]
-
             id_map = {row[1]: row[0] for row in inserted_rows}
             media_values = self._prepare_media_values(model_answers, id_map, assessment_id)
 
             if media_values:
-                media_insert_query = """
-                    INSERT INTO model_answer_media (
+                media_insert_query = f"""
+                    INSERT INTO {self.model_answer_media_table} (
                         model_answer_id,
                         assessment_id,
                         media_url,
@@ -129,8 +131,8 @@ class ModelAnswerDBService(BaseRelationalDB):
 
             self.commit()
             logger.info(
-                f"✅ Saved {len(model_answer_values)} model answers "
-                f"and {len(media_values)} media items."
+                f"✅ Saved {len(model_answer_values)} model answers and {len(media_values)} media items "
+                f"to '{self.model_answer_table}' and '{self.model_answer_media_table}'."
             )
 
         except Exception as e:
@@ -138,6 +140,9 @@ class ModelAnswerDBService(BaseRelationalDB):
             self.conn.rollback()
             raise
 
+    # ------------------------------------------------------------------
+    # Media Preparation
+    # ------------------------------------------------------------------
     def _prepare_media_values(
         self,
         model_answers: List[ModelAnswer],
@@ -146,7 +151,6 @@ class ModelAnswerDBService(BaseRelationalDB):
     ) -> List[tuple]:
         """Prepare media values for insertion."""
         media_values = []
-
         for ans in model_answers:
             model_answer_id = id_map.get(ans.full_question_id)
             if not model_answer_id or not ans.media_urls:
@@ -156,7 +160,6 @@ class ModelAnswerDBService(BaseRelationalDB):
                 summary = None
                 if ans.media_summary and isinstance(ans.media_summary, dict):
                     summary = ans.media_summary.get(url)
-
                 media_values.append((
                     model_answer_id,
                     assessment_id,
@@ -164,13 +167,11 @@ class ModelAnswerDBService(BaseRelationalDB):
                     summary,
                     datetime.now()
                 ))
-
         return media_values
 
     # ------------------------------------------------------------------
-    # Fetch All Media for an Assessment (✅ Updated)
+    # Fetch All Media for Assessment
     # ------------------------------------------------------------------
-
     def get_media_by_assessment(
         self,
         assessment_id: str,
@@ -179,31 +180,30 @@ class ModelAnswerDBService(BaseRelationalDB):
         """Fetch all model answer media for a given assessment, including guideline text."""
         try:
             if model_paper_id:
-                query = """
+                query = f"""
                 SELECT 
                     mam.id AS media_id,
                     mam.media_url,
                     ma.guideline_text
-                FROM model_answer_media mam
-                JOIN model_answer ma ON mam.model_answer_id = ma.id
+                FROM {self.model_answer_media_table} mam
+                JOIN {self.model_answer_table} ma ON mam.model_answer_id = ma.id
                 WHERE ma.assessment_id = %s AND ma.model_answer_paper_id = %s;
                 """
                 params = (assessment_id, model_paper_id)
             else:
-                query = """
+                query = f"""
                 SELECT 
                     mam.id AS media_id,
                     mam.media_url,
                     ma.guideline_text
-                FROM model_answer_media mam
-                JOIN model_answer ma ON mam.model_answer_id = ma.id
+                FROM {self.model_answer_media_table} mam
+                JOIN {self.model_answer_table} ma ON mam.model_answer_id = ma.id
                 WHERE ma.assessment_id = %s;
                 """
                 params = (assessment_id,)
 
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
-
             results = [
                 {
                     "id": row[0],
@@ -212,58 +212,52 @@ class ModelAnswerDBService(BaseRelationalDB):
                 }
                 for row in rows
             ]
-
             logger.info(
-                f"✅ Retrieved {len(results)} media items (with guideline text) for assessment_id={assessment_id}"
+                f"✅ Retrieved {len(results)} media items for assessment_id={assessment_id} "
+                f"from '{self.model_answer_media_table}'."
             )
             return results
-
         except Exception as e:
-            logger.error(f"❌ Failed to fetch media with guideline text: {e}", exc_info=True)
+            logger.error(f"❌ Failed to fetch media: {e}", exc_info=True)
             self.conn.rollback()
             return []
 
     # ------------------------------------------------------------------
     # Update Media Summary
     # ------------------------------------------------------------------
-
     def update_media_summary(self, media_id: str, summary: str) -> bool:
         """Update the media_summary field for a specific media item."""
-        query = """
-        UPDATE model_answer_media
+        query = f"""
+        UPDATE {self.model_answer_media_table}
         SET media_summary = %s
         WHERE id = %s;
         """
         try:
             self.cursor.execute(query, (summary, media_id))
             self.conn.commit()
-            logger.info(f"✅ Updated summary for media_id: {media_id}")
+            logger.info(f"✅ Updated summary for media_id: {media_id} in '{self.model_answer_media_table}'")
             return True
         except Exception as e:
-            logger.error(f"❌ Failed to update media summary for {media_id}: {e}")
+            logger.error(f"❌ Failed to update media summary: {e}")
             self.conn.rollback()
             return False
 
     # ------------------------------------------------------------------
-    # FETCH SINGLE MODEL ANSWER BY PAPER, ASSESSMENT & QUESTION NUMBER
+    # Get Single Model Answer
     # ------------------------------------------------------------------
-
     def get_model_answer(
         self,
         model_answer_paper_id: str,
         assessment_id: str,
         question_number: str
     ) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve a single model answer (question, guideline, answer, media summaries, and max_marks)
-        filtered by model_answer_paper_id, assessment_id, and question_number.
-        """
+        """Retrieve a single model answer (with media summaries)."""
         if not (model_answer_paper_id and assessment_id and question_number):
             logger.warning("⚠️ Missing required parameters for get_model_answer().")
             return None
 
         try:
-            query = """
+            query = f"""
                 SELECT 
                     ma.id AS model_answer_id,
                     ma.question_number,
@@ -272,23 +266,18 @@ class ModelAnswerDBService(BaseRelationalDB):
                     ma.answer_text,
                     ma.max_marks,
                     mam.media_summary
-                FROM model_answer ma
-                LEFT JOIN model_answer_media mam 
+                FROM {self.model_answer_table} ma
+                LEFT JOIN {self.model_answer_media_table} mam 
                     ON ma.id = mam.model_answer_id
                 WHERE ma.model_answer_paper_id = %s
                   AND ma.assessment_id = %s
                   AND ma.question_number = %s;
             """
-
             self.cursor.execute(query, (model_answer_paper_id, assessment_id, question_number))
             rows = self.cursor.fetchall()
 
             if not rows:
-                logger.info(
-                    f"📭 No model answer found for "
-                    f"model_answer_paper_id={model_answer_paper_id}, "
-                    f"assessment_id={assessment_id}, question_number={question_number}"
-                )
+                logger.info(f"📭 No model answer found for assessment_id={assessment_id}, question={question_number}")
                 return None
 
             (
@@ -302,7 +291,6 @@ class ModelAnswerDBService(BaseRelationalDB):
             ) = rows[0]
 
             media_summaries = [r[6] for r in rows if r[6]]
-
             result = {
                 "question_number": question_number,
                 "question_text": question_text,
@@ -315,19 +303,11 @@ class ModelAnswerDBService(BaseRelationalDB):
             }
 
             logger.info(
-                f"✅ Retrieved model answer for "
-                f"model_answer_paper_id={model_answer_paper_id}, "
-                f"assessment_id={assessment_id}, question_number={question_number}"
+                f"✅ Retrieved model answer from '{self.model_answer_table}' "
+                f"for assessment_id={assessment_id}, question={question_number}"
             )
-
             return result
-
         except Exception as e:
-            logger.error(
-                f"❌ Failed to fetch model answer for "
-                f"model_answer_paper_id={model_answer_paper_id}, "
-                f"assessment_id={assessment_id}, question_number={question_number}: {e}",
-                exc_info=True
-            )
+            logger.error(f"❌ Failed to fetch model answer: {e}", exc_info=True)
             self.conn.rollback()
             return None

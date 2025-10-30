@@ -13,7 +13,6 @@ from dotenv import load_dotenv
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from src.services.grader import DirectGrader
-from src.services.database_services.student_answer_service_with_media import StudentAnswerServiceWithMedia
 
 # ---------------------------------------------------------------
 # 🔧 Configuration
@@ -34,31 +33,38 @@ logger = logging.getLogger(__name__)
 def main():
     """
     Run grading for student submissions.
-    You can pass arguments via command line or hardcode them below.
+    Example usage:
+        python -m src.scripts.grade_student_answers <model_answer_paper_id> <assessment_id> <submission_id_1> [<submission_id_2> ...] <provider> <ai_model>
+
     Example:
-        python scripts/grade_student_answers.py MODEL_PAPER_ID ASSESSMENT_ID SUB1 SUB2 SUB3
+        python -m src.scripts.grade_student_answers PAPER1 EE5351_2025_SEPTEMBER EG_2020_4010 GoogleGemini gemini-2.0-flash
     """
 
     # ---- Parse CLI args ----
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 6:
         print(
-            "Usage: python scripts/grade_student_answers.py <model_answer_paper_id> <assessment_id> <submission_id_1> [<submission_id_2> ...]"
+            "Usage: python -m src.scripts.grade_student_answers "
+            "<model_answer_paper_id> <assessment_id> <submission_id_1> [<submission_id_2> ...] <provider> <ai_model>"
         )
         sys.exit(1)
 
     model_answer_paper_id = sys.argv[1]
     assessment_id = sys.argv[2]
-    submission_ids = sys.argv[3:]
+    provider = sys.argv[-2]
+    ai_model = sys.argv[-1]
+    submission_ids = sys.argv[3:-2]
 
     logger.info("🚀 Starting grading process...")
     logger.info(f"Model Paper ID: {model_answer_paper_id}")
     logger.info(f"Assessment ID: {assessment_id}")
     logger.info(f"Submissions: {submission_ids}")
+    logger.info(f"AI Provider: {provider}")
+    logger.info(f"AI Model: {ai_model}")
 
-    # ---- Initialize grader ----
+    # ---- Initialize grader with correct model ----
     grader = DirectGrader(
-        provider="OpenAI",
-        chat_model="gpt-4o-mini"
+        provider=provider,
+        chat_model=ai_model
     )
 
     # ---- Run grading ----

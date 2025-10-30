@@ -9,11 +9,21 @@ logger = logging.getLogger(__name__)
 class GradingResultDB(BaseRelationalDB):
     """
     Database service class for managing grading results.
-    Automatically ensures the 'grading_result' table exists.
+    Each AI model has its own grading_result_<ai_model> table.
+    Example:
+      - grading_result_openai
+      - grading_result_gemini_2_0_flash
+      - grading_result_deepseek_r1_7b
     """
 
-    def __init__(self):
+    # ---------------------------------------------------------
+    # INIT
+    # ---------------------------------------------------------
+    def __init__(self, ai_model: str = "openai"):
         super().__init__()
+        # Normalize model string for safe table naming
+        self.ai_model = ai_model.lower().replace("-", "_").replace(".", "_").replace(":", "_")
+        self.table_name = f"grading_result_{self.ai_model}"
         self._ensure_table_exists()
 
     # ---------------------------------------------------------
@@ -21,11 +31,11 @@ class GradingResultDB(BaseRelationalDB):
     # ---------------------------------------------------------
     def _ensure_table_exists(self):
         """
-        Create the grading_result table if it doesn't already exist.
+        Create the model-specific grading_result_<ai_model> table if it doesn't already exist.
         """
         try:
-            create_table_query = """
-            CREATE TABLE IF NOT EXISTS grading_result (
+            create_table_query = f"""
+            CREATE TABLE IF NOT EXISTS {self.table_name} (
                 id SERIAL PRIMARY KEY,
                 submission_id VARCHAR(255) NOT NULL,
                 question_number VARCHAR(255) NOT NULL,
@@ -37,14 +47,15 @@ class GradingResultDB(BaseRelationalDB):
                 context_used TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT unique_submission_question UNIQUE (submission_id, question_number)
+                CONSTRAINT unique_submission_question_{self.ai_model}
+                    UNIQUE (submission_id, question_number)
             );
             """
             self.cursor.execute(create_table_query)
             self.conn.commit()
-            logger.info("[DB] ✅ Verified/created table: grading_result")
+            logger.info(f"[DB] ✅ Verified/created table: {self.table_name}")
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to ensure grading_result table exists: {e}", exc_info=True)
+            logger.error(f"[DB] ❌ Failed to ensure {self.table_name} exists: {e}", exc_info=True)
             self.conn.rollback()
 
     # ---------------------------------------------------------
@@ -55,15 +66,12 @@ class GradingResultDB(BaseRelationalDB):
         Save a grading result record to the database.
         If a record already exists for (submission_id, question_number),
         it will be updated instead of inserted.
-
-        Supports both dicts and dataclass-based GradingResultRecord objects.
         """
         try:
-            # --- Normalize record ---
+            # Normalize record input
             if is_dataclass(record):
                 record = asdict(record)
             elif not isinstance(record, dict):
-                # Fallback for plain class instances
                 record = {
                     "submission_id": getattr(record, "submission_id", None),
                     "question_number": getattr(record, "question_number", None),
@@ -75,8 +83,8 @@ class GradingResultDB(BaseRelationalDB):
                     "context_used": getattr(record, "context_used", None),
                 }
 
-            query = """
-                INSERT INTO grading_result (
+            query = f"""
+                INSERT INTO {self.table_name} (
                     submission_id,
                     question_number,
                     score,
@@ -111,15 +119,16 @@ class GradingResultDB(BaseRelationalDB):
             self.commit()
 
             logger.info(
-                f"[DB] ✅ Saved grading result for submission_id={record['submission_id']}, "
-                f"question_number={record['question_number']}"
+                f"[DB] ✅ Saved grading result in {self.table_name} "
+                f"for submission_id={record['submission_id']}, question_number={record['question_number']}"
             )
             return True
 
         except Exception as e:
             logger.error(
-                f"[DB] ❌ Failed to save grading result for submission_id={record.get('submission_id') if isinstance(record, dict) else getattr(record, 'submission_id', 'unknown')}, "
-                f"question_number={record.get('question_number') if isinstance(record, dict) else getattr(record, 'question_number', 'unknown')}: {e}",
+                f"[DB] ❌ Failed to save grading result in {self.table_name} for "
+                f"submission_id={record.get('submission_id', 'unknown')}, "
+                f"question_number={record.get('question_number', 'unknown')}: {e}",
                 exc_info=True
             )
             self.conn.rollback()
@@ -134,7 +143,7 @@ class GradingResultDB(BaseRelationalDB):
         Returns the number of successful inserts/updates.
         """
         if not records:
-            logger.warning("[DB] ⚠️ No grading records to save.")
+            logger.warning(f"[DB] ⚠️ No grading records to save for {self.table_name}.")
             return 0
 
         success_count = 0
@@ -143,10 +152,10 @@ class GradingResultDB(BaseRelationalDB):
                 if self.save_result_record(record):
                     success_count += 1
             self.commit()
-            logger.info(f"[DB] ✅ Saved {success_count}/{len(records)} grading results.")
+            logger.info(f"[DB] ✅ Saved {success_count}/{len(records)} results in {self.table_name}.")
             return success_count
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to save multiple grading results: {e}", exc_info=True)
+            logger.error(f"[DB] ❌ Failed to save multiple grading results in {self.table_name}: {e}", exc_info=True)
             self.conn.rollback()
             return 0
 
@@ -162,7 +171,7 @@ class GradingResultDB(BaseRelationalDB):
             return []
 
         try:
-            self.cursor.execute("""
+            self.cursor.execute(f"""
                 SELECT 
                     submission_id,
                     question_number,
@@ -172,13 +181,13 @@ class GradingResultDB(BaseRelationalDB):
                     grading_method,
                     similarity_score,
                     context_used
-                FROM grading_result
+                FROM {self.table_name}
                 WHERE submission_id = %s
                 ORDER BY question_number;
             """, (submission_id,))
 
             rows = self.cursor.fetchall()
-            results = [
+            return [
                 {
                     "submission_id": r[0],
                     "question_number": r[1],
@@ -191,10 +200,9 @@ class GradingResultDB(BaseRelationalDB):
                 }
                 for r in rows
             ]
-            return results
 
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to fetch results for submission_id={submission_id}: {e}", exc_info=True)
+            logger.error(f"[DB] ❌ Failed to fetch results from {self.table_name} for submission_id={submission_id}: {e}", exc_info=True)
             self.conn.rollback()
             return []
 
@@ -206,12 +214,12 @@ class GradingResultDB(BaseRelationalDB):
         Delete all grading results for a given submission_id.
         """
         try:
-            self.cursor.execute("DELETE FROM grading_result WHERE submission_id = %s;", (submission_id,))
+            self.cursor.execute(f"DELETE FROM {self.table_name} WHERE submission_id = %s;", (submission_id,))
             affected = self.cursor.rowcount
             self.commit()
-            logger.info(f"[DB] 🗑️ Deleted {affected} results for submission_id={submission_id}")
+            logger.info(f"[DB] 🗑️ Deleted {affected} results from {self.table_name} for submission_id={submission_id}")
             return True
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to delete results for submission_id={submission_id}: {e}", exc_info=True)
+            logger.error(f"[DB] ❌ Failed to delete results in {self.table_name} for submission_id={submission_id}: {e}", exc_info=True)
             self.conn.rollback()
             return False

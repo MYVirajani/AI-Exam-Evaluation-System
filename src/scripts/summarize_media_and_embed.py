@@ -8,11 +8,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 from src.services.database_services.student_media_db_service import StudentMediaDBService
 from src.services.database_services.model_answer_db_service import ModelAnswerDBService
 from src.services.database_services.model_answer_vector_service import ModelAnswerVectorService
-from src.services.summary.image_summarizer import ImageSummarizer 
+from src.services.summary.image_summarizer import ImageSummarizer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 # ----------------------------------------------------------------------
 # Utility: Infer provider name from model string
@@ -35,7 +34,7 @@ def summarize_student_submission(submission_id: str, ai_model: str):
     """Summarize media from student submissions using selected LLM."""
     provider = infer_provider_from_model(ai_model)
     db_service = StudentMediaDBService(ai_model=ai_model)
-    llm = ImageSummarizer(provider=provider, model=ai_model)  # ✅ fixed here
+    llm = ImageSummarizer(provider=provider, model=ai_model)
 
     media_records = db_service.get_media_by_submission(submission_id)
     logger.info(f"📸 Found {len(media_records)} student media records for submission {submission_id}")
@@ -53,7 +52,7 @@ def summarize_student_submission(submission_id: str, ai_model: str):
             logger.warning(f"⚠️ Skipped {media_id} due to summarization error.")
 
     db_service.close()
-    logger.info("✅ Completed student media summarization.")
+    logger.info(f"✅ Completed summarization for submission {submission_id}.")
 
 
 # ----------------------------------------------------------------------
@@ -65,8 +64,8 @@ def summarize_model_answers(assessment_id: str, model_paper_id: str = None, ai_m
     and optionally model_paper_id, using the chosen LLM model.
     """
     provider = infer_provider_from_model(ai_model)
-    db_service = ModelAnswerDBService(ai_model=ai_model)  # ✅ passes ai_model to DB service
-    llm = ImageSummarizer(provider=provider, model=ai_model)  # ✅ fixed
+    db_service = ModelAnswerDBService(ai_model=ai_model)
+    llm = ImageSummarizer(provider=provider, model=ai_model)
 
     media_records = db_service.get_media_by_assessment(assessment_id, model_paper_id)
     logger.info(
@@ -134,17 +133,27 @@ if __name__ == "__main__":
         choices=["student", "model", "embed"],
         help="Which operation to run: student media summarization, model media summarization, or model embedding.",
     )
-    parser.add_argument("--submission_id", help="Student submission ID (required if mode=student).")
+    parser.add_argument(
+        "--submission_id",
+        nargs="+",
+        help="One or more student submission IDs (required if mode=student).",
+    )
     parser.add_argument("--assessment_id", help="Assessment ID (required if mode=model or embed).")
     parser.add_argument("--model_paper_id", help="Model paper ID (optional for mode=model, required for mode=embed).")
-    parser.add_argument("--ai_model", required=True, help="AI model to use for summarization or embedding (e.g., gpt-4o, gemini-2.0-flash, deepseek-r1:7b)")
+    parser.add_argument(
+        "--ai_model",
+        required=True,
+        help="AI model to use for summarization or embedding (e.g., gpt-4o, gemini-2.0-flash, deepseek-r1:7b)",
+    )
 
     args = parser.parse_args()
 
     if args.mode == "student":
         if not args.submission_id:
             parser.error("--submission_id is required when mode=student")
-        summarize_student_submission(args.submission_id, args.ai_model)
+        for sid in args.submission_id:
+            logger.info(f"🔍 Processing submission: {sid}")
+            summarize_student_submission(sid, args.ai_model)
 
     elif args.mode == "model":
         if not args.assessment_id:

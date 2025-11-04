@@ -81,7 +81,10 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
     # CREATE / SAVE ANSWERS
     # ----------------------------------------------------------------------
     def save_answers(self, answers: List[StudentAnswer], submission_id: str):
-        """Save multiple student answers and their associated media."""
+        """
+        Save multiple student answers and their associated media.
+        Before inserting new data, delete existing rows with the same submission_id.
+        """
         if not answers:
             logger.warning("⚠️ No answers provided to save.")
             return
@@ -106,7 +109,20 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                     media_values.append((media_id, answer_id, submission_id, url, None))
 
         try:
-            # Insert answers
+            # 🧹 Step 1: Delete old records for same submission_id
+            delete_query_media = f"""
+                DELETE FROM {self.student_answer_media_table}
+                WHERE submission_id = %s;
+            """
+            delete_query_answers = f"""
+                DELETE FROM {self.student_answer_table}
+                WHERE submission_id = %s;
+            """
+            self.cursor.execute(delete_query_media, (submission_id,))
+            self.cursor.execute(delete_query_answers, (submission_id,))
+            logger.info(f"🧹 Deleted existing records for submission_id={submission_id}")
+
+            # 🧩 Step 2: Insert new answers
             insert_answers = f"""
                 INSERT INTO {self.student_answer_table} 
                 (id, submission_id, question_number, answer_text)
@@ -114,7 +130,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             """
             execute_values(self.cursor, insert_answers, answer_values)
 
-            # Insert media
+            # 🧩 Step 3: Insert new media (if any)
             if media_values:
                 insert_media = f"""
                     INSERT INTO {self.student_answer_media_table}

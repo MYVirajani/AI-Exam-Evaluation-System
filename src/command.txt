@@ -32,6 +32,8 @@ Summarize model media
 python -m src.scripts.summarize_media_and_embed --mode model --assessment_id EE5351_2025_SEPTEMBER --model_paper_id PAPER1 --ai_model gpt-4o
 Embed model answers
 python -m src.scripts.summarize_media_and_embed --mode embed --assessment_id EE6250_2025_JUNE --model_paper_id PAPER2
+Embed Lecture_Materials
+python -m src.scripts.lecture_material_embed --embedder openai --module_id  EE5351
 
 
 mark_all_papers
@@ -65,8 +67,10 @@ python -m src.scripts.summarize_media_and_embed --mode model --assessment_id EE5
 
 summarize student media
 python -m src.scripts.summarize_media_and_embed --mode student --submission_id EG_2020_4010 EG_2020_4011 EG_2020_4012 EG_2020_4013 EG_2020_4014 EG_2020_4020 EG_2020_4021 EG_2020_4022 EG_2020_4023 EG_2020_4024 EG_2020_4025 EG_2020_4026 EG_2020_4027 EG_2020_4028 EG_2020_4029 EG_2020_4030 EG_2020_4032 EG_2020_4033 EG_2020_4034 EG_2020_4035 EG_2020_4036 EG_2020_4037 EG_2020_4038 EG_2020_4039 EG_2020_4040 EG_2020_4041 EG_2020_4045 EG_2020_4046 EG_2020_4047 EG_2020_4048 EG_2020_4049 EG_2020_4050 --ai_model gemini-2.0-flash
-**for single paper**
 
+Embed Lecture_Materials
+python -m src.scripts.lecture_material_embed --embedder gemini --module_id  EE5351
+**for single paper**
 python -m src.scripts.mark_single_paper --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE3350 --year 2025 --month JUNE --student EG/2020/4044
 
 grade student answerspython -m src.scripts.grade_student_answers PAPER1 EE5351_2025_SEPTEMBER EG_2020_4010 GoogleGemini gemini-2.0-flash

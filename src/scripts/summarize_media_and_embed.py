@@ -100,7 +100,7 @@ def summarize_model_answers(assessment_id: str, model_paper_id: str = None, ai_m
 def embed_model_answers(model_paper_id: str, assessment_id: str, ai_model: str):
     """Embed model answers and store embeddings into pgvector."""
     db_service = ModelAnswerDBService(ai_model=ai_model)
-    vector_service = ModelAnswerVectorService()
+    vector_service = ModelAnswerVectorService(ai_model=ai_model)
 
     logger.info(f"🚀 Starting embedding for model_paper_id={model_paper_id}, assessment_id={assessment_id}")
 

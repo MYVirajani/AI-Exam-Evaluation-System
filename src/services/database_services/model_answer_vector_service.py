@@ -1,10 +1,10 @@
-import os
 import logging
 from datetime import datetime
 from psycopg2.extras import execute_values
 
 from src.services.database_services.base_vector_db_service import BaseVectorDBService
 from src.services.embedding.openai_embedder import OpenAIEmbedder
+from src.services.embedding.gemini_embedder import GeminiEmbedder
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -12,61 +12,80 @@ logger.setLevel(logging.INFO)
 
 class ModelAnswerVectorService(BaseVectorDBService):
     """
-    Handles embedding and storing model answers + media summaries into pgvector.
+    Handles embedding and storing model answers with separate columns for
+    question, answer, and guideline embeddings (no raw text stored).
+    Supports both OpenAIEmbedder and GeminiEmbedder depending on --ai_model.
     """
 
-    def __init__(self, embedder=None):
-        embedder = embedder or OpenAIEmbedder()
+    def __init__(self, ai_model: str):
+        embedder = self._select_embedder(ai_model)
         super().__init__(embedder)
+        self.ai_model = ai_model
         self._ensure_vector_table()
+
+    # ----------------------------------------------------------------------
+    # Embedder selection
+    # ----------------------------------------------------------------------
+    def _select_embedder(self, ai_model: str):
+        """Return embedder based on model name."""
+        model_lower = ai_model.lower()
+        if "gemini" in model_lower:
+            logger.info(f"🔹 Using GeminiEmbedder for model: {ai_model}")
+            return GeminiEmbedder(model_name=ai_model)
+        else:
+            logger.info(f"🔹 Using OpenAIEmbedder for model: {ai_model}")
+            return OpenAIEmbedder(model_name=ai_model)
 
     # ----------------------------------------------------------------------
     # Table setup
     # ----------------------------------------------------------------------
     def _ensure_vector_table(self):
-        """Ensure the model_answer_embeddings_<suffix> table exists."""
-        table_name = f"model_answer_embeddings_{self.suffix}"
+        """Ensure table exists for this embedder (separate embedding columns)."""
+        self.table_name = f"model_answer_embeddings_{self.suffix}"
         dim = self.embedder.get_embedding_dimension()
 
         create_table_query = f"""
         CREATE EXTENSION IF NOT EXISTS vector;
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-        CREATE TABLE IF NOT EXISTS {table_name} (
+        CREATE TABLE IF NOT EXISTS {self.table_name} (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             assessment_id VARCHAR(255) NOT NULL,
             model_paper_id VARCHAR(255) NOT NULL,
-            model_answer_id UUID NOT NULL,
+            model_answer_id UUID UNIQUE NOT NULL,
             question_number VARCHAR(50),
-            combined_text TEXT,
-            embedding VECTOR({dim}),
+            question_embedding VECTOR({dim}),
+            answer_embedding VECTOR({dim}),
+            guideline_embedding VECTOR({dim}),
+            model_name VARCHAR(255) NOT NULL,
             created_on TIMESTAMP DEFAULT NOW()
         );
 
-        CREATE INDEX IF NOT EXISTS idx_{table_name}_embedding
-        ON {table_name} USING ivfflat (embedding vector_cosine_ops)
+        CREATE INDEX IF NOT EXISTS idx_{self.table_name}_question
+        ON {self.table_name} USING ivfflat (question_embedding vector_cosine_ops)
+        WITH (lists = 100);
+
+        CREATE INDEX IF NOT EXISTS idx_{self.table_name}_answer
+        ON {self.table_name} USING ivfflat (answer_embedding vector_cosine_ops)
+        WITH (lists = 100);
+
+        CREATE INDEX IF NOT EXISTS idx_{self.table_name}_guideline
+        ON {self.table_name} USING ivfflat (guideline_embedding vector_cosine_ops)
         WITH (lists = 100);
         """
-        try:
-            self.cursor.execute(create_table_query)
-            self.conn.commit()
-            logger.info(f"✅ Ensured pgvector table exists: {table_name}")
-        except Exception as e:
-            logger.error(f"❌ Failed to create pgvector table: {e}")
-            self.conn.rollback()
-            raise
+
+        self.cursor.execute(create_table_query)
+        self.conn.commit()
+        logger.info(f"✅ Ensured table exists: {self.table_name}")
 
     # ----------------------------------------------------------------------
-    # Data Embedding + Insertion
+    # Main embedding logic
     # ----------------------------------------------------------------------
     def embed_and_store_model_answers(self, model_paper_id: str, assessment_id: str, db_service):
         """
-        Fetch model answers + media summaries for a given assessment_id,
-        embed them, and store minimal metadata + embeddings in pgvector.
+        Fetch model answers and embed question, answer, and guideline texts.
+        Skip re-embedding if the same model_answer_id already exists.
         """
-        table_name = f"model_answer_embeddings_{self.suffix}"
-
-        # 1️⃣ Fetch model answers and related media summaries
         query = """
         SELECT
             ma.id AS model_answer_id,
@@ -83,84 +102,88 @@ class ModelAnswerVectorService(BaseVectorDBService):
         GROUP BY ma.id;
         """
 
-        try:
-            db_service.cursor.execute(query, (assessment_id, model_paper_id))
-            rows = db_service.cursor.fetchall()
-        except Exception as e:
-            logger.error(f"❌ Failed to fetch model answers for embedding: {e}")
-            db_service.conn.rollback()
-            return
-
+        db_service.cursor.execute(query, (assessment_id, model_paper_id))
+        rows = db_service.cursor.fetchall()
         if not rows:
-            logger.warning(f"⚠️ No model answers found for assessment_id={assessment_id}, model_paper_id={model_paper_id}")
+            logger.warning(f"⚠️ No model answers found for assessment_id={assessment_id}")
             return
 
-        logger.info(f"📘 Found {len(rows)} model answers for embedding (assessment_id={assessment_id})")
+        # ✅ Print and log the raw fetched data
+        print("\n================= RAW DATA FETCHED FROM DB =================")
+        for i, row in enumerate(rows, 1):
+            print(f"\n🧩 Record {i}:")
+            print(f"  Model Answer ID: {row[0]}")
+            print(f"  Question Number: {row[3]}")
+            print(f"  Question Text: {row[4]}")
+            print(f"  Answer Text: {row[5]}")
+            print(f"  Guideline Text: {row[6]}")
+            print(f"  Media Summaries: {row[7]}")
+        print("============================================================\n")
 
-        # 2️⃣ Prepare texts for embedding
-        texts_to_embed = []
-        data_records = []
+        logger.info(f"📦 Total raw records fetched: {len(rows)}")
+
+        model_name = self.embedder.get_model_name()
+
+        # Get already embedded entries to skip duplicates
+        existing_query = f"""
+            SELECT model_answer_id FROM {self.table_name}
+            WHERE assessment_id = %s AND model_paper_id = %s AND model_name = %s;
+        """
+        self.cursor.execute(existing_query, (assessment_id, model_paper_id, model_name))
+        existing_ids = {r[0] for r in self.cursor.fetchall()}
+
+        records_to_insert = []
+        embeddings_to_generate = []
 
         for row in rows:
             model_answer_id, _, model_paper_id_db, question_number, question_text, answer_text, guideline_text, media_summaries = row
 
-            # Combine answer_text and all media summaries together
+            if model_answer_id in existing_ids:
+                logger.info(f"⏭️ Skipping existing embeddings for {model_answer_id}")
+                continue
+
             media_concat = " ".join(ms for ms in media_summaries or [])
-            model_answer_combined = f"{answer_text or ''} {media_concat or ''}".strip()
+            full_answer_text = f"{answer_text or ''} {media_concat or ''}".strip()
 
-            # Build combined text for semantic embedding
-            combined_text = f"""
-            Question: {question_text or ""}
-            Guidelines: {guideline_text or ""}
-            Model Answer: {model_answer_combined}
-            """.strip()
+            q_text = question_text.strip() if question_text else None
+            a_text = full_answer_text if full_answer_text else None
+            g_text = guideline_text.strip() if guideline_text else None
 
-            texts_to_embed.append(combined_text)
-            data_records.append({
-                "assessment_id": assessment_id,
-                "model_paper_id": model_paper_id_db,
-                "model_answer_id": model_answer_id,
-                "question_number": question_number,
-                "combined_text": combined_text,
-            })
+            embeddings_to_generate.append((model_answer_id, q_text, a_text, g_text, model_paper_id_db, question_number))
 
-        # 3️⃣ Generate embeddings using OpenAI
-        embeddings = self.embedder.embed(texts_to_embed)
-        if not embeddings:
-            logger.error("❌ No embeddings generated. Aborting insertion.")
+        if not embeddings_to_generate:
+            logger.info("⚠️ No new embeddings to generate.")
             return
 
-        # 4️⃣ Insert minimal fields into vector DB
+        logger.info(f"🚀 Generating embeddings for {len(embeddings_to_generate)} model answers using {model_name} ...")
+
+        insert_data = []
+
+        for model_answer_id, q_text, a_text, g_text, model_paper_id_db, question_number in embeddings_to_generate:
+            question_emb = self.embedder.embed([q_text])[0] if q_text else None
+            answer_emb = self.embedder.embed([a_text])[0] if a_text else None
+            guideline_emb = self.embedder.embed([g_text])[0] if g_text else None
+
+            insert_data.append((
+                assessment_id,
+                model_paper_id_db,
+                model_answer_id,
+                question_number,
+                question_emb,
+                answer_emb,
+                guideline_emb,
+                model_name,
+                datetime.now(),
+            ))
+
         insert_query = f"""
-        INSERT INTO {table_name} (
-            assessment_id,
-            model_paper_id,
-            model_answer_id,
-            question_number,
-            combined_text,
-            embedding,
-            created_on
-        )
-        VALUES %s;
+        INSERT INTO {self.table_name} (
+            assessment_id, model_paper_id, model_answer_id, question_number,
+            question_embedding, answer_embedding, guideline_embedding,
+            model_name, created_on
+        ) VALUES %s;
         """
 
-        insert_values = [
-            (
-                rec["assessment_id"],
-                rec["model_paper_id"],
-                rec["model_answer_id"],
-                rec["question_number"],
-                rec["combined_text"],
-                emb,
-                datetime.now(),
-            )
-            for rec, emb in zip(data_records, embeddings)
-        ]
-
-        try:
-            execute_values(self.cursor, insert_query, insert_values)
-            self.commit()
-            logger.info(f"✅ Inserted {len(insert_values)} embeddings for model_paper_id={model_paper_id}, assessment={assessment_id}")
-        except Exception as e:
-            logger.error(f"❌ Failed to insert embeddings: {e}")
-            self.conn.rollback()
+        execute_values(self.cursor, insert_query, insert_data)
+        self.commit()
+        logger.info(f"✅ Inserted {len(insert_data)} new records into {self.table_name}")

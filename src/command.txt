@@ -15,7 +15,7 @@ python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --emb
 
 python -m src.scripts.embed_lecture_materials --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --module EE3350 --root data/Lecture_Materials
 
-python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --folder data/Answer_Scripts
+python -m src.scripts.run_extract_and_save --provider openai --folder data/Answer_Scripts
 
 python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-small --module_code EE3350 --year 2025 --month June
 
@@ -54,7 +54,7 @@ python -m src.scripts.embed_model_answers --provider GoogleGemini --model gemini
 
 python -m src.scripts.embed_lecture_materials --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001 --module EE3350 --root data/Lecture_Materials
 
-python -m src.scripts.run_extract_and_save --provider GoogleGemini --model gemini-2.0-flash --folder data/Answer_Scripts
+python -m src.scripts.run_extract_and_save --provider gemini --folder data/Answer_Scripts
 
 python -m src.scripts.embed_from_db --provider GoogleGemini --model models/embedding-001 --module_code EE3350 --year 2025 --month June
 
@@ -62,6 +62,8 @@ python -m src.scripts.mark_all_papers --provider GoogleGemini --llm gemini-2.0-f
 
 extract model answers
 python -m  src.scripts.extract_and_save_model_answers "src\data\updated_answer_scripts_docs\equation model answer final.docx" "EE5351_2025_SEPTEMBER" "PAPER1" GoogleGemini gemini-2.0-flash
+embed_lecture_materials
+python -m src.scripts.summarize_media_and_embed --mode embed --assessment_id EE5351_SEPTEMBER_2025 --model_paper_id PAPER1 --ai_model gemini
 summarize model media
 python -m src.scripts.summarize_media_and_embed --mode model --assessment_id EE5351_2025_SEPTEMBER --model_paper_id PAPER1 --ai_model gemini-2.0-flash
 

@@ -86,7 +86,12 @@ class ModelAnswerVectorService(BaseVectorDBService):
         Fetch model answers and embed question, answer, and guideline texts.
         Skip re-embedding if the same model_answer_id already exists.
         """
-        query = """
+
+        # ✅ Use the correct model-specific tables from db_service
+        model_answer_table = getattr(db_service, "model_answer_table", "model_answer")
+        model_answer_media_table = getattr(db_service, "model_answer_media_table", "model_answer_media")
+
+        query = f"""
         SELECT
             ma.id AS model_answer_id,
             ma.assessment_id,
@@ -96,19 +101,19 @@ class ModelAnswerVectorService(BaseVectorDBService):
             ma.answer_text,
             ma.guideline_text,
             ARRAY_REMOVE(ARRAY_AGG(mam.media_summary), NULL) AS media_summaries
-        FROM model_answer ma
-        LEFT JOIN model_answer_media mam ON mam.model_answer_id = ma.id
+        FROM {model_answer_table} ma
+        LEFT JOIN {model_answer_media_table} mam ON mam.model_answer_id = ma.id
         WHERE ma.assessment_id = %s AND ma.model_answer_paper_id = %s
         GROUP BY ma.id;
         """
 
         db_service.cursor.execute(query, (assessment_id, model_paper_id))
         rows = db_service.cursor.fetchall()
+
         if not rows:
             logger.warning(f"⚠️ No model answers found for assessment_id={assessment_id}")
             return
 
-        # ✅ Print and log the raw fetched data
         print("\n================= RAW DATA FETCHED FROM DB =================")
         for i, row in enumerate(rows, 1):
             print(f"\n🧩 Record {i}:")
@@ -132,7 +137,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
         self.cursor.execute(existing_query, (assessment_id, model_paper_id, model_name))
         existing_ids = {r[0] for r in self.cursor.fetchall()}
 
-        records_to_insert = []
         embeddings_to_generate = []
 
         for row in rows:

@@ -14,32 +14,45 @@ load_dotenv()
 
 
 class ModelAnswerExtractor:
-    def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.2):
+    def __init__(self, provider: str):
         """
         Extracts structured model answers using LLMs.
-        Supports OpenAI, GoogleGemini, and DeepSeek (via OpenAI fallback).
+        Automatically loads model, API key, and temperature from .env
+        based on the provider name: openai, gemini, or deepseek.
         """
-        self.original_provider = selected_provider
-        self.provider = selected_provider
-        self.model = selected_model
-        self.temperature = temperature
 
-        if self.provider == "OpenAI":
-            self.client = OpenAIClient(api_key=os.getenv("OPENAI_API_KEY"))
+        # Normalize provider name (case-insensitive)
+        self.provider = provider.strip().lower()
 
-        elif self.provider == "GoogleGemini":
-            genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        # 🔹 Load values dynamically from .env
+        if self.provider == "openai":
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            self.temperature = float(os.getenv("OPENAI_TEMPERATURE", 0.2))
+            self.client = OpenAIClient(api_key=self.api_key)
+
+        elif self.provider == "gemini":
+            self.api_key = os.getenv("GOOGLE_API_KEY")
+            self.model = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
+            self.temperature = float(os.getenv("GOOGLE_TEMPERATURE", 0.2))
+            genai.configure(api_key=self.api_key)
             self.client = genai.GenerativeModel(model_name=self.model)
 
-        elif self.provider == "DeepSeek":
-            logger.warning(
-                "⚠️ DeepSeek does not support model answer extraction. Falling back to OpenAI (gpt-4o-mini)."
-            )
-            self.provider = "OpenAI"
-            self.model = "gpt-4o-mini"
-            self.client = OpenAIClient(api_key=os.getenv("OPENAI_API_KEY"))
+        elif self.provider == "deepseek":
+            # DeepSeek may use OpenAI-compatible endpoints
+            self.api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY")
+            self.model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+            self.temperature = float(os.getenv("DEEPSEEK_TEMPERATURE", 0.2))
+            self.client = OpenAIClient(api_key=self.api_key)
+
         else:
-            raise ValueError(f"Unsupported provider: {self.provider}")
+            raise ValueError(
+                f"Unsupported provider: {provider}. Must be one of 'openai', 'gemini', or 'deepseek'."
+            )
+
+        logger.info(
+            f"✅ Using provider: {self.provider.capitalize()}, Model: {self.model}, Temp: {self.temperature}"
+        )
 
     # ----------------------------------------------------------
     # 🔹 Extract structured answers from raw text
@@ -62,7 +75,8 @@ class ModelAnswerExtractor:
     # ----------------------------------------------------------
     def _call_llm(self, raw_text: str) -> dict:
         """Send text + extraction prompt to LLM and return parsed JSON."""
-        if self.provider == "OpenAI":
+
+        if self.provider == "openai" or self.provider == "deepseek":
             response = self.client.chat.completions.create(
                 model=self.model,
                 temperature=self.temperature,
@@ -74,7 +88,7 @@ class ModelAnswerExtractor:
             )
             content = response.choices[0].message.content.strip()
 
-        else:  # GoogleGemini
+        elif self.provider == "gemini":
             response = self.client.generate_content(
                 contents=[{
                     "role": "user",
@@ -88,7 +102,6 @@ class ModelAnswerExtractor:
         if content.startswith("```"):
             content = content.strip("`").replace("json", "").strip()
 
-        # Print LLM response for debugging
         print("\n===== LLM RAW RESPONSE START =====\n")
         print(content)
         print("\n===== LLM RAW RESPONSE END =====\n")
@@ -109,19 +122,15 @@ class ModelAnswerExtractor:
         exam_year: Optional[int],
         exam_month: Optional[str]
     ) -> List[ModelAnswer]:
-        """
-        Flatten nested JSON into a list of ModelAnswer objects.
-        Handles both legacy and structured media formats.
-        """
+        """Flatten nested JSON into a list of ModelAnswer objects."""
         flat: List[ModelAnswer] = []
 
         def recurse(keys: list[str], node):
-            # ✅ Case 1: Full model answer with optional media
             if isinstance(node, dict) and {"question", "answer", "guideline", "marks"}.issubset(node.keys()):
                 media_urls = []
                 media_summary = {}
 
-                # Handle structured media objects (preferred format)
+                # Handle structured media
                 if "media" in node and isinstance(node["media"], list):
                     for m in node["media"]:
                         url = m.get("url") or m.get("media_url")
@@ -130,7 +139,6 @@ class ModelAnswerExtractor:
                             if "summary" in m:
                                 media_summary[url] = m["summary"]
 
-                # Handle legacy media_urls list
                 elif "media_urls" in node and isinstance(node["media_urls"], list):
                     media_urls = node["media_urls"]
 
@@ -151,16 +159,13 @@ class ModelAnswerExtractor:
                 ))
                 return
 
-            # ✅ Case 2: Nested dictionary — recurse deeper
             elif isinstance(node, dict):
                 for k, v in node.items():
                     recurse(keys + [k], v)
 
-            # ✅ Case 3: Unexpected type
             else:
                 logger.warning("Unexpected node type under %s: %r", "_".join(keys), node)
 
-        # Start recursion for each top-level question
         for main_q, subtree in nested.items():
             recurse([main_q], subtree)
 

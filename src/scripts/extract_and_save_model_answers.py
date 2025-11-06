@@ -43,13 +43,13 @@ def extract_and_save_model_answers(
     file_path: str,
     assessment_id: str,
     model_answer_paper_id: str,
-    ai_provider: str = None,
-    ai_model: str = None
+    ai_provider: str = None
 ):
     """
-    Extract model answers using the selected AI model and save them to
+    Extract model answers using the selected AI provider and save them to
     provider/model-specific tables in the database.
     """
+
     if not os.path.exists(file_path):
         logger.error(f"❌ File not found: {file_path}")
         sys.exit(1)
@@ -58,17 +58,16 @@ def extract_and_save_model_answers(
     raw_text = read_docx_text(file_path)
 
     # -----------------------------------------------------------------------
-    # Determine AI Provider and Model
+    # Determine AI Provider (Model/Temp will be auto-loaded from .env)
     # -----------------------------------------------------------------------
-    ai_provider = ai_provider or os.getenv("AI_PROVIDER", "OpenAI")
-    ai_model = ai_model or os.getenv("AI_MODEL", "gpt-4o-mini")
+    ai_provider = (ai_provider or os.getenv("AI_PROVIDER", "openai")).strip().lower()
 
-    logger.info(f"🚀 Initializing ModelAnswerExtractor ({ai_provider} / {ai_model})...")
+    logger.info(f"🚀 Initializing ModelAnswerExtractor (Provider: {ai_provider})...")
 
     try:
-        extractor = ModelAnswerExtractor(selected_provider=ai_provider, selected_model=ai_model)
+        extractor = ModelAnswerExtractor(provider=ai_provider)
     except ValueError as e:
-        logger.error(f"❌ Invalid provider/model: {e}")
+        logger.error(f"❌ Invalid provider: {e}")
         sys.exit(1)
 
     # -----------------------------------------------------------------------
@@ -84,12 +83,12 @@ def extract_and_save_model_answers(
     logger.info(f"✅ Extracted {len(model_answers)} model answers. Saving to database...")
 
     # -----------------------------------------------------------------------
-    # Save to Dynamic Tables (based on model name)
+    # Save to Dynamic Tables (based on provider/model from .env)
     # -----------------------------------------------------------------------
-    normalized_model_name = ai_model.lower().replace("-", "_").replace(".", "_")
+    model_name = extractor.model.lower().replace("-", "_").replace(".", "_")
 
     try:
-        db_service = ModelAnswerDBService(ai_model=normalized_model_name)
+        db_service = ModelAnswerDBService(ai_model=model_name)
         db_service.save_model_answers(
             model_answers=model_answers,
             assessment_id=assessment_id,
@@ -97,8 +96,8 @@ def extract_and_save_model_answers(
         )
         logger.info(
             f"🎯 Successfully saved extracted data to tables "
-            f"'model_answer_{normalized_model_name}' and "
-            f"'model_answer_media_{normalized_model_name}'."
+            f"'model_answer_{model_name}' and "
+            f"'model_answer_media_{model_name}'."
         )
     except Exception as e:
         logger.error(f"❌ Database operation failed: {e}", exc_info=True)
@@ -114,8 +113,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 4:
         print(
             "Usage: python extract_and_save_model_answers.py "
-            "<file_path> <assessment_id> <model_answer_paper_id> "
-            "[<ai_provider>] [<ai_model>]"
+            "<file_path> <assessment_id> <model_answer_paper_id> [<ai_provider>]"
         )
         sys.exit(1)
 
@@ -123,6 +121,5 @@ if __name__ == "__main__":
     assessment_id = sys.argv[2]
     model_answer_paper_id = sys.argv[3]
     ai_provider = sys.argv[4] if len(sys.argv) > 4 else None
-    ai_model = sys.argv[5] if len(sys.argv) > 5 else None
 
-    extract_and_save_model_answers(file_path, assessment_id, model_answer_paper_id, ai_provider, ai_model)
+    extract_and_save_model_answers(file_path, assessment_id, model_answer_paper_id, ai_provider)

@@ -44,7 +44,8 @@ class ModelAnswerDBService(BaseRelationalDB):
             answer_text TEXT,
             guideline_text TEXT,
             max_marks NUMERIC,
-            created_on TIMESTAMP DEFAULT NOW()
+            created_on TIMESTAMP DEFAULT NOW(),
+            updated_on TIMESTAMP DEFAULT NOW()
         );
 
         CREATE TABLE IF NOT EXISTS {self.model_answer_media_table} (
@@ -53,7 +54,8 @@ class ModelAnswerDBService(BaseRelationalDB):
             assessment_id VARCHAR(255) NOT NULL,
             media_url TEXT NOT NULL,
             media_summary TEXT,
-            created_on TIMESTAMP DEFAULT NOW()
+            created_on TIMESTAMP DEFAULT NOW(),
+            updated_on TIMESTAMP DEFAULT NOW()
         );
         """
 
@@ -107,12 +109,14 @@ class ModelAnswerDBService(BaseRelationalDB):
                     answer_text,
                     guideline_text,
                     max_marks,
-                    created_on
+                    created_on,
+                    updated_on
                 )
                 VALUES %s
                 RETURNING id, question_number;
             """
 
+            now = datetime.now()
             model_answer_values = [
                 (
                     assessment_id,
@@ -122,7 +126,8 @@ class ModelAnswerDBService(BaseRelationalDB):
                     ans.answer_text,
                     ans.guideline_text,
                     ans.max_marks,
-                    datetime.now()
+                    now,
+                    now
                 )
                 for ans in model_answers
             ]
@@ -141,7 +146,8 @@ class ModelAnswerDBService(BaseRelationalDB):
                         assessment_id,
                         media_url,
                         media_summary,
-                        created_on
+                        created_on,
+                        updated_on
                     ) VALUES %s;
                 """
                 execute_values(self.cursor, media_insert_query, media_values)
@@ -168,6 +174,7 @@ class ModelAnswerDBService(BaseRelationalDB):
     ) -> List[tuple]:
         """Prepare media values for insertion."""
         media_values = []
+        now = datetime.now()
         for ans in model_answers:
             model_answer_id = id_map.get(ans.full_question_id)
             if not model_answer_id or not ans.media_urls:
@@ -182,7 +189,8 @@ class ModelAnswerDBService(BaseRelationalDB):
                     assessment_id,
                     url,
                     summary,
-                    datetime.now()
+                    now,
+                    now
                 ))
         return media_values
 
@@ -246,13 +254,14 @@ class ModelAnswerDBService(BaseRelationalDB):
         """Update the media_summary field for a specific media item."""
         query = f"""
         UPDATE {self.model_answer_media_table}
-        SET media_summary = %s
+        SET media_summary = %s,
+            updated_on = NOW()
         WHERE id = %s;
         """
         try:
             self.cursor.execute(query, (summary, media_id))
             self.conn.commit()
-            logger.info(f"✅ Updated summary for media_id: {media_id} in '{self.model_answer_media_table}'")
+            logger.info(f"✅ Updated summary (and updated_on) for media_id: {media_id} in '{self.model_answer_media_table}'")
             return True
         except Exception as e:
             logger.error(f"❌ Failed to update media summary: {e}")

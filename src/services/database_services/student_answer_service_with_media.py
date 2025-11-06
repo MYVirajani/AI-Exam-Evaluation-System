@@ -3,7 +3,7 @@ import json
 import os
 import sys
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from psycopg2.extras import execute_values
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -57,7 +57,8 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             submission_id TEXT NOT NULL,
             media_url TEXT NOT NULL,
             media_summary JSONB,
-            created_on TIMESTAMP DEFAULT NOW()
+            created_on TIMESTAMP DEFAULT NOW(),
+            updated_on TIMESTAMP DEFAULT NOW()
         );
         """
         try:
@@ -110,25 +111,20 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
 
         try:
             # 🧹 Step 1: Delete old records for same submission_id
-            delete_query_media = f"""
-                DELETE FROM {self.student_answer_media_table}
-                WHERE submission_id = %s;
-            """
-            delete_query_answers = f"""
-                DELETE FROM {self.student_answer_table}
-                WHERE submission_id = %s;
-            """
-            self.cursor.execute(delete_query_media, (submission_id,))
-            self.cursor.execute(delete_query_answers, (submission_id,))
+            self.cursor.execute(f"DELETE FROM {self.student_answer_media_table} WHERE submission_id = %s;", (submission_id,))
+            self.cursor.execute(f"DELETE FROM {self.student_answer_table} WHERE submission_id = %s;", (submission_id,))
             logger.info(f"🧹 Deleted existing records for submission_id={submission_id}")
 
             # 🧩 Step 2: Insert new answers
+            # ✅ FIXED: Removed created_at, updated_at (Postgres auto-fills defaults)
             insert_answers = f"""
                 INSERT INTO {self.student_answer_table} 
                 (id, submission_id, question_number, answer_text)
                 VALUES %s;
             """
-            execute_values(self.cursor, insert_answers, answer_values)
+            execute_values(self.cursor, insert_answers, [
+                (*vals,) for vals in answer_values
+            ])
 
             # 🧩 Step 3: Insert new media (if any)
             if media_values:
@@ -137,7 +133,9 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                     (id, student_answer_id, submission_id, media_url, media_summary)
                     VALUES %s;
                 """
-                execute_values(self.cursor, insert_media, media_values)
+                execute_values(self.cursor, insert_media, [
+                    (*vals,) for vals in media_values
+                ])
 
             self.commit()
             logger.info(f"✅ Saved {len(answer_values)} answers and {len(media_values)} media for submission_id={submission_id}")
@@ -153,13 +151,14 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
         """Update a single student answer."""
         query = f"""
         UPDATE {self.student_answer_table}
-        SET answer_text = %s, updated_at = NOW()
+        SET answer_text = %s,
+            updated_at = NOW()
         WHERE id = %s;
         """
         try:
             self.cursor.execute(query, (new_text, answer_id))
             self.commit()
-            logger.info(f"✅ Updated answer_id={answer_id}")
+            logger.info(f"✅ Updated answer_id={answer_id} (updated_at refreshed)")
             return True
         except Exception as e:
             logger.error(f"❌ Failed to update answer {answer_id}: {e}")
@@ -167,7 +166,28 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             return False
 
     # ----------------------------------------------------------------------
-    # DELETE ANSWER (and cascade delete media)
+    # UPDATE MEDIA SUMMARY
+    # ----------------------------------------------------------------------
+    def update_media_summary(self, media_id: str, summary: Any) -> bool:
+        """Update media_summary JSON for a given media record and refresh updated_on."""
+        query = f"""
+        UPDATE {self.student_answer_media_table}
+        SET media_summary = %s,
+            updated_on = NOW()
+        WHERE id = %s;
+        """
+        try:
+            self.cursor.execute(query, (json.dumps(summary), media_id))
+            self.commit()
+            logger.info(f"✅ Updated media summary for {media_id} (updated_on refreshed)")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to update media summary: {e}")
+            self.rollback()
+            return False
+
+    # ----------------------------------------------------------------------
+    # DELETE ANSWER (cascade deletes media)
     # ----------------------------------------------------------------------
     def delete_answer(self, answer_id: str) -> bool:
         """Delete a student answer and associated media."""
@@ -192,8 +212,10 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             a.id AS student_answer_id,
             a.question_number,
             a.answer_text,
+            a.updated_at,
             m.media_url,
-            m.media_summary
+            m.media_summary,
+            m.updated_on
         FROM {self.student_answer_table} a
         LEFT JOIN {self.student_answer_media_table} m
         ON a.id = m.student_answer_id
@@ -204,17 +226,19 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             self.cursor.execute(query, (submission_id,))
             rows = self.cursor.fetchall()
             result = {}
-            for ans_id, qnum, text, url, summary in rows:
+            for ans_id, qnum, text, updated_at, url, summary, updated_on in rows:
                 if qnum not in result:
                     result[qnum] = {
                         "student_answer_id": ans_id,
                         "answer_text": text,
+                        "updated_at": updated_at,
                         "media_items": []
                     }
                 if url or summary:
                     result[qnum]["media_items"].append({
                         "media_url": url,
-                        "media_summary": summary
+                        "media_summary": summary,
+                        "updated_on": updated_on
                     })
             logger.info(f"✅ Retrieved {len(result)} answers for submission_id={submission_id}")
             return result
@@ -224,69 +248,10 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             return {}
 
     # ----------------------------------------------------------------------
-    # FETCH MULTIPLE SUBMISSIONS
+    # ✅ FIXED: Add commit/rollback helper wrappers
     # ----------------------------------------------------------------------
-    def get_all_answers_by_submission_ids(self, submission_ids: List[str]) -> List[Dict[str, Any]]:
-        """Return all answers for multiple submissions."""
-        if not submission_ids:
-            logger.warning("⚠️ No submission IDs provided.")
-            return []
-        query = f"""
-        SELECT 
-            a.submission_id,
-            a.id AS student_answer_id,
-            a.question_number,
-            a.answer_text,
-            m.media_url,
-            m.media_summary
-        FROM {self.student_answer_table} a
-        LEFT JOIN {self.student_answer_media_table} m 
-        ON a.id = m.student_answer_id
-        WHERE a.submission_id = ANY(%s)
-        ORDER BY a.submission_id, a.question_number;
-        """
-        try:
-            self.cursor.execute(query, (submission_ids,))
-            rows = self.cursor.fetchall()
-            result_map = {}
-            for sub_id, ans_id, qnum, text, url, summary in rows:
-                key = (sub_id, ans_id)
-                if key not in result_map:
-                    result_map[key] = {
-                        "submission_id": sub_id,
-                        "student_answer_id": ans_id,
-                        "question_number": qnum,
-                        "answer_text": text,
-                        "media_items": []
-                    }
-                if url or summary:
-                    result_map[key]["media_items"].append({
-                        "media_url": url,
-                        "media_summary": summary
-                    })
-            logger.info(f"✅ Retrieved {len(result_map)} answers for {len(submission_ids)} submissions")
-            return list(result_map.values())
-        except Exception as e:
-            logger.error(f"❌ Failed to fetch multiple submission answers: {e}", exc_info=True)
-            self.rollback()
-            return []
+    def commit(self):
+        self.conn.commit()
 
-    # ----------------------------------------------------------------------
-    # UPDATE MEDIA SUMMARY
-    # ----------------------------------------------------------------------
-    def update_media_summary(self, media_id: str, summary: Any) -> bool:
-        """Update media_summary JSON for a given media record."""
-        query = f"""
-        UPDATE {self.student_answer_media_table}
-        SET media_summary = %s
-        WHERE id = %s;
-        """
-        try:
-            self.cursor.execute(query, (json.dumps(summary), media_id))
-            self.commit()
-            logger.info(f"✅ Updated media summary for {media_id}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Failed to update media summary: {e}")
-            self.rollback()
-            return False
+    def rollback(self):
+        self.conn.rollback()

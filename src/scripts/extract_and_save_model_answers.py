@@ -88,7 +88,7 @@ def extract_and_save_model_answers(
     model_name = extractor.model.lower().replace("-", "_").replace(".", "_")
 
     try:
-        db_service = ModelAnswerDBService(ai_model=model_name)
+        db_service = ModelAnswerDBService(ai_model=ai_provider)
         db_service.save_model_answers(
             model_answers=model_answers,
             assessment_id=assessment_id,

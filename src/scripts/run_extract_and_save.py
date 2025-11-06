@@ -65,7 +65,7 @@ def extract_and_save(docx_path: str, extractor: AnswerExtractor, provider: str):
 
         # ✅ Normalized tables (student_answer + student_answer_media)
         print("🗄️  Saving answers in normalized tables...")
-        db_media = StudentAnswerServiceWithMedia(ai_model=extractor.selected_model)
+        db_media = StudentAnswerServiceWithMedia(ai_model=provider)
         db_media._ensure_tables_exist()
         db_media.save_answers(answers=answers, submission_id=submission_id)
         db_media.close()

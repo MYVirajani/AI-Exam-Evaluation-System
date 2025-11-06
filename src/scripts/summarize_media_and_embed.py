@@ -14,27 +14,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------
-# Utility: Infer provider name from model string
-# ----------------------------------------------------------------------
-def infer_provider_from_model(model_name: str) -> str:
-    """Infer provider (OpenAI, GoogleGemini, or DeepSeek) from model string."""
-    model_lower = model_name.lower()
-    if "gemini" in model_lower:
-        return "GoogleGemini"
-    elif "deepseek" in model_lower:
-        return "DeepSeek"
-    else:
-        return "OpenAI"
-
-
-# ----------------------------------------------------------------------
 # Student submission media summarization
 # ----------------------------------------------------------------------
-def summarize_student_submission(submission_id: str, ai_model: str):
-    """Summarize media from student submissions using selected LLM."""
-    provider = infer_provider_from_model(ai_model)
-    db_service = StudentMediaDBService(ai_model=ai_model)
-    llm = ImageSummarizer(provider=provider, model=ai_model)
+def summarize_student_submission(submission_id: str, selected_model: str):
+    """
+    Summarize student submission media using the specified model (OpenAI / Gemini / DeepSeek).
+    Model configuration (provider, API key, temperature, etc.) is read from environment variables.
+    """
+    db_service = StudentMediaDBService(ai_model=selected_model)
+    llm = ImageSummarizer(provider_key=selected_model)
 
     media_records = db_service.get_media_by_submission(submission_id)
     logger.info(f"📸 Found {len(media_records)} student media records for submission {submission_id}")
@@ -56,16 +44,15 @@ def summarize_student_submission(submission_id: str, ai_model: str):
 
 
 # ----------------------------------------------------------------------
-# Model answer media summarization (supports filtering by model_paper_id)
+# Model answer media summarization
 # ----------------------------------------------------------------------
-def summarize_model_answers(assessment_id: str, model_paper_id: str = None, ai_model: str = "gpt-4o"):
+def summarize_model_answers(assessment_id: str, model_paper_id: str = None, selected_model: str = "gpt-4o"):
     """
-    Summarize media from model answers, filtered by assessment_id
-    and optionally model_paper_id, using the chosen LLM model.
+    Summarize model answer media (filtered by assessment_id and model_paper_id)
+    using the configured model in environment variables.
     """
-    provider = infer_provider_from_model(ai_model)
-    db_service = ModelAnswerDBService(ai_model=ai_model)
-    llm = ImageSummarizer(provider=provider, model=ai_model)
+    db_service = ModelAnswerDBService(ai_model=selected_model)
+    llm = ImageSummarizer(provider_key=selected_model)
 
     media_records = db_service.get_media_by_assessment(assessment_id, model_paper_id)
     logger.info(
@@ -97,10 +84,10 @@ def summarize_model_answers(assessment_id: str, model_paper_id: str = None, ai_m
 # ----------------------------------------------------------------------
 # Model answer embedding (after summarization)
 # ----------------------------------------------------------------------
-def embed_model_answers(model_paper_id: str, assessment_id: str, ai_model: str):
-    """Embed model answers and store embeddings into pgvector."""
-    db_service = ModelAnswerDBService(ai_model=ai_model)
-    vector_service = ModelAnswerVectorService(ai_model=ai_model)
+def embed_model_answers(model_paper_id: str, assessment_id: str, selected_model: str):
+    """Embed model answers and store embeddings using the configured provider/model."""
+    db_service = ModelAnswerDBService(ai_model=selected_model)
+    vector_service = ModelAnswerVectorService(ai_model=selected_model)
 
     logger.info(f"🚀 Starting embedding for model_paper_id={model_paper_id}, assessment_id={assessment_id}")
 
@@ -133,17 +120,13 @@ if __name__ == "__main__":
         choices=["student", "model", "embed"],
         help="Which operation to run: student media summarization, model media summarization, or model embedding.",
     )
-    parser.add_argument(
-        "--submission_id",
-        nargs="+",
-        help="One or more student submission IDs (required if mode=student).",
-    )
+    parser.add_argument("--submission_id", nargs="+", help="Student submission IDs (required if mode=student).")
     parser.add_argument("--assessment_id", help="Assessment ID (required if mode=model or embed).")
-    parser.add_argument("--model_paper_id", help="Model paper ID (optional for mode=model, required for mode=embed).")
+    parser.add_argument("--model_paper_id", help="Model paper ID (optional for model mode, required for embed mode).")
     parser.add_argument(
-        "--ai_model",
+        "--selected_model",
         required=True,
-        help="AI model to use for summarization or embedding (e.g., gpt-4o, gemini-2.0-flash, deepseek-r1:7b)",
+        help="Select model key (e.g., openai, gemini, deepseek). Other config is auto-loaded from .env",
     )
 
     args = parser.parse_args()
@@ -153,14 +136,14 @@ if __name__ == "__main__":
             parser.error("--submission_id is required when mode=student")
         for sid in args.submission_id:
             logger.info(f"🔍 Processing submission: {sid}")
-            summarize_student_submission(sid, args.ai_model)
+            summarize_student_submission(sid, args.selected_model)
 
     elif args.mode == "model":
         if not args.assessment_id:
             parser.error("--assessment_id is required when mode=model")
-        summarize_model_answers(args.assessment_id, args.model_paper_id, ai_model=args.ai_model)
+        summarize_model_answers(args.assessment_id, args.model_paper_id, selected_model=args.selected_model)
 
     elif args.mode == "embed":
         if not args.assessment_id or not args.model_paper_id:
             parser.error("--assessment_id and --model_paper_id are required when mode=embed")
-        embed_model_answers(args.model_paper_id, args.assessment_id, ai_model=args.ai_model)
+        embed_model_answers(args.model_paper_id, args.assessment_id, selected_model=args.selected_model)

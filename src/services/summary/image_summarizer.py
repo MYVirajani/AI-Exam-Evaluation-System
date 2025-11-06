@@ -1,6 +1,6 @@
 # ===============================================
 # File: src/scripts/ImageSummarizerLLM.py
-# Description: Multi-provider image summarizer using selected LLM model
+# Description: Multi-provider image summarizer using environment-based config
 # ===============================================
 
 import os
@@ -9,7 +9,6 @@ import logging
 from openai import OpenAI
 from src.prompts.media_summarizer_prompt import SUMMARY_PROMPT, MODEL_SUMMARY_PROMPT
 
-# Optional: import Gemini or DeepSeek SDKs if used in your setup
 try:
     import google.generativeai as genai
 except ImportError:
@@ -20,82 +19,100 @@ logging.basicConfig(level=logging.INFO)
 
 class ImageSummarizer:
     """
-    Summarizes images (charts, diagrams, tables, etc.) using the selected LLM provider and model.
-    Supports OpenAI GPT-4-Vision, Google Gemini, and DeepSeek.
+    Extracts visible textual and diagrammatic content from answer script images
+    using the selected LLM provider (OpenAI, Gemini, or DeepSeek).
+    Ensures faithful, unmodified transcription — no summarization or interpretation.
     """
 
-    def __init__(self, provider: str = "OpenAI", model: str | None = None):
-        self.provider = provider
-        self.model = model or self._get_default_model(provider)
+    def __init__(self, provider_key: str):
+        self.provider_key = provider_key.lower()
+        self.config = self._load_provider_config(self.provider_key)
+
+        self.model = self.config["model"]
+        self.api_key = self.config["api_key"]
+        self.temperature = self.config["temperature"]
         self.client = None
 
-        logging.info(f"[LLM] Initializing ImageSummarizer with provider={provider}, model={self.model}")
+        logging.info(f"[LLM] Initializing ImageSummarizer with provider={self.provider_key}, model={self.model}")
 
-        if provider.lower() == "openai":
-            self.api_key = os.getenv("OPENAI_API_KEY")
-            if not self.api_key:
-                raise ValueError("❌ OPENAI_API_KEY not found in environment variables.")
+        # Initialize client based on provider
+        if self.provider_key == "openai":
             self.client = OpenAI(api_key=self.api_key)
 
-        elif provider.lower() == "googlegemini":
-            self.api_key = os.getenv("GOOGLE_API_KEY")
-            if not self.api_key:
-                raise ValueError("❌ GOOGLE_API_KEY not found in environment variables.")
+        elif self.provider_key == "gemini":
             if not genai:
-                raise ImportError("⚠️ google-generativeai package is not installed.")
+                raise ImportError("⚠️ google-generativeai package not installed.")
             genai.configure(api_key=self.api_key)
             self.client = genai
 
-        elif provider.lower() == "deepseek":
-            self.api_key = os.getenv("DEEPSEEK_API_KEY")
-            if not self.api_key:
-                raise ValueError("❌ DEEPSEEK_API_KEY not found in environment variables.")
+        elif self.provider_key == "deepseek":
             self.client = OpenAI(api_key=self.api_key, base_url="https://api.deepseek.com/v1")
 
         else:
-            raise ValueError(f"❌ Unsupported provider: {provider}")
+            raise ValueError(f"❌ Unsupported provider: {self.provider_key}")
 
-    def _get_default_model(self, provider: str) -> str:
-        """Return the default summarization model for each provider."""
-        defaults = {
-            "openai": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-            "googlegemini": "gemini-1.5-flash",
-            "deepseek": "deepseek-r1:7b",
+    def _load_provider_config(self, provider: str) -> dict:
+        """Load API key, model, and temperature from environment variables."""
+        env_map = {
+            "openai": {
+                "api_key": os.getenv("OPENAI_API_KEY"),
+                "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                "temperature": float(os.getenv("OPENAI_TEMPERATURE", 0.2)),
+            },
+            "gemini": {
+                "api_key": os.getenv("GOOGLE_API_KEY"),
+                "model": os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                "temperature": float(os.getenv("GEMINI_TEMPERATURE", 0.2)),
+            },
+            "deepseek": {
+                "api_key": os.getenv("DEEPSEEK_API_KEY"),
+                "model": os.getenv("DEEPSEEK_MODEL", "deepseek-r1:7b"),
+                "temperature": float(os.getenv("DEEPSEEK_TEMPERATURE", 0.2)),
+            },
         }
-        return defaults.get(provider.lower(), "gpt-4o-mini")
+
+        if provider not in env_map:
+            raise ValueError(f"❌ Unsupported provider key: {provider}")
+
+        config = env_map[provider]
+        if not config["api_key"]:
+            raise ValueError(f"❌ Missing API key for provider: {provider.upper()}")
+
+        return config
 
     def summarize_image(
         self,
         image_path: str,
         mode: str = "student",
-        domain: str = "General",
+        domain: str = "Engineering",
         guideline_text: str | None = None,
     ) -> str | None:
-        """
-        Summarize an image (student or model) using the selected LLM model.
-        mode: "student" | "model"
-        domain: subject area (e.g., Physics, Civil Engineering)
-        guideline_text: optional marking scheme for model answers
-        Returns a textual summary or None.
-        """
+        """Convert image to faithful text description (no manipulation)."""
         if not os.path.exists(image_path):
             logging.error(f"[LLM] ❌ File not found: {image_path}")
             return None
 
-        # Construct prompts
+        # ------------------------------------------------------------------
+        # Updated Prompts — Strict factual extraction (no summarization)
+        # ------------------------------------------------------------------
         if mode == "model":
-            system_prompt = MODEL_SUMMARY_PROMPT.format(domain=domain).strip()
+            system_prompt = MODEL_SUMMARY_PROMPT.strip()
             user_context = (
-                f"Analyze this model answer image in the domain of {domain}. "
-                "Summarize its content and alignment with guidelines, focusing on clarity, correctness, and notation."
+                f"Extract and describe the visible content of this model answer image in the domain of {domain}. "
+                "Provide a clear, structured text representation of everything present — including written text, symbols, "
+                "labels, diagrams, and shapes — exactly as shown in the image, without adding, omitting, or interpreting any information. "
+                "Preserve terminology, equations, and diagram notations exactly as they appear. "
+                "Do not summarize or rewrite content in your own words; simply transcribe and structurally describe what is visible."
             )
             if guideline_text:
                 user_context += f"\n\n📘 GUIDELINES:\n{guideline_text.strip()}\n"
         else:
-            system_prompt = SUMMARY_PROMPT.format(domain=domain).strip()
+            system_prompt = SUMMARY_PROMPT.strip()
             user_context = (
-                f"Summarize this student's answer image in the domain of {domain}. "
-                "Focus on the main idea, structure, and correctness."
+                f"Extract and describe the visible content of this student's answer image in the domain of {domain}. "
+                "Convert the image into clear, readable text — capturing all written content, formulas, symbols, diagrams, and notations exactly as shown. "
+                "Do not interpret, evaluate, or modify the answer in any way. "
+                "Focus only on accurately representing the visible elements and their structure."
             )
 
         # Encode image
@@ -109,7 +126,7 @@ class ImageSummarizer:
             # ----------------------------------------------------------
             # OpenAI / DeepSeek
             # ----------------------------------------------------------
-            if self.provider.lower() in ["openai", "deepseek"]:
+            if self.provider_key in ["openai", "deepseek"]:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[
@@ -118,11 +135,14 @@ class ImageSummarizer:
                             "role": "user",
                             "content": [
                                 {"type": "text", "text": user_context},
-                                {"type": "image_url",
-                                 "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}
+                                },
                             ],
                         },
                     ],
+                    temperature=self.temperature,
                     max_tokens=700,
                 )
                 summary = response.choices[0].message.content.strip()
@@ -130,27 +150,31 @@ class ImageSummarizer:
             # ----------------------------------------------------------
             # Google Gemini
             # ----------------------------------------------------------
-            elif self.provider.lower() == "googlegemini":
+            elif self.provider_key == "gemini":
                 model = self.client.GenerativeModel(self.model)
                 with open(image_path, "rb") as img_file:
                     image_data = img_file.read()
                 response = model.generate_content(
                     [system_prompt + "\n\n" + user_context,
                      {"mime_type": mime_type, "data": image_data}],
-                    generation_config={"max_output_tokens": 700},
+                    generation_config={
+                        "temperature": self.temperature,
+                        "max_output_tokens": 700,
+                    },
                 )
                 summary = response.text.strip()
 
             else:
-                raise ValueError(f"❌ Unsupported provider: {self.provider}")
+                raise ValueError(f"❌ Unsupported provider: {self.provider_key}")
 
-            logging.info(f"[LLM] ✅ Summarized ({mode}, domain={domain}) using {self.provider}: {os.path.basename(image_path)}")
+            logging.info(
+                f"[LLM] ✅ Extracted ({mode}, domain={domain}) using {self.provider_key}: {os.path.basename(image_path)}"
+            )
             return summary
 
         except Exception as e:
-            logging.exception(f"[LLM] ❌ Failed to summarize image {image_path}: {e}")
+            logging.exception(f"[LLM] ❌ Failed to process image {image_path}: {e}")
             return None
-
 
 
 # ----------------------------------------------------------------------
@@ -159,11 +183,12 @@ class ImageSummarizer:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Test GPT-4 Vision summarizer on a local image file.")
-    parser.add_argument("--image_path", required=True, help="Path to a local image (e.g., ./sample.png)")
-    parser.add_argument("--mode", default="student", choices=["student", "model"], help="Image type to summarize")
+    parser = argparse.ArgumentParser(description="Test image-to-text extraction using environment-based LLM config.")
+    parser.add_argument("--provider", required=True, choices=["openai", "gemini", "deepseek"], help="LLM provider key")
+    parser.add_argument("--image_path", required=True, help="Path to a local image file (e.g., ./sample.png)")
+    parser.add_argument("--mode", default="student", choices=["student", "model"], help="Type of image to process")
     parser.add_argument("--domain", default="General", help="Academic domain (e.g., Physics, Civil Engineering)")
-    parser.add_argument("--guideline", default=None, help="Path to text file containing model guidelines")
+    parser.add_argument("--guideline", default=None, help="Path to a text file with model guidelines")
 
     args = parser.parse_args()
 
@@ -172,7 +197,7 @@ if __name__ == "__main__":
         with open(args.guideline, "r", encoding="utf-8") as f:
             guideline_text = f.read()
 
-    summarizer = ImageSummarizer()
+    summarizer = ImageSummarizer(args.provider)
     summary = summarizer.summarize_image(
         args.image_path,
         mode=args.mode,
@@ -180,5 +205,5 @@ if __name__ == "__main__":
         guideline_text=guideline_text
     )
 
-    print("\n🧠 IMAGE SUMMARY RESULT\n" + "-" * 60)
-    print(summary or "❌ No summary generated.")
+    print("\n🧠 IMAGE TEXT EXTRACTION RESULT\n" + "-" * 60)
+    print(summary or "❌ No result generated.")

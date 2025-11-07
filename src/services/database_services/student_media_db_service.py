@@ -119,7 +119,7 @@ class StudentMediaDBService(BaseRelationalDB):
             return False
 
         try:
-            summary_json = json.dumps({"summary": summary_text})
+            summary_json = json.dumps( summary_text)
             query = f"""
                 UPDATE {self.student_answer_media_table}
                 SET media_summary = %s

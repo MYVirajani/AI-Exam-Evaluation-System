@@ -56,6 +56,7 @@ def main():
     parser = argparse.ArgumentParser(description="Embed lecture materials into vector DB")
     parser.add_argument("--embedder", required=True, help="Embedder to use: openai or gemini")
     parser.add_argument("--module_id", required=True, help="Module ID associated with the lecture materials")
+    parser.add_argument("--lecturer_id", required=True, help="Lecturer ID associated with the lecture materials")
     args = parser.parse_args()
 
     embedder = get_embedder(args.embedder)
@@ -67,7 +68,7 @@ def main():
         logger.error(f"Lecture materials folder not found: {folder_path}")
         return
 
-    logger.info(f"Starting embedding for module {args.module_id} using {args.embedder}...")
+    logger.info(f"Starting embedding for module {args.module_id} and lecturer {args.lecturer_id} using {args.embedder}...")
 
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
@@ -85,6 +86,7 @@ def main():
             # For now, embed whole file as single text (can be chunked later)
             embeddings = embedder.embed([content])
             db_service.bulk_insert_embeddings(
+                lecturer_id=args.lecturer_id,
                 module_id=args.module_id,
                 file_path=file_path,
                 lecture_material_id=lecture_material_id,

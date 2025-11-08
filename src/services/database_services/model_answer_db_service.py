@@ -337,3 +337,78 @@ class ModelAnswerDBService(BaseRelationalDB):
             logger.error(f"❌ Failed to fetch model answer: {e}", exc_info=True)
             self.conn.rollback()
             return None
+
+    # ------------------------------------------------------------------
+    # ✅ New Function: Get All Model Answers with Media
+    # ------------------------------------------------------------------
+    def get_model_answer_with_media(
+        self,
+        assessment_id: str,
+        model_paper_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all model answers for a given assessment (optionally filtered by model_paper_id),
+        including their associated media summaries.
+        """
+        try:
+            if model_paper_id:
+                query = f"""
+                SELECT
+                    ma.id AS model_answer_id,
+                    ma.question_number,
+                    ma.question_text,
+                    ma.answer_text,
+                    ma.guideline_text,
+                    ma.max_marks,
+                    ARRAY_REMOVE(ARRAY_AGG(mam.media_summary), NULL) AS media_summaries
+                FROM {self.model_answer_table} ma
+                LEFT JOIN {self.model_answer_media_table} mam
+                    ON ma.id = mam.model_answer_id
+                WHERE ma.assessment_id = %s AND ma.model_answer_paper_id = %s
+                GROUP BY ma.id
+                ORDER BY ma.question_number;
+                """
+                params = (assessment_id, model_paper_id)
+            else:
+                query = f"""
+                SELECT
+                    ma.id AS model_answer_id,
+                    ma.question_number,
+                    ma.question_text,
+                    ma.answer_text,
+                    ma.guideline_text,
+                    ma.max_marks,
+                    ARRAY_REMOVE(ARRAY_AGG(mam.media_summary), NULL) AS media_summaries
+                FROM {self.model_answer_table} ma
+                LEFT JOIN {self.model_answer_media_table} mam
+                    ON ma.id = mam.model_answer_id
+                WHERE ma.assessment_id = %s
+                GROUP BY ma.id
+                ORDER BY ma.question_number;
+                """
+                params = (assessment_id,)
+
+            self.cursor.execute(query, params)
+            rows = self.cursor.fetchall()
+
+            results = [
+                {
+                    "model_answer_id": row[0],
+                    "question_number": row[1],
+                    "question_text": row[2],
+                    "answer_text": row[3],
+                    "guideline_text": row[4],
+                    "max_marks": row[5],
+                    "media_summaries": row[6] or [],
+                }
+                for row in rows
+            ]
+
+            logger.info(
+                f"✅ Retrieved {len(results)} model answers with media for assessment_id={assessment_id}"
+            )
+            return results
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch model answers with media: {e}", exc_info=True)
+            self.conn.rollback()
+            return []

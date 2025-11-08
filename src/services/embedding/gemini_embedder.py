@@ -18,9 +18,9 @@ class GeminiEmbedder(AbstractEmbedder):
     Default model: 'models/embedding-001' or 'gemini-embedding-001'
     """
 
-    def __init__(self, model_name: str = None):
+    def __init__(self):
         # Load from environment
-        self.model_name = model_name or os.getenv("GEMINI_EMBEDDING_MODEL", "models/embedding-001")
+        self.model_name = os.getenv("GEMINI_EMBEDDING_MODEL", "models/embedding-001")
 
         # Read embedding dimension (default 768)
         dim_str = os.getenv("GEMINI_EMBEDDING_DIMENSION", "768")

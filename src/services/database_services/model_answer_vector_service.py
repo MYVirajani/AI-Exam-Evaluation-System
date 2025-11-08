@@ -13,7 +13,7 @@ logger.setLevel(logging.INFO)
 class ModelAnswerVectorService(BaseVectorDBService):
     """
     Handles embedding and storing model answers with separate columns for
-    question, answer, and guideline embeddings (no raw text stored).
+    question and answer embeddings (guideline text not embedded).
     Supports both OpenAIEmbedder and GeminiEmbedder depending on --ai_model.
     """
 
@@ -31,16 +31,16 @@ class ModelAnswerVectorService(BaseVectorDBService):
         model_lower = ai_model.lower()
         if "gemini" in model_lower:
             logger.info(f"🔹 Using GeminiEmbedder for model: {ai_model}")
-            return GeminiEmbedder(model_name=ai_model)
+            return GeminiEmbedder()
         else:
             logger.info(f"🔹 Using OpenAIEmbedder for model: {ai_model}")
-            return OpenAIEmbedder(model_name=ai_model)
+            return OpenAIEmbedder()
 
     # ----------------------------------------------------------------------
     # Table setup
     # ----------------------------------------------------------------------
     def _ensure_vector_table(self):
-        """Ensure table exists for this embedder (separate embedding columns)."""
+        """Ensure table exists for this embedder (question and answer embeddings only)."""
         self.table_name = f"model_answer_embeddings_{self.suffix}"
         dim = self.embedder.get_embedding_dimension()
 
@@ -56,7 +56,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
             question_number VARCHAR(50),
             question_embedding VECTOR({dim}),
             answer_embedding VECTOR({dim}),
-            guideline_embedding VECTOR({dim}),
             model_name VARCHAR(255) NOT NULL,
             created_on TIMESTAMP DEFAULT NOW()
         );
@@ -67,10 +66,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
 
         CREATE INDEX IF NOT EXISTS idx_{self.table_name}_answer
         ON {self.table_name} USING ivfflat (answer_embedding vector_cosine_ops)
-        WITH (lists = 100);
-
-        CREATE INDEX IF NOT EXISTS idx_{self.table_name}_guideline
-        ON {self.table_name} USING ivfflat (guideline_embedding vector_cosine_ops)
         WITH (lists = 100);
         """
 
@@ -83,7 +78,7 @@ class ModelAnswerVectorService(BaseVectorDBService):
     # ----------------------------------------------------------------------
     def embed_and_store_model_answers(self, model_paper_id: str, assessment_id: str, db_service):
         """
-        Fetch model answers and embed question, answer, and guideline texts.
+        Fetch model answers and embed only question and answer texts.
         Skip re-embedding if the same model_answer_id already exists.
         """
 
@@ -99,7 +94,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
             ma.question_number,
             ma.question_text,
             ma.answer_text,
-            ma.guideline_text,
             ARRAY_REMOVE(ARRAY_AGG(mam.media_summary), NULL) AS media_summaries
         FROM {model_answer_table} ma
         LEFT JOIN {model_answer_media_table} mam ON mam.model_answer_id = ma.id
@@ -121,8 +115,7 @@ class ModelAnswerVectorService(BaseVectorDBService):
             print(f"  Question Number: {row[3]}")
             print(f"  Question Text: {row[4]}")
             print(f"  Answer Text: {row[5]}")
-            print(f"  Guideline Text: {row[6]}")
-            print(f"  Media Summaries: {row[7]}")
+            print(f"  Media Summaries: {row[6]}")
         print("============================================================\n")
 
         logger.info(f"📦 Total raw records fetched: {len(rows)}")
@@ -140,7 +133,7 @@ class ModelAnswerVectorService(BaseVectorDBService):
         embeddings_to_generate = []
 
         for row in rows:
-            model_answer_id, _, model_paper_id_db, question_number, question_text, answer_text, guideline_text, media_summaries = row
+            model_answer_id, _, model_paper_id_db, question_number, question_text, answer_text, media_summaries = row
 
             if model_answer_id in existing_ids:
                 logger.info(f"⏭️ Skipping existing embeddings for {model_answer_id}")
@@ -151,9 +144,8 @@ class ModelAnswerVectorService(BaseVectorDBService):
 
             q_text = question_text.strip() if question_text else None
             a_text = full_answer_text if full_answer_text else None
-            g_text = guideline_text.strip() if guideline_text else None
 
-            embeddings_to_generate.append((model_answer_id, q_text, a_text, g_text, model_paper_id_db, question_number))
+            embeddings_to_generate.append((model_answer_id, q_text, a_text, model_paper_id_db, question_number))
 
         if not embeddings_to_generate:
             logger.info("⚠️ No new embeddings to generate.")
@@ -163,10 +155,9 @@ class ModelAnswerVectorService(BaseVectorDBService):
 
         insert_data = []
 
-        for model_answer_id, q_text, a_text, g_text, model_paper_id_db, question_number in embeddings_to_generate:
+        for model_answer_id, q_text, a_text, model_paper_id_db, question_number in embeddings_to_generate:
             question_emb = self.embedder.embed([q_text])[0] if q_text else None
             answer_emb = self.embedder.embed([a_text])[0] if a_text else None
-            guideline_emb = self.embedder.embed([g_text])[0] if g_text else None
 
             insert_data.append((
                 assessment_id,
@@ -175,7 +166,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
                 question_number,
                 question_emb,
                 answer_emb,
-                guideline_emb,
                 model_name,
                 datetime.now(),
             ))
@@ -183,7 +173,7 @@ class ModelAnswerVectorService(BaseVectorDBService):
         insert_query = f"""
         INSERT INTO {self.table_name} (
             assessment_id, model_paper_id, model_answer_id, question_number,
-            question_embedding, answer_embedding, guideline_embedding,
+            question_embedding, answer_embedding,
             model_name, created_on
         ) VALUES %s;
         """

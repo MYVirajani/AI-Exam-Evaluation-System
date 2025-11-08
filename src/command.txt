@@ -31,7 +31,7 @@ python -m src.scripts.summarize_media_and_embed --mode student --submission_id E
 Summarize model answer media
 python -m src.scripts.summarize_media_and_embed --mode model --assessment_id EE6250_2025_JUNE --model_paper_id TEST --selected_model openai
 Embed model answers
-python -m src.scripts.summarize_media_and_embed --mode embed --assessment_id EE6250_2025_JUNE --model_paper_id PAPER2 --selected_model gemini
+python -m src.scripts.summarize_media_and_embed --mode embed_model --assessment_id EE6250_2025_JUNE --model_paper_id PAPER2 --selected_model gemini
 Embed student answers
 python -m src.scripts.summarize_media_and_embed --mode embed_student --submission_id EG_2020_4010 --selected_model openai
 Embed Lecture_Materials

@@ -43,3 +43,28 @@ python -m src.scripts.mark_all_papers --provider GoogleGemini --llm gemini-2.0-f
 **for single paper**
 
 python -m src.scripts.mark_single_paper --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE3350 --year 2025 --month JUNE --student EG/2020/4044
+
+
+** For Deepseek **
+
+python -m src.scripts.embed_model_answers --provider DeepSeek --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answers --ext pdf docx
+
+
+python -m src.scripts.run_extract_and_save --provider DeepSeek --model deepseek-r1:7b --folder data/Answer_Scripts
+
+python -m src.scripts.mark_all_papers --provider DeepSeek --llm deepseek-r1:7b --embedder text-embedding-3-small --module EE3350 --year 2025 --month June
+
+
+** For Fine Tuned **
+
+python -m src.scripts.embed_model_answers --provider LocalFinetunedDeepSeek --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answers --ext pdf docx
+
+python -m src.scripts.embed_lecture_materials --provider LocalFinetunedDeepSeek --model gpt-4o --embedder text-embedding-3-small --module EE3350 --root data/Lecture_Materials/EE3350
+
+python -m src.scripts.run_extract_and_save --provider LocalFinetunedDeepSeek --model deepseek-r1:7b --folder data/answer_scripts_1
+
+python -m src.scripts.embed_from_db --provider LocalFinetunedDeepSeek --model text-embedding-3-small --module_code EE3350 --year 2025 --month June
+
+$env:PYTHONUTF8 = "1"   
+
+python -m src.scripts.mark_all_papers --provider LocalFinetunedDeepSeek --llm "E:/finetune_voice/DeepSeek-R1-DomainData-Merged" --embedder text-embedding-3-small --module EE3350 --year 2025 --month June

@@ -124,7 +124,7 @@ def read_text(path: pathlib.Path) -> str:
 # ────────────────────────────────────────────────
 def main() -> None:
     ap = argparse.ArgumentParser(description="Embed lecture materials into vector DB")
-    ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini", "DeepSeek"], help="Embedding provider")
+    ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini", "DeepSeek", "LocalFinetunedDeepSeek"], help="Embedding provider")
     ap.add_argument("--model", required=True, help="LLM model name (unused here, for logging)")
     ap.add_argument("--embedder", default="text-embedding-3-small", help="Embedding model ID (e.g., text-embedding-3-small or embedding-001)")
     ap.add_argument("--root", default="data/Lecture_Material", help="Root directory containing module folders")
@@ -153,9 +153,13 @@ def main() -> None:
     elif args.provider == "GoogleGemini":
         embedder = GeminiEmbedder(model_name=args.embedder)
     elif args.provider == "DeepSeek":
-        print("⚠️ DeepSeek selected: using OpenAI embeddings but saving in DeepSeek table")
+        print(" DeepSeek selected: using OpenAI embeddings but saving in DeepSeek table")
         embedder = OpenAIEmbedder("text-embedding-3-small")
         provider_override = "deepseek"
+    elif args.provider == "LocalFinetunedDeepSeek":
+        print(" LocalFinetunedDeepSeek selected: using OpenAI embeddings but saving in LocalFinetunedDeepSeek table")
+        embedder = OpenAIEmbedder("text-embedding-3-small")
+        provider_override = "localfinetuneddeepseek"
     else:
         raise ValueError(f"Unsupported provider: {args.provider}")
 

@@ -361,6 +361,18 @@ python -m src.scripts.mark_all_papers ^
   --month June ^
   --ollama-url http://localhost:11434 ^
   --timeout 600
+  
+  # Local Fine-Tuned DeepSeek
+python -m src.scripts.mark_all_papers ^
+  --provider LocalFinetunedDeepSeek ^
+  --llm "E:/finetune_voice/DeepSeek-R1-DomainData-Merged" ^
+  --embedder text-embedding-3-small ^
+  --module EE6250 ^
+  --year 2024 ^
+  --month June
+
+
+  
 """
 
 import argparse
@@ -374,7 +386,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     ap = argparse.ArgumentParser(description="Grade all student answers for a given module and session")
-    ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini", "DeepSeek"], 
+    ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini", "DeepSeek", "LocalFinetunedDeepSeek"], 
                     help="LLM provider")
     ap.add_argument("--llm", required=True, help="Chat model name")
     ap.add_argument("--embedder", required=True, 
@@ -387,6 +399,8 @@ def main():
     ap.add_argument("--timeout", type=int, default=600, 
                     help="Request timeout in seconds (for DeepSeek only)")
     args = ap.parse_args()
+    args.month = args.month.strip().title()
+     
 
     logger.info(f"📚 Starting grading for {args.module} {args.month} {args.year} using {args.provider}")
 
@@ -403,6 +417,12 @@ def main():
         # DeepSeek uses OpenAI embeddings but with DeepSeek suffix for tables
         embedder = OpenAIEmbedder(model_name=args.embedder, provider_suffix="deepseek")
         logger.info(f"🔧 DeepSeek using OpenAI embeddings ({args.embedder}) with 'deepseek' table suffix")
+    
+    elif args.provider == "LocalFinetunedDeepSeek":
+        # Use OpenAI embedding model but a separate DB suffix for clarity
+        embedder = OpenAIEmbedder(model_name=args.embedder, provider_suffix="localfinetuneddeepseek")
+        logger.info(f"🧠 Using Local Fine-Tuned DeepSeek model with embeddings: {args.embedder}")
+
         
     else:
         raise ValueError(f"Unsupported provider: {args.provider}")
@@ -420,6 +440,11 @@ def main():
         grader_kwargs["request_timeout"] = args.timeout
         logger.info(f"🌐 Ollama URL: {args.ollama_url}")
         logger.info(f"⏱️  Timeout: {args.timeout}s")
+    
+    elif args.provider == "LocalFinetunedDeepSeek":
+        grader_kwargs["chat_model"] = args.llm  # you’ll pass your fine-tuned model path here
+        logger.info(f"📂 Local fine-tuned model path: {args.llm}")
+
 
     grader = RAGGrader(**grader_kwargs)
 
@@ -428,7 +453,11 @@ def main():
     if args.provider == "DeepSeek":
         print("⚠️  Note: DeepSeek grading may take longer due to its reasoning process")
     
-    grader.grade_session(args.module, args.year, args.month)
+    #grader.grade_session(args.module, args.year, args.month)
+    # # Normalize month input (case-insensitive)
+    normalized_month = args.month.strip().title()
+    grader.grade_session(args.module, args.year, normalized_month)
+
     print("✅ All papers graded.")
 
 if __name__ == "__main__":

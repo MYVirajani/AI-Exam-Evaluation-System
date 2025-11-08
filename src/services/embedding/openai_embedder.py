@@ -228,6 +228,6 @@ class OpenAIEmbedder(AbstractEmbedder):
         Returns the provider suffix for database table naming
         
         Returns:
-            str: Provider suffix (e.g., 'openai', 'deepseek')
+            str: Provider suffix (e.g., 'openai', 'deepseek','localfinetuneddeepseek')
         """
         return self.provider_suffix

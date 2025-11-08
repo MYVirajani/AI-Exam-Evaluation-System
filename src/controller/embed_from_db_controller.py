@@ -137,6 +137,11 @@ def embed_student_answers(provider: str, model: str, module_code: str, year: int
         print("⚠️ DeepSeek does not support embeddings directly. Using OpenAI embedder for embedding.")
         embedder = OpenAIEmbedder(model_name=model, provider_suffix="deepseek")
         provider_suffix = "deepseek"
+    
+    elif provider == "LocalFinetunedDeepSeek":
+        print("⚠️ DeepSeek does not support embeddings directly. Using OpenAI embedder for embedding.")
+        embedder = OpenAIEmbedder(model_name=model, provider_suffix="localfinetuneddeepseek")
+        provider_suffix = "localfinetuneddeepseek"
         
     else:
         raise ValueError(f"❌ Unsupported provider: {provider}")

@@ -293,7 +293,16 @@ class ModelAnswerExtractor:
             self.provider = "OpenAI"
             self.model = "gpt-4o-mini"  # You can change this fallback model if needed
             self.client = OpenAIClient(api_key=os.getenv("OPENAI_API_KEY"))
-
+        
+        elif self.provider == "LocalFinetunedDeepSeek":
+            # Fallback: DeepSeek doesn’t support extraction, so use OpenAI
+            # logger.warning(
+            #     "⚠️ LocalFinetunedDeepSeek does not support model answer extraction. "
+            #     "Falling back to OpenAI (gpt-4o-mini)."
+            # )
+            self.provider = "OpenAI"
+            # self.model = "gpt-4o-mini"  # You can change this fallback model if needed
+            self.client = OpenAIClient(api_key=os.getenv("OPENAI_API_KEY"))
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 

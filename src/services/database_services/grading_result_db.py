@@ -217,6 +217,8 @@ class GradingResultDB(BaseRelationalDB):
             "googlegemini": "_gemini",
             "google_gemini": "_gemini",
             "gemini": "_gemini",
+            "deepseek": "_deepseek",
+            "localfinetuneddeepseek": "_localfinetuneddeepseek"
         }
 
         normalized = provider_suffix.strip().lower()

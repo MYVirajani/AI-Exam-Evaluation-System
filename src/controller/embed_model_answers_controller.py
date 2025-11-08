@@ -58,9 +58,13 @@ def embed_model_answers(provider: str, model_name: str, file_text: str):
     elif provider == "GoogleGemini":
         embedder = GeminiEmbedder()
     elif provider == "DeepSeek":
-        print("⚠️ DeepSeek selected: using OpenAI embeddings but saving in DeepSeek table")
+        print("DeepSeek selected: using OpenAI embeddings but saving in DeepSeek table")
         embedder = OpenAIEmbedder(model_name="text-embedding-3-small")
         provider_override = "deepseek"
+    elif provider == "LocalFinetunedDeepSeek":
+        print("Finetuned DeepSeek selected: using OpenAI embeddings but saving in DeepSeek table")
+        embedder = OpenAIEmbedder(model_name="text-embedding-3-small")
+        provider_override = "localfinetuneddeepseek"
     else:
         raise ValueError("Invalid embedding provider.")
 

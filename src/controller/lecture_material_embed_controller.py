@@ -63,6 +63,10 @@ def embed_lecture_materials(directory: str, module_code: str, provider: str = "O
         print("⚠️ DeepSeek selected: using OpenAI embeddings but saving in DeepSeek table")
         embedder = OpenAIEmbedder(model_name="text-embedding-3-small")
         provider_override = "deepseek"
+    elif provider == "LocalFinetunedDeepSeek":
+        print("⚠️ Finetuned DeepSeek selected: using OpenAI embeddings but saving in DeepSeek table")
+        embedder = OpenAIEmbedder(model_name="text-embedding-3-small")
+        provider_override = "localfinetuneddeepseek"
     else:
         raise ValueError(f"❌ Unsupported provider: {provider}")
 

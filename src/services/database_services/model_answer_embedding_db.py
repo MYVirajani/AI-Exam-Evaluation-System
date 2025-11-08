@@ -683,6 +683,7 @@ class ModelAnswerEmbeddingDB(BaseVectorDBService):
         logger.info("Saved %d model-answer embeddings into table '%s'.", len(answers), self.table)
 
     def get_model_answer(self, full_question_id: str, module_code: str) -> dict | None:
+        #normalized_id = full_question_id.replace('_a', '').strip()
         self.cursor.execute(f"""
             SELECT question_text, answer_text, guideline_text, max_marks
             FROM {self.table}

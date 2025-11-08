@@ -1471,6 +1471,7 @@ from .database_services.grading_result_db import GradingResultDB
 from .embedding.abstract_embedder import AbstractEmbedder
 from ..prompts.rag_prompts import RAGPrompts
 from ..models.grading_result import GradingResult, GradingMethod
+from src.services.local_finetuned_extractor import LocalFinetunedGrader
 
 log = logging.getLogger(__name__)
 
@@ -1505,6 +1506,12 @@ class RAGGrader:
                 log.info("Connected to Ollama server successfully for DeepSeek grading")
             except requests.exceptions.ConnectionError:
                 raise ConnectionError(f"Cannot connect to Ollama at {self.ollama_base_url}")
+       
+        elif provider == "LocalFinetunedDeepSeek":
+            print("🧠 Loading Local Fine-Tuned DeepSeek model for grading...")
+            self.chat = LocalFinetunedGrader(model_path=chat_model)  # ✅ load your local model
+            self.lc_embed = OpenAIEmbeddings(model=embedder.get_model_name())
+
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
@@ -1527,7 +1534,7 @@ class RAGGrader:
             "prompt": prompt,
             "stream": False,  # ✅ Try non-streaming first for debugging
             "options": {
-                "temperature": 0.0,
+                "temperature": 0.2,
                 "num_ctx": 8192,
                 "num_predict": 2000,
             }
@@ -1638,25 +1645,51 @@ class RAGGrader:
         #     log.error(f"Ollama grading request failed: {e}")
         #     raise Exception(f"Ollama grading request failed: {e}")
 
+    # def grade_session(self, module: str, year: int, month: str, student: str | None = None):
+    #     print(f"\U0001F4D8 Starting grading for: {module} {month} {year}")
+    #     groups = self.stu_db.get_all_answers_grouped(module_code=module, year=year, month=month)
+
+    #     count = 0
+    #     for (stu, mod, yr, mon), ans_list in groups.items():
+    #         if (mod, yr, mon) != (module, year, month):
+    #             continue
+    #         if student and stu != student:
+    #             continue
+
+    #         print(f"\U0001F4DD Grading student: {stu}")
+    #         self._grade_paper(stu, mod, yr, mon, ans_list)
+    #         count += 1
+
+    #     if count == 0:
+    #         print("⚠️ No matching student answers found for this session.")
+    #     else:
+    #         print(f"✅ Finished grading {count} student(s).")
     def grade_session(self, module: str, year: int, month: str, student: str | None = None):
-        print(f"\U0001F4D8 Starting grading for: {module} {month} {year}")
-        groups = self.stu_db.get_all_answers_grouped(module_code=module, year=year, month=month)
+            # Normalize month for comparison (not for saving)
+            normalized_month = month.strip().lower()
+            print(f"📘 Starting grading for: {module} {month.title()} {year}")
 
-        count = 0
-        for (stu, mod, yr, mon), ans_list in groups.items():
-            if (mod, yr, mon) != (module, year, month):
-                continue
-            if student and stu != student:
-                continue
+            # Get all answers grouped by (student, module, year, month)
+            groups = self.stu_db.get_all_answers_grouped(module_code=module, year=year, month=month)
 
-            print(f"\U0001F4DD Grading student: {stu}")
-            self._grade_paper(stu, mod, yr, mon, ans_list)
-            count += 1
+            count = 0
+            for (stu, mod, yr, mon), ans_list in groups.items():
+                # Normalize both sides for comparison
+                if mod != module or yr != year or mon.strip().lower() != normalized_month:
+                    continue
 
-        if count == 0:
-            print("⚠️ No matching student answers found for this session.")
-        else:
-            print(f"✅ Finished grading {count} student(s).")
+                if student and stu != student:
+                    continue
+
+                print(f"📝 Grading student: {stu}")
+                self._grade_paper(stu, mod, yr, mon, ans_list)
+                count += 1
+
+            if count == 0:
+                print("⚠️ No matching student answers found for this session (case-insensitive match).")
+            else:
+                print(f"✅ Finished grading {count} student(s).")
+
 
     def _grade_paper(self, stu_idx: str, module: str, year: int, month: str, answers: list):
         total = 0.0
@@ -1759,6 +1792,10 @@ class RAGGrader:
         # Call appropriate LLM based on provider
         if self.provider == "DeepSeek":
             response = self._call_ollama_for_grading(prompt)
+       
+        elif self.provider == "LocalFinetunedDeepSeek":
+            response = self.chat.grade(prompt)
+
         else:
             response = self.chat.invoke(prompt).content
 

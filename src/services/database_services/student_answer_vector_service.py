@@ -32,10 +32,10 @@ class StudentAnswerVectorService(BaseVectorDBService):
         gemini_model = os.getenv("GEMINI_EMBEDDING_MODEL")
         if "gemini" in model_lower:
             logger.info(f"🔹 Using GeminiEmbedder for model: {ai_model}")
-            return GeminiEmbedder(model_name=gemini_model)
+            return GeminiEmbedder()
         else:
             logger.info(f"🔹 Using OpenAIEmbedder for model: {ai_model}")
-            return OpenAIEmbedder(model_name=openai_model)
+            return OpenAIEmbedder()
 
     # ----------------------------------------------------------------------
     # Table setup

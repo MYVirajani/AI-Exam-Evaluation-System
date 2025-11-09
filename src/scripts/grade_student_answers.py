@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 # Add project root to sys.path (so imports work regardless of where script is run)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
-from src.services.grader import DirectGrader
+from src.services.grading_services.direct_grader import DirectGrader
 
 # ---------------------------------------------------------------
 # 🔧 Configuration

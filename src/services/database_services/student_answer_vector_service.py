@@ -28,8 +28,6 @@ class StudentAnswerVectorService(BaseVectorDBService):
     # ----------------------------------------------------------------------
     def _select_embedder(self, ai_model: str):
         model_lower = ai_model.lower()
-        openai_model = os.getenv("OPENAI_EMBEDDING_MODEL")
-        gemini_model = os.getenv("GEMINI_EMBEDDING_MODEL")
         if "gemini" in model_lower:
             logger.info(f"🔹 Using GeminiEmbedder for model: {ai_model}")
             return GeminiEmbedder()
@@ -131,7 +129,6 @@ class StudentAnswerVectorService(BaseVectorDBService):
                 safe_media_summaries = []
                 for ms in media_summaries:
                     if isinstance(ms, dict):
-                        # Extract "summary" key or stringify
                         safe_media_summaries.append(ms.get("summary", str(ms)))
                     else:
                         safe_media_summaries.append(str(ms))
@@ -176,3 +173,28 @@ class StudentAnswerVectorService(BaseVectorDBService):
         execute_values(self.cursor, insert_query, insert_data)
         self.commit()
         logger.info(f"✅ Inserted {len(insert_data)} new student answer embeddings into {self.table_name}")
+
+    # ----------------------------------------------------------------------
+    #  Fetch embeddings by submission_id and question_number
+    # ----------------------------------------------------------------------
+    def get_student_answer_embeddings(self, submission_id: str, question_number: str):
+        """
+        Retrieve stored student answer embeddings for a given submission_id and question_number.
+        Returns a list of tuples: (student_answer_id, answer_embedding)
+        """
+        query = f"""
+        SELECT student_answer_id, answer_embedding
+        FROM {self.table_name}
+        WHERE submission_id = %s AND question_number = %s;
+        """
+        try:
+            self.cursor.execute(query, (submission_id, question_number))
+            results = self.cursor.fetchall()
+            if not results:
+                logger.warning(f"⚠️ No embeddings found for submission_id={submission_id}, question_number={question_number}")
+                return []
+            logger.info(f"✅ Retrieved {len(results)} embeddings for submission_id={submission_id}, question_number={question_number}")
+            return results
+        except Exception as e:
+            logger.error(f"❌ Error fetching embeddings: {e}")
+            return []

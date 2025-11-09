@@ -60,7 +60,7 @@ def main():
     args = parser.parse_args()
 
     embedder = get_embedder(args.embedder)
-    db_service = LectureMaterialDBService(embedder)
+    db_service = LectureMaterialDBService(args.embedder)
 
     folder_path = os.path.join("data", "Lecture_Materials")
 

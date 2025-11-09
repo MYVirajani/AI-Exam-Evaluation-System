@@ -72,31 +72,56 @@ class GeminiEmbedder(AbstractEmbedder):
 
     # ---------------------------------------------------------------
     def _extract_embedding(self, result):
-        """Extract embedding vector from Gemini API response."""
-        if hasattr(result, 'embedding'):
-            return self._to_1d_vector(result.embedding)
-        if hasattr(result, 'embeddings') and result.embeddings:
-            return self._to_1d_vector(result.embeddings[0])
-        if isinstance(result, dict):
-            if 'embedding' in result:
-                return self._to_1d_vector(result['embedding'])
-            if 'embeddings' in result and result['embeddings']:
-                return self._to_1d_vector(result['embeddings'][0])
-        if isinstance(result, (list, tuple)):
-            return self._to_1d_vector(result)
-        if hasattr(result, 'values'):
-            return self._to_1d_vector(result.values)
+        """
+        Extract embedding vector from Gemini API response.
+        Supports multiple formats:
+        - {'embedding': {'values': [...]}}
+        - {'embedding': [...]}
+        - {'data': {'embedding': [...]}}
+        - API object with .embedding.values
+        - Raw list or ndarray
+        """
+        try:
+            # --- Direct object case (returned by SDK) ---
+            if hasattr(result, "embedding"):
+                emb = getattr(result, "embedding")
+                if hasattr(emb, "values"):
+                    return self._to_1d_vector(emb.values)
+                return self._to_1d_vector(emb)
 
-        raise ValueError(f"Cannot extract embedding from result: {type(result)}")
+            # --- Dict formats (most common Gemini API responses) ---
+            if isinstance(result, dict):
+                if "embedding" in result:
+                    emb = result["embedding"]
+                    if isinstance(emb, dict) and "values" in emb:
+                        return self._to_1d_vector(emb["values"])
+                    return self._to_1d_vector(emb)
+                if "data" in result and isinstance(result["data"], dict) and "embedding" in result["data"]:
+                    emb = result["data"]["embedding"]
+                    if isinstance(emb, dict) and "values" in emb:
+                        return self._to_1d_vector(emb["values"])
+                    return self._to_1d_vector(emb)
+                if "values" in result:
+                    return self._to_1d_vector(result["values"])
+
+            # --- Direct list or array ---
+            if isinstance(result, (list, tuple, np.ndarray)):
+                return self._to_1d_vector(result)
+
+            raise ValueError("Invalid Gemini embedding response format")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to extract embedding: {e}")
+            raise ValueError(f"Invalid embedding format: missing 'embedding' key or numeric sequence")
 
     # ---------------------------------------------------------------
     def _to_1d_vector(self, embedding):
-        """Ensure embedding is flat list of floats."""
-        if hasattr(embedding, 'values'):
+        """Ensure embedding is a flat list of floats."""
+        if hasattr(embedding, "values"):
             embedding = embedding.values
-        elif hasattr(embedding, 'embedding'):
+        elif hasattr(embedding, "embedding"):
             embedding = embedding.embedding
-            if hasattr(embedding, 'values'):
+            if hasattr(embedding, "values"):
                 embedding = embedding.values
 
         if isinstance(embedding, (list, tuple, np.ndarray)):

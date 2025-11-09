@@ -181,3 +181,44 @@ class ModelAnswerVectorService(BaseVectorDBService):
         execute_values(self.cursor, insert_query, insert_data)
         self.commit()
         logger.info(f"✅ Inserted {len(insert_data)} new records into {self.table_name}")
+
+    # ----------------------------------------------------------------------
+    #  Fetch embeddings for a question
+    # ----------------------------------------------------------------------
+    def get_embeddings_by_question(self, assessment_id: str, model_paper_id: str, question_number: str):
+        """
+        Retrieve question_embedding and answer_embedding for a given assessment_id,
+        model_paper_id, and question_number.
+        """
+        try:
+            query = f"""
+            SELECT question_embedding, answer_embedding
+            FROM {self.table_name}
+            WHERE assessment_id = %s
+              AND model_paper_id = %s
+              AND question_number = %s;
+            """
+            self.cursor.execute(query, (assessment_id, model_paper_id, question_number))
+            result = self.cursor.fetchone()
+
+            if not result:
+                logger.warning(
+                    f"⚠️ No embeddings found for assessment_id={assessment_id}, "
+                    f"model_paper_id={model_paper_id}, question_number={question_number}"
+                )
+                return None
+
+            question_embedding, answer_embedding = result
+            logger.info(
+                f"✅ Retrieved embeddings for assessment_id={assessment_id}, "
+                f"model_paper_id={model_paper_id}, question_number={question_number}"
+            )
+            return {
+                "question_embedding": question_embedding,
+                "answer_embedding": answer_embedding,
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch embeddings: {e}", exc_info=True)
+            self.conn.rollback()
+            return None

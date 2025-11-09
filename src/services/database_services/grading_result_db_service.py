@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 from dataclasses import asdict, is_dataclass
 from .base_relational_db import BaseRelationalDB
 
@@ -10,10 +10,9 @@ class GradingResultDB(BaseRelationalDB):
     """
     Database service class for managing grading results.
     Each AI model has its own grading_result_<ai_model> table.
-    Example:
-      - grading_result_openai
-      - grading_result_gemini_2_0_flash
-      - grading_result_deepseek_r1_7b
+    Supports optional suffix tables such as:
+      - grading_result_openai_rag
+      - grading_result_gemini_2_0_flash_rag
     """
 
     # ---------------------------------------------------------
@@ -21,21 +20,19 @@ class GradingResultDB(BaseRelationalDB):
     # ---------------------------------------------------------
     def __init__(self, ai_model: str = "openai"):
         super().__init__()
-        # Normalize model string for safe table naming
+        # Normalize model string for safe SQL naming
         self.ai_model = ai_model.lower().replace("-", "_").replace(".", "_").replace(":", "_")
         self.table_name = f"grading_result_{self.ai_model}"
-        self._ensure_table_exists()
+        self._ensure_table_exists(self.table_name)
 
     # ---------------------------------------------------------
     # TABLE CREATION (AUTO)
     # ---------------------------------------------------------
-    def _ensure_table_exists(self):
-        """
-        Create the model-specific grading_result_<ai_model> table if it doesn't already exist.
-        """
+    def _ensure_table_exists(self, table_name: str):
+        """Create grading result table if it doesn't exist."""
         try:
             create_table_query = f"""
-            CREATE TABLE IF NOT EXISTS {self.table_name} (
+            CREATE TABLE IF NOT EXISTS {table_name} (
                 id SERIAL PRIMARY KEY,
                 submission_id VARCHAR(255) NOT NULL,
                 question_number VARCHAR(255) NOT NULL,
@@ -47,28 +44,31 @@ class GradingResultDB(BaseRelationalDB):
                 context_used TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT unique_submission_question_{self.ai_model}
+                CONSTRAINT unique_submission_question_{table_name}
                     UNIQUE (submission_id, question_number)
             );
             """
             self.cursor.execute(create_table_query)
             self.conn.commit()
-            logger.info(f"[DB] ✅ Verified/created table: {self.table_name}")
+            logger.info(f"[DB] ✅ Verified/created table: {table_name}")
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to ensure {self.table_name} exists: {e}", exc_info=True)
+            logger.error(f"[DB] ❌ Failed to create table {table_name}: {e}", exc_info=True)
             self.conn.rollback()
+            raise
 
     # ---------------------------------------------------------
     # INSERT OR UPDATE SINGLE RESULT
     # ---------------------------------------------------------
-    def save_result_record(self, record: Union[Dict[str, Any], Any]) -> bool:
+    def save_result_record(self, record: Union[Dict[str, Any], Any], suffix: Optional[str] = None) -> bool:
         """
-        Save a grading result record to the database.
-        If a record already exists for (submission_id, question_number),
-        it will be updated instead of inserted.
+        Save a single grading result.
+        Automatically creates suffix-based table if needed (e.g., <table>_rag).
         """
+        table_name = f"{self.table_name}_{suffix}" if suffix else self.table_name
+        self._ensure_table_exists(table_name)
+
         try:
-            # Normalize record input
+            # Convert dataclass or object to dict
             if is_dataclass(record):
                 record = asdict(record)
             elif not isinstance(record, dict):
@@ -83,8 +83,13 @@ class GradingResultDB(BaseRelationalDB):
                     "context_used": getattr(record, "context_used", None),
                 }
 
+            # Validate essential fields
+            if not record.get("submission_id") or not record.get("question_number"):
+                logger.warning("[DB] ⚠️ Missing submission_id or question_number, skipping record.")
+                return False
+
             query = f"""
-                INSERT INTO {self.table_name} (
+                INSERT INTO {table_name} (
                     submission_id,
                     question_number,
                     score,
@@ -119,56 +124,51 @@ class GradingResultDB(BaseRelationalDB):
             self.commit()
 
             logger.info(
-                f"[DB] ✅ Saved grading result in {self.table_name} "
+                f"[DB] ✅ Saved result in {table_name} "
                 f"for submission_id={record['submission_id']}, question_number={record['question_number']}"
             )
             return True
 
         except Exception as e:
             logger.error(
-                f"[DB] ❌ Failed to save grading result in {self.table_name} for "
+                f"[DB] ❌ Failed to save result in {table_name} for "
                 f"submission_id={record.get('submission_id', 'unknown')}, "
                 f"question_number={record.get('question_number', 'unknown')}: {e}",
                 exc_info=True
             )
-            self.conn.rollback()
+            self.rollback()
             return False
 
     # ---------------------------------------------------------
-    # BULK INSERT / UPDATE
+    # BULK SAVE RESULTS
     # ---------------------------------------------------------
-    def save_multiple_results(self, records: List[Union[Dict[str, Any], Any]]) -> int:
-        """
-        Save multiple grading results efficiently in one transaction.
-        Returns the number of successful inserts/updates.
-        """
+    def save_multiple_results(self, records: List[Union[Dict[str, Any], Any]], suffix: Optional[str] = None) -> int:
+        """Save multiple grading results efficiently."""
         if not records:
-            logger.warning(f"[DB] ⚠️ No grading records to save for {self.table_name}.")
+            logger.warning(f"[DB] ⚠️ No grading records to save in {self.table_name}.")
             return 0
 
         success_count = 0
-        try:
-            for record in records:
-                if self.save_result_record(record):
-                    success_count += 1
-            self.commit()
-            logger.info(f"[DB] ✅ Saved {success_count}/{len(records)} results in {self.table_name}.")
-            return success_count
-        except Exception as e:
-            logger.error(f"[DB] ❌ Failed to save multiple grading results in {self.table_name}: {e}", exc_info=True)
-            self.conn.rollback()
-            return 0
+        for record in records:
+            if self.save_result_record(record, suffix=suffix):
+                success_count += 1
+
+        logger.info(
+            f"[DB] ✅ Saved {success_count}/{len(records)} records in {self.table_name}{'_' + suffix if suffix else ''}."
+        )
+        return success_count
 
     # ---------------------------------------------------------
     # FETCH RESULTS
     # ---------------------------------------------------------
-    def get_results_by_submission(self, submission_id: str) -> List[Dict[str, Any]]:
-        """
-        Retrieve all grading results for a given submission_id.
-        """
+    def get_results_by_submission(self, submission_id: str, suffix: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fetch all grading results for a specific submission ID."""
         if not submission_id:
-            logger.warning("[DB] ⚠️ Missing submission_id for result fetch.")
+            logger.warning("[DB] ⚠️ Missing submission_id for fetch.")
             return []
+
+        table_name = f"{self.table_name}_{suffix}" if suffix else self.table_name
+        self._ensure_table_exists(table_name)
 
         try:
             self.cursor.execute(f"""
@@ -180,14 +180,15 @@ class GradingResultDB(BaseRelationalDB):
                     feedback,
                     grading_method,
                     similarity_score,
-                    context_used
-                FROM {self.table_name}
+                    context_used,
+                    updated_at
+                FROM {table_name}
                 WHERE submission_id = %s
                 ORDER BY question_number;
             """, (submission_id,))
 
             rows = self.cursor.fetchall()
-            return [
+            results = [
                 {
                     "submission_id": r[0],
                     "question_number": r[1],
@@ -197,29 +198,56 @@ class GradingResultDB(BaseRelationalDB):
                     "grading_method": r[5],
                     "similarity_score": float(r[6]) if r[6] is not None else None,
                     "context_used": r[7],
+                    "updated_at": r[8],
                 }
                 for r in rows
             ]
 
+            logger.info(f"[DB] ✅ Retrieved {len(results)} grading results for submission_id={submission_id}")
+            return results
+
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to fetch results from {self.table_name} for submission_id={submission_id}: {e}", exc_info=True)
-            self.conn.rollback()
+            logger.error(f"[DB] ❌ Failed to fetch results from {table_name} for submission_id={submission_id}: {e}", exc_info=True)
+            self.rollback()
             return []
 
     # ---------------------------------------------------------
     # DELETE RESULTS
     # ---------------------------------------------------------
-    def delete_results_by_submission(self, submission_id: str) -> bool:
-        """
-        Delete all grading results for a given submission_id.
-        """
+    def delete_results_by_submission(self, submission_id: str, suffix: Optional[str] = None) -> bool:
+        """Delete all grading results for a submission."""
+        if not submission_id:
+            logger.warning("[DB] ⚠️ Missing submission_id for deletion.")
+            return False
+
+        table_name = f"{self.table_name}_{suffix}" if suffix else self.table_name
+        self._ensure_table_exists(table_name)
+
         try:
-            self.cursor.execute(f"DELETE FROM {self.table_name} WHERE submission_id = %s;", (submission_id,))
+            self.cursor.execute(f"DELETE FROM {table_name} WHERE submission_id = %s;", (submission_id,))
             affected = self.cursor.rowcount
             self.commit()
-            logger.info(f"[DB] 🗑️ Deleted {affected} results from {self.table_name} for submission_id={submission_id}")
+            logger.info(f"[DB] 🗑️ Deleted {affected} results from {table_name} for submission_id={submission_id}")
             return True
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to delete results in {self.table_name} for submission_id={submission_id}: {e}", exc_info=True)
-            self.conn.rollback()
+            logger.error(f"[DB] ❌ Failed to delete results from {table_name} for submission_id={submission_id}: {e}", exc_info=True)
+            self.rollback()
             return False
+
+    # ---------------------------------------------------------
+    # DB WRAPPERS
+    # ---------------------------------------------------------
+    def commit(self):
+        """Safely commit."""
+        try:
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"[DB] ❌ Commit failed: {e}", exc_info=True)
+            self.conn.rollback()
+
+    def rollback(self):
+        """Safely rollback."""
+        try:
+            self.conn.rollback()
+        except Exception as e:
+            logger.error(f"[DB] ❌ Rollback failed: {e}", exc_info=True)

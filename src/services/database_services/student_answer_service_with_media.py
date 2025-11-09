@@ -116,15 +116,12 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             logger.info(f"🧹 Deleted existing records for submission_id={submission_id}")
 
             # 🧩 Step 2: Insert new answers
-            # ✅ FIXED: Removed created_at, updated_at (Postgres auto-fills defaults)
             insert_answers = f"""
                 INSERT INTO {self.student_answer_table} 
                 (id, submission_id, question_number, answer_text)
                 VALUES %s;
             """
-            execute_values(self.cursor, insert_answers, [
-                (*vals,) for vals in answer_values
-            ])
+            execute_values(self.cursor, insert_answers, [(*vals,) for vals in answer_values])
 
             # 🧩 Step 3: Insert new media (if any)
             if media_values:
@@ -133,9 +130,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                     (id, student_answer_id, submission_id, media_url, media_summary)
                     VALUES %s;
                 """
-                execute_values(self.cursor, insert_media, [
-                    (*vals,) for vals in media_values
-                ])
+                execute_values(self.cursor, insert_media, [(*vals,) for vals in media_values])
 
             self.commit()
             logger.info(f"✅ Saved {len(answer_values)} answers and {len(media_values)} media for submission_id={submission_id}")
@@ -203,49 +198,124 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             return False
 
     # ----------------------------------------------------------------------
-    # FETCH ANSWERS FOR ONE SUBMISSION
+    # ✅ FIXED: FETCH ANSWERS FOR ONE SUBMISSION (LIST FORMAT)
     # ----------------------------------------------------------------------
-    def get_all_answers(self, submission_id: str) -> Dict[str, Any]:
-        """Return all answers and media for a given submission."""
-        query = f"""
-        SELECT 
-            a.id AS student_answer_id,
-            a.question_number,
-            a.answer_text,
-            a.updated_at,
-            m.media_url,
-            m.media_summary,
-            m.updated_on
-        FROM {self.student_answer_table} a
-        LEFT JOIN {self.student_answer_media_table} m
-        ON a.id = m.student_answer_id
-        WHERE a.submission_id = %s
-        ORDER BY a.question_number;
+    def get_all_answers(self, submission_id: str) -> List[Dict[str, Any]]:
         """
+        Return all answers and associated media for a given submission_id
+        as a list of dictionaries (not keyed by question_number).
+        """
+        query = f"""
+SELECT 
+    a.id AS student_answer_id,
+    a.question_number,
+    a.answer_text,
+    a.updated_at,
+    m.media_url,
+    m.media_summary,
+    m.updated_on
+FROM {self.student_answer_table} AS a
+LEFT JOIN {self.student_answer_media_table} AS m
+    ON a.id = m.student_answer_id
+WHERE a.submission_id = %s
+ORDER BY a.question_number;
+"""
         try:
             self.cursor.execute(query, (submission_id,))
             rows = self.cursor.fetchall()
-            result = {}
+
+            answer_map = {}
             for ans_id, qnum, text, updated_at, url, summary, updated_on in rows:
-                if qnum not in result:
-                    result[qnum] = {
+                if ans_id not in answer_map:
+                    answer_map[ans_id] = {
+                        "student_answer_id": ans_id,
+                        "question_number": qnum,
+                        "answer_text": text or "",
+                        "updated_at": updated_at,
+                        "media_items": []
+                    }
+
+                if url or summary:
+                    try:
+                        parsed_summary = (
+                            json.loads(summary)
+                            if isinstance(summary, str)
+                            else summary
+                        )
+                    except Exception:
+                        parsed_summary = summary
+
+                    answer_map[ans_id]["media_items"].append({
+                        "media_url": url,
+                        "media_summary": parsed_summary,
+                        "updated_on": updated_on
+                    })
+
+            result_list = list(answer_map.values())
+            logger.info(f"✅ Retrieved {len(result_list)} answers for submission_id={submission_id}")
+            return result_list
+
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch answers for submission_id={submission_id}: {e}", exc_info=True)
+            self.rollback()
+            return []
+
+    # ----------------------------------------------------------------------
+    # FETCH ANSWERS FOR MULTIPLE SUBMISSIONS
+    # ----------------------------------------------------------------------
+    def get_all_answers_by_submission_ids(self, submission_ids: List[str]) -> List[Dict[str, Any]]:
+        """
+        Fetch all student answers (and their media) for multiple submissions.
+        """
+        if not submission_ids:
+            logger.warning("⚠️ No submission IDs provided to fetch answers.")
+            return []
+
+        try:
+            query = f"""
+SELECT 
+    a.submission_id,
+    a.id AS student_answer_id,
+    a.question_number,
+    a.answer_text,
+    a.updated_at,
+    m.media_url,
+    m.media_summary
+FROM {self.student_answer_table} AS a
+LEFT JOIN {self.student_answer_media_table} AS m
+    ON a.id = m.student_answer_id
+WHERE a.submission_id = ANY(%s)
+ORDER BY a.submission_id, a.question_number;
+"""
+            self.cursor.execute(query, (submission_ids,))
+            rows = self.cursor.fetchall()
+
+            results_dict = {}
+            for submission_id, ans_id, qnum, text, updated_at, url, summary in rows:
+                key = (submission_id, ans_id)
+                if key not in results_dict:
+                    results_dict[key] = {
+                        "submission_id": submission_id,
+                        "question_number": qnum,
                         "student_answer_id": ans_id,
                         "answer_text": text,
                         "updated_at": updated_at,
                         "media_items": []
                     }
                 if url or summary:
-                    result[qnum]["media_items"].append({
+                    results_dict[key]["media_items"].append({
                         "media_url": url,
-                        "media_summary": summary,
-                        "updated_on": updated_on
+                        "media_summary": summary
                     })
-            logger.info(f"✅ Retrieved {len(result)} answers for submission_id={submission_id}")
-            return result
+
+            results = list(results_dict.values())
+            logger.info(f"✅ Retrieved {len(results)} student answers across {len(submission_ids)} submissions")
+            return results
+
         except Exception as e:
-            logger.error(f"❌ Failed to fetch answers: {e}", exc_info=True)
+            logger.error(f"❌ Failed to fetch multiple student answers: {e}", exc_info=True)
             self.rollback()
-            return {}
+            return []
 
     # ----------------------------------------------------------------------
     # ✅ FIXED: Add commit/rollback helper wrappers

@@ -81,7 +81,7 @@ python -m src.scripts.summarize_media_and_embed --mode student --submission_id E
 Embed student answers
 python -m src.scripts.summarize_media_and_embed --mode embed_student --submission_id EG_2020_4010 --selected_model gemini
 Embed Lecture_Materials
-python -m src.scripts.lecture_material_embed --embedder gemini --module_id  EE5351
+python -m src.scripts.lecture_material_embed --embedder gemini --module_id  EE6250 --lecturer_id L123
 **for single paper**
 python -m src.scripts.mark_single_paper --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE3350 --year 2025 --month JUNE --student EG/2020/4044
 

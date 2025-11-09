@@ -3,9 +3,21 @@ import json
 import logging
 from psycopg2 import sql
 from .base_vector_db_service import BaseVectorDBService
+from src.services.embedding.openai_embedder import OpenAIEmbedder
+from src.services.embedding.gemini_embedder import GeminiEmbedder
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def get_embedder(embedder_name: str):
+    """Factory to return the correct embedder."""
+    if embedder_name.lower() == "openai":
+        return OpenAIEmbedder()
+    elif embedder_name.lower() == "gemini":
+        return GeminiEmbedder()
+    else:
+        raise ValueError(f"Unsupported embedder: {embedder_name}")
 
 
 class LectureMaterialDBService(BaseVectorDBService):
@@ -16,8 +28,13 @@ class LectureMaterialDBService(BaseVectorDBService):
     Example: lecture_material_embeddings_openai, lecture_material_embeddings_gemini
     """
 
-    def __init__(self, embedder):
+    def __init__(self, model_name: str):
+        # Choose embedder based on provided model name
+        embedder = get_embedder(model_name)
         super().__init__(embedder)
+
+        self.model_name = model_name.lower()
+        self.suffix = self.model_name
         self.table_name = f"lecture_material_embeddings_{self.suffix}"
         self.ensure_table_exists()
 
@@ -43,14 +60,8 @@ class LectureMaterialDBService(BaseVectorDBService):
                 embedding VECTOR({dim}),
                 model_name TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE (lecturer_id, module_id, lecture_material_id)  -- Updated unique constraint
+                UNIQUE (lecturer_id, module_id, lecture_material_id)
             );
-
-            -- Index for fast vector search
-            -- Use exact search (ORDER BY embedding <-> query_vector)
-            -- HNSW index can be added later if needed:
-            -- CREATE INDEX IF NOT EXISTS {table_name}_embedding_hnsw
-            -- ON {table_name} USING hnsw (embedding vector_cosine_ops);
         """).format(
             table_name=table_identifier,
             dim=vector_dim
@@ -101,7 +112,6 @@ class LectureMaterialDBService(BaseVectorDBService):
         if len(contents) != len(embeddings):
             raise ValueError("Contents and embeddings length mismatch.")
 
-        # Skip entire file if already embedded
         if self.already_exists(lecturer_id, module_id, lecture_material_id):
             logger.info(f"Skipping all embeddings for {lecture_material_id} — already in DB.")
             return
@@ -113,34 +123,13 @@ class LectureMaterialDBService(BaseVectorDBService):
         self.commit()
 
     # ----------------------------------------------------------------------
-    # Semantic Retrieval
+    # Semantic Retrieval (text-based)
     # ----------------------------------------------------------------------
     def get_similar_chunks(self, question_text: str, lecturer_id: str = None, module_id: str = None, top_k: int = 5):
-        """
-        Retrieve top-k most semantically similar lecture material chunks
-        to a given question text using cosine similarity in Postgres.
-
-        Args:
-            question_text (str): The question or query text.
-            lecturer_id (str, optional): Filter results to a specific lecturer.
-            module_id (str, optional): Filter results to a specific module.
-            top_k (int): Number of similar chunks to return.
-
-        Returns:
-            list[dict]: Each dict contains
-                {
-                    "lecture_material_id": str,
-                    "file_path": str,
-                    "content": str,
-                    "similarity": float,
-                    "model_name": str
-                }
-        """
+        """Retrieve top-k most semantically similar lecture material chunks to a given question text."""
         try:
-            # Step 1: Embed the query text
             query_embedding = self.embedder.embed([question_text])[0]
 
-            # Step 2: Build the SQL query
             filters = []
             params = [query_embedding]
 
@@ -165,7 +154,6 @@ class LectureMaterialDBService(BaseVectorDBService):
                 LIMIT %s;
             """)
 
-            # Step 3: Execute query
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
@@ -173,19 +161,75 @@ class LectureMaterialDBService(BaseVectorDBService):
                 logger.warning("⚠️ No similar lecture materials found.")
                 return []
 
-            results = []
-            for lecture_material_id, file_path, content, similarity, model_name in rows:
-                results.append({
-                    "lecture_material_id": lecture_material_id,
-                    "file_path": file_path,
-                    "content": content,
-                    "similarity": float(similarity),
-                    "model_name": model_name
-                })
+            results = [
+                {
+                    "lecture_material_id": r[0],
+                    "file_path": r[1],
+                    "content": r[2],
+                    "similarity": float(r[3]),
+                    "model_name": r[4],
+                }
+                for r in rows
+            ]
 
             logger.info(f"✅ Retrieved {len(results)} similar lecture chunks for query.")
             return results
 
         except Exception as e:
             logger.error(f"❌ Error retrieving similar lecture chunks: {e}", exc_info=True)
+            return []
+
+    # ----------------------------------------------------------------------
+    # Semantic Retrieval (embedding-based)
+    # ----------------------------------------------------------------------
+    def get_similar_chunks_by_question_embedding(self, question_embedding, lecturer_id: str = None, module_id: str = None, top_k: int = 5):
+        """Retrieve top-k lecture material chunks by comparing similarity to a precomputed question embedding."""
+        try:
+            filters = []
+            params = [question_embedding]
+
+            if lecturer_id:
+                filters.append("lecturer_id = %s")
+                params.append(lecturer_id)
+            if module_id:
+                filters.append("module_id = %s")
+                params.append(module_id)
+
+            where_clause = " AND ".join(filters) if filters else "TRUE"
+            params.append(question_embedding)
+            params.append(top_k)
+
+            query = sql.SQL(f"""
+                SELECT lecture_material_id, file_path, content,
+                       1 - (embedding <=> %s::vector) AS similarity,
+                       model_name
+                FROM {self.table_name}
+                WHERE {where_clause}
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s;
+            """)
+
+            self.cursor.execute(query, params)
+            rows = self.cursor.fetchall()
+
+            if not rows:
+                logger.warning("⚠️ No similar lecture material chunks found by embedding.")
+                return []
+
+            results = [
+                {
+                    "lecture_material_id": r[0],
+                    "file_path": r[1],
+                    "content": r[2],
+                    "similarity": float(r[3]),
+                    "model_name": r[4],
+                }
+                for r in rows
+            ]
+
+            logger.info(f"✅ Retrieved {len(results)} lecture chunks by question embedding.")
+            return results
+
+        except Exception as e:
+            logger.error(f"❌ Error retrieving chunks by question embedding: {e}", exc_info=True)
             return []

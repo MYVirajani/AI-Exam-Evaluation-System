@@ -42,12 +42,13 @@ The rubric represents the official marking scheme — treat it as absolute.
 ---
 
 ### OUTPUT FORMAT
-Respond strictly in **valid JSON** as follows (no extra text, no markdown):
+Return **only valid JSON** (no markdown, no extra commentary):
 
 {{
-  "marks_awarded": <float between 0 and {max_marks}>,
-  "reasoning": "<brief explanation of why marks were awarded or deducted>"
+"score": <numeric value between 0 and {max_marks}>,
+"feedback": "<detailed feedback including criterion-wise performance, marks per criterion, and final score calculation summary>"
 }}
+
 
 Ensure JSON syntax is valid and parsable.
 """

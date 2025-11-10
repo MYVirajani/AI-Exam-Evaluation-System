@@ -274,11 +274,105 @@
 #         return fallback_json
 
 
+# import os
+# import re
+# import json
+# import torch
+# from transformers import pipeline
+
+# class LocalFinetunedGrader:
+#     """
+#     Loads and runs a locally fine-tuned model (e.g., DeepSeek)
+#     specifically for grading student answers.
+#     """
+
+#     def __init__(self, model_path: str):
+#         print(f"🔹 Loading local fine-tuned model for grading from: {model_path}")
+#         os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Force CPU
+#         self.device = "cpu"
+#         print("Device forced to CPU (CUDA disabled)")
+
+#         self.pipe = pipeline(
+#             "text-generation",
+#             model=model_path,
+#             torch_dtype=torch.float32,
+#             device=-1,  # CPU
+#         )
+
+#     def extract_json(self, output_text: str) -> dict:
+#         """
+#         Safely extract JSON from model output text.
+#         Handles messy wrappers like <think>, <jason>, ```json```, or extra text.
+#         Returns a dictionary with keys: 'score' and 'reason'.
+#         """
+#         # Find all JSON-like blocks in the text
+#         candidates = re.findall(r"\{.*?\}", output_text, re.DOTALL)
+#         for candidate in reversed(candidates):  # try last block first
+#             try:
+#                 data = json.loads(candidate)
+#                 # Ensure required keys exist
+#                 score = float(data.get("score", 0))
+#                 reason = data.get("reason", "").strip()
+#                 return {"score": score, "reason": reason}
+#             except Exception as e:
+#                 continue
+#         # Fallback if no valid JSON
+#         return {"score": 0, "reason": "Invalid LLM Response"}
+
+#     def grade(self, prompt: str) -> str:
+#         """
+#         Run grading prompt through the local fine-tuned model.
+#         Returns a standardized JSON string for compatibility with RAG grader.
+#         """
+#         print("🧠 Generating grading output from local fine-tuned model (CPU)...")
+#         response = self.pipe(prompt)
+#         print("Raw model output:", response)
+
+#         # Extract the generated text
+#         if isinstance(response, list) and len(response) > 0:
+#             if isinstance(response[0], dict) and "generated_text" in response[0]:
+#                 output_text = response[0]["generated_text"]
+#             else:
+#                 output_text = str(response[0])
+#         elif isinstance(response, dict):
+#             output_text = response.get("generated_text", str(response))
+#         else:
+#             output_text = str(response)
+
+#         # Extract JSON from model output
+#         data = self.extract_json(output_text)
+
+#         # Convert to JSON string for storage
+#         clean_json = json.dumps(data, ensure_ascii=False)
+#         print("✅ Clean JSON extracted:", clean_json)
+#         return clean_json
+
+
+# # Example usage
+# if __name__ == "__main__":
+#     model_path = "path/to/your/fine-tuned-model"
+#     grader = LocalFinetunedGrader(model_path)
+
+#     prompt = """
+#     You are a strict but fair examiner. Grade the student answer using
+#     the model answer and marking guideline.
+
+#     STUDENT ANSWER: Middleware in Express processes requests and responses.
+
+#     MAXIMUM MARKS: 1.0
+
+#     OUTPUT (JSON ONLY):
+#     {"score": <int>, "reason": "<one-sentence explanation>"}
+#     """
+#     result = grader.grade(prompt)
+#     print("Final grading output:", result)
+
 import os
 import re
 import json
 import torch
 from transformers import pipeline
+
 
 class LocalFinetunedGrader:
     """
@@ -299,71 +393,141 @@ class LocalFinetunedGrader:
             device=-1,  # CPU
         )
 
+    # -------------------------------------------------------------------------
+    # SANITIZE MODEL OUTPUT
+    # -------------------------------------------------------------------------
+    def _clean_output(self, text: str) -> str:
+        """
+        Removes assistant chatter, <think> blocks, explanations,
+        and everything before the first '{'.
+        """
+        # Remove <think> blocks
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+
+        # Remove words like "Assistant:" or analysis before JSON
+        if "{" in text:
+            text = text[text.index("{") :]
+
+        # Remove trailing junk after last }
+        if "}" in text:
+            last = text.rindex("}") + 1
+            text = text[:last]
+
+        return text.strip()
+
+    # -------------------------------------------------------------------------
+    # STRICT JSON EXTRACTION
+    # -------------------------------------------------------------------------
     def extract_json(self, output_text: str) -> dict:
-        """
-        Safely extract JSON from model output text.
-        Handles messy wrappers like <think>, <jason>, ```json```, or extra text.
-        Returns a dictionary with keys: 'score' and 'reason'.
-        """
-        # Find all JSON-like blocks in the text
+        output_text = self._clean_output(output_text)
+
         candidates = re.findall(r"\{.*?\}", output_text, re.DOTALL)
-        for candidate in reversed(candidates):  # try last block first
+
+        for candidate in reversed(candidates):
             try:
                 data = json.loads(candidate)
-                # Ensure required keys exist
+
                 score = float(data.get("score", 0))
-                reason = data.get("reason", "").strip()
+                reason = str(data.get("reason", "")).strip()
+
                 return {"score": score, "reason": reason}
-            except Exception as e:
+
+            except Exception:
                 continue
-        # Fallback if no valid JSON
+
         return {"score": 0, "reason": "Invalid LLM Response"}
 
+    # -------------------------------------------------------------------------
+    # SINGLE QUESTION GRADING
+    # -------------------------------------------------------------------------
     def grade(self, prompt: str) -> str:
         """
-        Run grading prompt through the local fine-tuned model.
-        Returns a standardized JSON string for compatibility with RAG grader.
+        Force the model to output JSON only.
         """
         print("🧠 Generating grading output from local fine-tuned model (CPU)...")
-        response = self.pipe(prompt)
+
+        response = self.pipe(
+            prompt,
+            max_new_tokens=150,
+            do_sample=False,
+            temperature=0.0,         # <-- NO creativity
+            top_p=1.0,
+            repetition_penalty=1.2,  # <-- avoids chatter repeats
+            eos_token_id=None,
+        )
+
         print("Raw model output:", response)
 
-        # Extract the generated text
-        if isinstance(response, list) and len(response) > 0:
-            if isinstance(response[0], dict) and "generated_text" in response[0]:
-                output_text = response[0]["generated_text"]
-            else:
-                output_text = str(response[0])
-        elif isinstance(response, dict):
-            output_text = response.get("generated_text", str(response))
+        # Extract text
+        if isinstance(response, list) and response and "generated_text" in response[0]:
+            output_text = response[0]["generated_text"]
         else:
             output_text = str(response)
 
-        # Extract JSON from model output
         data = self.extract_json(output_text)
 
-        # Convert to JSON string for storage
         clean_json = json.dumps(data, ensure_ascii=False)
         print("✅ Clean JSON extracted:", clean_json)
+
         return clean_json
 
+    # -------------------------------------------------------------------------
+    # MULTIPLE QUESTION GRADING
+    # -------------------------------------------------------------------------
+    def grade_multiple(self, answers_json: dict, rubric_text: str) -> dict:
+        results = {}
 
-# Example usage
+        for key, student_answer in answers_json.items():
+            print(f"\n🔍 Grading {key}...")
+
+            if not student_answer or not student_answer.strip():
+                results[key] = {"score": 0, "reason": "Empty answer"}
+                continue
+
+            prompt = f"""
+You are a strict examiner. Grade the answer.
+
+STUDENT ANSWER:
+{student_answer}
+
+RUBRIC:
+{rubric_text}
+
+OUTPUT STRICTLY IN JSON:
+{{
+  "score": <int_or_float>,
+  "reason": "<one short sentence>"
+}}
+ONLY RETURN JSON. NO EXPLANATION. NO ANALYSIS. NO TALKING.
+"""
+
+            raw_json = self.grade(prompt)
+
+            try:
+                cleaned = json.loads(raw_json)
+            except Exception:
+                cleaned = {"score": 0, "reason": "Invalid LLM Response"}
+
+            results[key] = cleaned
+
+        return results
+
+
+# -------------------------------------------------------------------------
+# RUN TEST
+# -------------------------------------------------------------------------
 if __name__ == "__main__":
-    model_path = "path/to/your/fine-tuned-model"
+    model_path = "E:\finetune_voice\DeepSeek-R1-DomainData-Merged"
     grader = LocalFinetunedGrader(model_path)
 
-    prompt = """
-    You are a strict but fair examiner. Grade the student answer using
-    the model answer and marking guideline.
+    student_answers = {
+        "Q1_i": "Create, Read, Update, Delete operations...",
+        "Q1_ii": "Primary key ensures uniqueness...",
+        "Q1_iii": "",
+        "Q1_iv": "Foreign key links tables...",
+    }
 
-    STUDENT ANSWER: Middleware in Express processes requests and responses.
+    rubric = "Award marks based on correctness and clarity."
 
-    MAXIMUM MARKS: 1.0
-
-    OUTPUT (JSON ONLY):
-    {"score": <int>, "reason": "<one-sentence explanation>"}
-    """
-    result = grader.grade(prompt)
-    print("Final grading output:", result)
-
+    results = grader.grade_multiple(student_answers, rubric)
+    print(json.dumps(results, indent=2))

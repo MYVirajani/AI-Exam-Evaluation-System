@@ -818,6 +818,7 @@ json
 }
 
 
+
 *Example 14: Avoid Splitting Lists Mistaken as Sub-questions*
 
 Input Text:
@@ -837,7 +838,10 @@ json
 {
   "answers": {
     "Q1": {
-      "ii": "Item A\\nItem B\\nItem C\\nItem D"
+      "ii":{
+        "answer_text":"Item A\\nItem B\\nItem C\\nItem D",
+        "media_urls": []
+      }
     }
   }
 }

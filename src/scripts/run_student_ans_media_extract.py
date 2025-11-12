@@ -4,7 +4,7 @@ import os
 # Ensure project root is in the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-from src.services.media_extractor_service import MediaExtractorService
+from src.services.extractors.media_extractor_service import MediaExtractorService
 from src.services.database_services.base_relational_db import BaseRelationalDB
 
 

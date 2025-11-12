@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-from src.services.answer_extractor import AnswerExtractor
+from src.services.extractors.answer_extractor import AnswerExtractor
 from src.services.database_services.student_answer_service_with_media import StudentAnswerServiceWithMedia
 
 

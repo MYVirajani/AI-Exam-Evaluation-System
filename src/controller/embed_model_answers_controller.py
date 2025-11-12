@@ -41,7 +41,7 @@
 from src.services.database_services.model_answer_embedding_db import ModelAnswerEmbeddingDB
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
-from src.services.model_answer_extractor import ModelAnswerExtractor
+from src.services.extractors.model_answer_extractor import ModelAnswerExtractor
 
 
 def embed_model_answers(provider: str, model_name: str, file_text: str):

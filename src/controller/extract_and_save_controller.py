@@ -1,6 +1,6 @@
 
 
-from src.services.answer_extractor import AnswerExtractor
+from src.services.extractors.answer_extractor import AnswerExtractor
 from src.services.database_services.student_answer_db import StudentAnswerService
 
 def extract_and_save_answers(raw_text: str, provider: str, model: str, student_index: str, module_code: str, exam_year: int, exam_month: int):

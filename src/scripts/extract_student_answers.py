@@ -9,7 +9,7 @@ python -m src.scripts.extract_student_answers `
   --path data/Answer_Scripts/student_answer1.pdf
 """
 import argparse, pathlib, logging
-from src.services.answer_extractor          import AnswerExtractor
+from src.services.extractors.answer_extractor          import AnswerExtractor
 from src.services.database_services.student_answer_db import StudentAnswerService
 from src.services.database_services.student_embedding_db import StudentAnswerEmbeddingDB
 from src.services.embedding.openai_embedder import OpenAIEmbedder

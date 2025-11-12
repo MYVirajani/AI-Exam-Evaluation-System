@@ -48,7 +48,7 @@ import argparse
 import logging
 from src.services.pdf_processor import PDFProcessor
 from src.prompts.grading_prompts import GradingPrompts
-from src.services.answer_extractor import AnswerExtractor
+from src.services.extractors.answer_extractor import AnswerExtractor
 from src.services.grading_service import GradingService
 from src.models.question import Question, SubQuestion
 from src.models.student_answer import StudentAnswer

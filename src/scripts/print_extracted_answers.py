@@ -8,7 +8,7 @@ from docx import Document
 # ✅ Fix import path so Python can find the src folder
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-from src.services.answer_extractor import AnswerExtractor
+from src.services.extractors.answer_extractor import AnswerExtractor
 
 def load_docx_text(docx_path: str) -> str:
     """Extract full text from a DOCX file."""

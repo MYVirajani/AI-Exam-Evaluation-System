@@ -6,7 +6,7 @@ from docx import Document
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-from src.services.model_answer_extractor import ModelAnswerExtractor
+from src.services.extractors.model_answer_extractor import ModelAnswerExtractor
 from src.services.database_services.model_answer_db_service import ModelAnswerDBService
 
 logging.basicConfig(level=logging.INFO)

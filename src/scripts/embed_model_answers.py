@@ -15,7 +15,7 @@ from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
 # project imports
-from src.services.model_answer_extractor import ModelAnswerExtractor
+from src.services.extractors.model_answer_extractor import ModelAnswerExtractor
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
 from src.services.database_services.model_answer_embedding_db import (

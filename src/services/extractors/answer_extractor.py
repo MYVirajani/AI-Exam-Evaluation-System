@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from openai import OpenAI as OpenAIClient
 import google.generativeai as genai
 
-from ..models.student_answer import StudentAnswer
-from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
+from ...models.student_answer import StudentAnswer
+from ...prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
 
 logger = logging.getLogger(__name__)
 load_dotenv()

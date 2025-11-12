@@ -20,7 +20,7 @@ class AnswerExtractor:
         self,
         provider: str,
         ollama_base_url: str = "http://localhost:11434",
-        request_timeout: int = 600
+        request_timeout: int = 600,
     ):
         """
         Initialize AnswerExtractor for OpenAI, Gemini, or DeepSeek.
@@ -115,15 +115,25 @@ class AnswerExtractor:
 
     def _fix_json_formatting(self, content: str) -> str:
         """Fix common JSON formatting issues in LLM outputs."""
+        # Remove trailing commas before } or ]
         content = re.sub(r",\s*}", "}", content)
         content = re.sub(r",\s*]", "]", content)
+        # 🔧 Fix invalid backslashes that break JSON parsing
+        content = content.replace("\\", "\\\\")
         return content.strip()
 
-    def _manually_fix_deepseek_json(self, content: str) -> str:
-        """Try to repair broken JSON for DeepSeek outputs."""
-        content = re.sub(r",\s*}", "}", content)
-        content = re.sub(r",\s*]", "]", content)
-        return content.strip()
+    def _repair_and_load_json(self, content: str) -> Optional[dict]:
+        """Try to safely parse JSON with multiple repair attempts."""
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            # Attempt repair by escaping invalid characters
+            try:
+                repaired = content.encode("unicode_escape").decode("utf-8")
+                return json.loads(repaired)
+            except Exception as e:
+                logger.error(f"⚠️ JSON repair failed: {e}")
+                return None
 
     # ===================================================================
     # ------------------- LLM ANSWER EXTRACTION -------------------------
@@ -172,6 +182,7 @@ class AnswerExtractor:
             else:
                 raise ValueError(f"Unsupported provider: {self.selected_provider}")
 
+            # Save raw output
             os.makedirs("logs/llm_raw_outputs", exist_ok=True)
             with open(
                 f"logs/llm_raw_outputs/raw_{self.selected_provider}.txt",
@@ -180,11 +191,17 @@ class AnswerExtractor:
             ) as f:
                 f.write(content)
 
+            # Clean code fences if present
             if content.startswith("```"):
                 content = content.strip("`").replace("json", "").strip()
+
+            # Fix common JSON issues
             content = self._fix_json_formatting(content)
 
-            structured = json.loads(content)
+            structured = self._repair_and_load_json(content)
+            if not structured:
+                raise json.JSONDecodeError("Unable to parse JSON", content, 0)
+
             metadata = structured.get("metadata", {})
             answers_json = structured.get("answers", {})
 

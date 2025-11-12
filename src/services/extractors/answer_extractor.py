@@ -213,11 +213,7 @@ class AnswerExtractor:
             return []
 
         return self._flatten_structure(
-            answers_json,
-            metadata.get("student_index"),
-            metadata.get("module_code"),
-            metadata.get("exam_year"),
-            metadata.get("exam_month"),
+            answers_json
         )
 
     # ===================================================================
@@ -227,10 +223,6 @@ class AnswerExtractor:
     def _flatten_structure(
         self,
         nested: dict,
-        student_index: Optional[str],
-        module_code: Optional[str],
-        exam_year: Optional[int],
-        exam_month: Optional[str],
     ) -> List[StudentAnswer]:
         """Flatten nested LLM output into StudentAnswer objects."""
         answers: List[StudentAnswer] = []
@@ -244,11 +236,7 @@ class AnswerExtractor:
                         sub_sub_question_id=keys[2] if len(keys) > 2 else None,
                         sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
                         answer_text=value.strip(),
-                        media_urls=[],
-                        student_index=student_index,
-                        module_code=module_code,
-                        exam_year=exam_year,
-                        exam_month=exam_month,
+                        media_urls=[]
                     )
                 )
 
@@ -261,10 +249,6 @@ class AnswerExtractor:
                         sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
                         answer_text=value.get("answer_text", "").strip(),
                         media_urls=value.get("media_urls", []) or [],
-                        student_index=student_index,
-                        module_code=module_code,
-                        exam_year=exam_year,
-                        exam_month=exam_month,
                     )
                 )
 

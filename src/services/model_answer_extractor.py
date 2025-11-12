@@ -34,7 +34,7 @@ class ModelAnswerExtractor:
         elif self.provider == "gemini":
             self.api_key = os.getenv("GOOGLE_API_KEY")
             self.model = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
-            self.temperature = float(os.getenv("GOOGLE_TEMPERATURE", 0.2))
+            self.temperature = float(os.getenv("GEMINI_TEMPERATURE", 0.2))
             genai.configure(api_key=self.api_key)
             self.client = genai.GenerativeModel(model_name=self.model)
 

@@ -33,7 +33,7 @@ def summarize_student_submission(submission_id: str, selected_model: str):
         media_id = media["id"]
 
         logger.info(f"🖼️ Summarizing student media: {image_url}")
-        summary = llm.summarize_image(image_url, mode="student", domain="Computer Science Algorithm Design")
+        summary = llm.summarize_image(image_url, mode="student", domain="Engineering")
 
         if summary:
             db_service.update_media_summary(media_id, summary)

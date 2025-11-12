@@ -156,30 +156,36 @@ class RAGGrader:
                         np.array(student_embedding)
                     )
 
-                    # --- Step 8: Prepare context
-                    context = f"Lecture Context:\n{context_text}\n\nModel Answer:\n{model_answer_text}"
+                    # --- Step 8: Prepare full grading context
+                    context_full = (
+                        f"Question:\n{question_text}\n\n"
+                        f"Lecture Context:\n{context_text}\n\n"
+                        f"Model Answer:\n{model_answer_text}"
+                    )
 
                     # --- Step 9: LLM grading
                     if self.model_name == "openai":
                         score, feedback = self._call_openai(
-                            context, question_text, guideline_text, student_answer_description, base64_images, max_marks
+                            context_full, question_text, guideline_text, student_answer_description, base64_images, max_marks
                         )
                     else:
                         score, feedback = self._call_gemini(
-                            context, question_text, guideline_text, student_answer_description, base64_images, max_marks
+                            context_full, question_text, guideline_text, student_answer_description, base64_images, max_marks
                         )
 
-                    # --- Step 10: Save result
+                    # --- ✅ Step 10: Save result including full context
                     record = GradingResultRecord(
                         submission_id=submission_id,
                         question_number=question_number,
                         score=float(score),
                         max_marks=max_marks,
                         feedback=feedback,
-                        grading_method=f"RAG_{self.provider.upper()}",
+                        grading_method=f"RAG_{self.chat_model.upper()}",
                         similarity_score=float(sim_score),
-                        context_used=context_text[:1000],
+                        # short preview for readability
+                        context_used=context_full
                     )
+
                     self.result_db.save_result_record(record, suffix="rag")
                     graded_records.append(record)
 
@@ -242,7 +248,6 @@ class RAGGrader:
 
             raw = response.choices[0].message.content.strip()
 
-            # 👇 Print raw OpenAI output
             print("\n" + "=" * 70)
             print(f"🧠 OPENAI RAW OUTPUT for Question: {question_text}")
             print("-" * 70)
@@ -276,7 +281,6 @@ class RAGGrader:
 
             raw = result.candidates[0].content.parts[0].text
 
-            # 👇 Print raw Gemini output
             print("\n" + "=" * 70)
             print(f"🧠 GEMINI RAW OUTPUT for Question: {question_text}")
             print("-" * 70)

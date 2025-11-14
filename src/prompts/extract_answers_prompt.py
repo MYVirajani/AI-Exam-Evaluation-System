@@ -1,11 +1,8 @@
 EXTRACT_STUDENT_ANSWERS_PROMPT = """
-You will receive the full text content of a student's exam script (typed or handwritten text converted to digital form).  
+You will receive the full text content of a student's exam script.  
 The script may include text, mathematical expressions, LaTeX tables, and embedded media placeholders representing images or figures.
 
-Media references are represented as:
-- [Image: path/to/image.png]
-Each such placeholder refers to an actual image extracted from the document.  
-These must be collected under the corresponding question/sub-question as `media_urls`.
+Texts in the format [Image: path/to/image.png] must be collected under the corresponding question/sub-question as `media_urls`.
 
 ---
 

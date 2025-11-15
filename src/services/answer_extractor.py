@@ -3043,7 +3043,7 @@ class AnswerExtractor:
         self.ollama_base_url = ollama_base_url
         self.request_timeout = request_timeout  # 10 minutes default for DeepSeek reasoning models
 
-        if selected_provider == "OpenAI":
+        if selected_provider == "OpenAI" or selected_provider == "LocalFinetunedDeepSeek":
             self.api_key = os.getenv("OPENAI_API_KEY")
             self.client = OpenAIClient(api_key=self.api_key)
 
@@ -3052,7 +3052,7 @@ class AnswerExtractor:
             genai.configure(api_key=self.api_key)
             self.client = genai.GenerativeModel(model_name=self.selected_model)
 
-        elif selected_provider == "DeepSeek" or selected_provider == "LocalFinetunedDeepSeek":
+        elif selected_provider == "DeepSeek" :
             # Validate that Ollama is running
             try:
                 response = requests.get(f"{self.ollama_base_url}/api/tags", timeout=5)
@@ -3161,7 +3161,7 @@ class AnswerExtractor:
         logger.info(f"🧠 Extracting answers using {self.selected_provider} - {self.selected_model}")
 
         try:
-            if self.selected_provider == "OpenAI":
+            if self.selected_provider in ["OpenAI", "LocalFinetunedDeepSeek"]:
                 response = self.client.chat.completions.create(
                     model=self.selected_model,
                     messages=[
@@ -3180,7 +3180,7 @@ class AnswerExtractor:
                 )
                 content = response.text.strip()
 
-            elif self.selected_provider in ["DeepSeek", "LocalFinetunedDeepSeek"]:
+            elif self.selected_provider =="DeepSeek":
                 deepseek_prompt = EXTRACT_STUDENT_ANSWERS_PROMPT + """
 
 IMPORTANT OUTPUT RULES:

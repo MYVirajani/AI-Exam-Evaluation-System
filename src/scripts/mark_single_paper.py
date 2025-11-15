@@ -169,7 +169,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     ap = argparse.ArgumentParser(description="Grade a single student paper for a given module and session")
-    ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini", "DeepSeek"],
+    ap.add_argument("--provider", required=True, choices=["OpenAI", "GoogleGemini", "DeepSeek", "LocalFinetunedDeepSeek"],
                     help="LLM provider")
     ap.add_argument("--llm", required=True, help="Chat model name")
     ap.add_argument("--embedder", required=True,
@@ -198,6 +198,11 @@ def main():
     elif args.provider == "DeepSeek":
         embedder = OpenAIEmbedder(model_name=args.embedder, provider_suffix="deepseek")
         logger.info(f"🔧 DeepSeek using OpenAI embeddings ({args.embedder}) with 'deepseek' table suffix")
+    
+    elif args.provider == "LocalFinetunedDeepSeek":
+        # Use OpenAI embedding model but a separate DB suffix for clarity
+        embedder = OpenAIEmbedder(model_name=args.embedder, provider_suffix="localfinetuneddeepseek")
+        logger.info(f"🧠 Using Local Fine-Tuned DeepSeek model with embeddings: {args.embedder}")
 
     else:
         raise ValueError(f"Unsupported provider: {args.provider}")
@@ -214,6 +219,10 @@ def main():
         grader_kwargs["request_timeout"] = args.timeout
         logger.info(f"🌐 Ollama URL: {args.ollama_url}")
         logger.info(f"⏱️ Timeout: {args.timeout}s")
+        
+    elif args.provider == "LocalFinetunedDeepSeek":
+        grader_kwargs["chat_model"] = args.llm  # you’ll pass your fine-tuned model path here
+        logger.info(f"📂 Local fine-tuned model path: {args.llm}")
 
     grader = RAGGrader(**grader_kwargs)
 

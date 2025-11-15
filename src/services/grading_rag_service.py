@@ -1534,7 +1534,7 @@ class RAGGrader:
             "prompt": prompt,
             "stream": False,  # ✅ Try non-streaming first for debugging
             "options": {
-                "temperature": 0.2,
+                "temperature": 0.0,
                 "num_ctx": 8192,
                 "num_predict": 2000,
             }

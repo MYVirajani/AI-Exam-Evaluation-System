@@ -6,20 +6,30 @@ python -m venv venv_gemini
 venv_gemini\Scripts\activate
 pip install -r requirements_gemini.txt
 
+venv\Scripts\activate
+
 
 
 
 
 *******************openai commands******************
 python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answers --ext pdf docx
+python -m src.scripts.embed_model_answers --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --root data/Model_Answer_2 --ext pdf docx
 
 python -m src.scripts.embed_lecture_materials --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --module EE3350 --root data/Lecture_Materials
+python -m src.scripts.embed_lecture_materials --provider OpenAI --model gpt-4o --embedder text-embedding-3-small --module EE4350 --root data/Lecture_Materials
+
 
 python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --folder data/Answer_Scripts
+python -m src.scripts.run_extract_and_save --provider OpenAI --model gpt-4o --folder data/answer_scripts_2
 
 python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-small --module_code EE3350 --year 2025 --month June
+python -m src.scripts.embed_from_db --provider OpenAI --model text-embedding-3-small --module_code EE4350 --year 2025 --month June
+
 
 python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE3350 --year 2025 --month June
+python -m src.scripts.mark_all_papers --provider OpenAI --llm gpt-4o --embedder text-embedding-3-small --module EE4350 --year 2025 --month June
+
 
 
 **for single paper**
@@ -33,16 +43,21 @@ python -m src.scripts.mark_single_paper --provider OpenAI --llm gpt-4o --embedde
 python -m src.scripts.embed_model_answers --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001 --root data/Model_Answers --ext pdf docx
 
 python -m src.scripts.embed_lecture_materials --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001 --module EE3350 --root data/Lecture_Materials
+python -m src.scripts.embed_lecture_materials --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001 --module EE4350 --root data/Lecture_Materials
 
 python -m src.scripts.run_extract_and_save --provider GoogleGemini --model gemini-2.0-flash --folder data/Answer_Scripts
+python -m src.scripts.run_extract_and_save --provider GoogleGemini --model gemini-2.0-flash --folder data/answer_scripts_2
 
 python -m src.scripts.embed_from_db --provider GoogleGemini --model models/embedding-001 --module_code EE3350 --year 2025 --month June
+python -m src.scripts.embed_from_db --provider GoogleGemini --model models/embedding-001 --module_code EE4350 --year 2025 --month June
 
 python -m src.scripts.mark_all_papers --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE3350 --year 2025 --month JUNE
+python -m src.scripts.mark_all_papers --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE4350 --year 2025 --month JUNE
+
 
 **for single paper**
 
-python -m src.scripts.mark_single_paper --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE3350 --year 2025 --month JUNE --student EG/2020/4044
+python -m src.scripts.mark_single_paper --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE4350 --year 2025 --month JUNE --student EG/2020/4034
 
 
 ** For Deepseek **
@@ -63,8 +78,27 @@ python -m src.scripts.embed_lecture_materials --provider LocalFinetunedDeepSeek 
 
 python -m src.scripts.run_extract_and_save --provider LocalFinetunedDeepSeek --model deepseek-r1:7b --folder data/answer_scripts_1
 
+python -m src.scripts.run_extract_and_save --provider LocalFinetunedDeepSeek --model gpt-4o --folder data/answer_scripts_1
+
+python -m src.scripts.run_extract_and_save --provider LocalFinetunedDeepSeek --model gpt-4o --folder data/Answer_Scripts
+
 python -m src.scripts.embed_from_db --provider LocalFinetunedDeepSeek --model text-embedding-3-small --module_code EE3350 --year 2025 --month June
 
 $env:PYTHONUTF8 = "1"   
 
 python -m src.scripts.mark_all_papers --provider LocalFinetunedDeepSeek --llm "E:/finetune_voice/DeepSeek-R1-DomainData-Merged" --embedder text-embedding-3-small --module EE3350 --year 2025 --month June
+
+python -m src.scripts.mark_single_paper --provider LocalFinetunedDeepSeek --llm "E:/finetune_voice/DeepSeek-R1-DomainData-Merged" --embedder text-embedding-3-small --module EE3350 --year 2025 --month June --student EG/2020/4045
+
+python -m src.scripts.mark_multiple_papers --provider LocalFinetunedDeepSeek --llm "E:/finetune_voice/DeepSeek-R1-DomainData-Merged" --embedder text-embedding-3-small --module EE3350 --year 2025 --month June --students EG/2020/4019 EG/2020/4020 EG/2020/4021 EG/2020/4024 EG/2020/4025 EG/2020/4026 EG/2020/4027 EG/2020/4028 EG/2020/4029 EG/2020/4030
+
+
+
+
+**********************************************
+
+python -m src.scripts.run_extract_and_save_papers --provider GoogleGemini --model gemini-2.0-flash --folder data/answer_scripts_2 --student EG/2020/4034,EG/2020/4040
+
+python -m src.scripts.mark_multiple_papers --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE4350 --year 2025 --month June --students EG/2020/4034 EG/2020/4040
+
+#########python -m src.scripts.embed_from_db_multiple_papers --provider GoogleGemini --model models/embedding-001 --module_code EE4350 --year 2025 --month June --students EG/2020/4034

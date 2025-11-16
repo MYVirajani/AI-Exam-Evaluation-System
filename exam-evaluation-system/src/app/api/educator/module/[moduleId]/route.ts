@@ -16,7 +16,7 @@ export async function GET(
           include: {
             materials: {
               select: {
-                material_id: true,
+                id: true,
                 file_name: true,
                 file_url: true,
                 uploaded_on: true,

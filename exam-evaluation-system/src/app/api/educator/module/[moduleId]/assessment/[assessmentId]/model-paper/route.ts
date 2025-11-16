@@ -80,7 +80,7 @@ export async function POST(
 
       // Update existing record
       modelAnswer = await prisma.model_Answer_Paper.update({
-        where: { model_answer_paper_id: existingModelAnswer.model_answer_paper_id },
+        where: { id: existingModelAnswer.id },
         data: {
           file_url: relativeFilePath,
           created_on: new Date(),
@@ -90,7 +90,6 @@ export async function POST(
       // Create new record
       modelAnswer = await prisma.model_Answer_Paper.create({
         data: {
-          model_answer_paper_id: uuidv4(),
           assessment_id: assessmentId,
           file_url: relativeFilePath,
           created_on: new Date(),
@@ -101,7 +100,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       file_url: relativeFilePath,
-      model_answer_paper_id: modelAnswer.model_answer_paper_id,
+      model_answer_paper_id: modelAnswer.id,
     });
   } catch (error) {
     console.error('Error uploading model answer:', error);

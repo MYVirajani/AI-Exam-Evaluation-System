@@ -29,18 +29,15 @@ model User {
 }
 
 model Educator {
-  user_id             String    @id
-  official_email      String    @unique
+  user_id             String @id
+  official_email      String @unique
   education_institute String
 
-  user                User      @relation(fields: [user_id], references: [user_id])
-  modules             Module[]
-  question_grades     Question_Grade[]
-  assessment_grades   Assessment_Grade[]
-  assessments         Assessment[]
-  subscriptions       Subscription[]   // NEW: one educator can have many subscriptions
+  user          User           @relation(fields: [user_id], references: [user_id])
+  modules       Module[]
+  assessments   Assessment[]
+  subscriptions Subscription[]
 }
-
 
 model Student {
   user_id             String       @id
@@ -58,14 +55,14 @@ enum Role {
 }
 
 enum AvailabilityStatus {
-  draft      // not visible to students yet
-  active     // visible and available
-  expired    // deadline passed (system can auto-update to this)
-  archived   // hidden manually by admin/educator
+  draft // not visible to students yet
+  active // visible and available
+  expired // deadline passed (system can auto-update to this)
+  archived // hidden manually by admin/educator
 }
 
 model Module {
-  module_id           String   @id
+  module_id           String             @id @default(uuid())
   module_code         String
   module_name         String
   semester            String
@@ -75,8 +72,8 @@ model Module {
   enrollment_key      String?
   module_image_url    String?
   created_by          String
-  created_on          DateTime @default(now()) @db.Timestamptz(6)
-  last_updated_at     DateTime @default(now()) @db.Timestamptz(6)
+  created_on          DateTime           @default(now()) @db.Timestamptz(6)
+  last_updated_at     DateTime           @default(now()) @db.Timestamptz(6)
   status              AvailabilityStatus @default(active)
 
   educator    Educator     @relation(fields: [created_by], references: [user_id])
@@ -102,102 +99,40 @@ model Lesson {
   module_id  String
   title      String
   created_on DateTime @default(now()) @db.Timestamptz(6)
+  updated_on DateTime @default(now()) @db.Timestamptz(6)
 
-  module    Module            @relation(fields: [module_id], references: [module_id])
-  materials LectureMaterial[]
+  module    Module             @relation(fields: [module_id], references: [module_id])
+  materials Lecture_Material[]
 }
 
-model LectureMaterial {
-  material_id String   @id @default(uuid())
-  lesson_id   String
-  file_name   String?
-  file_url    String
-  uploaded_on DateTime @default(now()) @db.Timestamptz(6)
-  description String?
+model Lecture_Material {
+  id                       String   @id @default(uuid())
+  lesson_id                String
+  file_name                String?
+  file_url                 String
+  media_extracted_file_url String?
+  uploaded_on              DateTime @default(now()) @db.Timestamptz(6)
+  description              String?
 
-  lesson Lesson @relation(fields: [lesson_id], references: [lesson_id])
+  lesson                 Lesson                   @relation(fields: [lesson_id], references: [lesson_id])
+  Lecture_Material_Media Lecture_Material_Media[]
 }
 
-model Assessment {
-  assessment_id             String         @id
-  module_id                 String
-  created_by                String
-  created_on                DateTime       @default(now()) @db.Timestamptz(6)
-  type                      assessmentType
-  title                     String
-  description               String
-  instructions              String[]
-  duration                  Int?
-  deadline                  DateTime       @db.Timestamptz(6)
-  open_at                   DateTime?      @db.Timestamptz(6)
-  close_at                  DateTime?      @db.Timestamptz(6)
-  total_marks               Decimal?       @db.Decimal(5, 2) //total marks calculated by all questions of assessment
-  max_marks                 Decimal?       @db.Decimal(5, 2) //max marks a student can allocate by assessment
-  password                  String? 
-  shuffle_questions         Boolean        @default(false) // Whether to shuffle questions
-  max_attempts              Int?
-  auto_grade                Boolean        @default(false)
-  back_navigation           Boolean        @default(true)
-  case_sensitive_evaluation Boolean        @default(false)
-  status              AvailabilityStatus @default(active)
+model Lecture_Material_Media {
+  id                  String   @id @default(uuid())
+  model_id            String
+  lecture_material_id String
+  media_url           String
+  media_summary       String?
+  created_on          DateTime @default(now()) @db.Timestamptz(6)
+  updated_on          DateTime @default(now()) @db.Timestamptz(6)
 
-  module             Module              @relation(fields: [module_id], references: [module_id])
-  educator           Educator            @relation(fields: [created_by], references: [user_id])
-  question_paper     Question_Paper?
-  model_answer_paper Model_Answer_Paper?
-  marking_scheme     Marking_Scheme?
-  submissions        Submission[]
-  questions          Question[]
-}
+  // Relations
+  lecture_material Lecture_Material @relation(fields: [lecture_material_id], references: [id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
 
-model Question_Paper {
-  question_paper_id String     @id
-  assessment_id     String     @unique
-  assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
-
-  file_url   String
-  created_on DateTime @default(now()) @db.Timestamptz(6)
-}
-
-model Model_Answer_Paper {
-  model_answer_paper_id String         @id
-  assessment_id         String         @unique
-  assessment            Assessment     @relation(fields: [assessment_id], references: [assessment_id])
-  file_url              String
-  created_on            DateTime       @default(now()) @db.Timestamptz(6)
-
-  model_answers Model_Answer[]         @relation("PaperToAnswers")
-}
-
-model Model_Answer {
-  id                      String              @id @default(uuid())
-  assessment_id           String
-  model_answer_paper_id   String
-  question_number         String
-  question_text           String?
-  answer_text             String?
-  guideline_text          String?
-  max_marks               Int?
-  media_urls               String?           
-  media_summary           Json?               
-  created_on              DateTime            @default(now()) @db.Timestamptz(6)
-
-  // Relation correction:
-  model_answer_paper      Model_Answer_Paper  @relation("PaperToAnswers", fields: [model_answer_paper_id], references: [id])
-
-  @@index([assessment_id])
-  @@index([model_answer_paper_id])
-}
-
-
-
-model Marking_Scheme {
-  marking_scheme_id String     @id
-  assessment_id     String     @unique
-  assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
-
-  file_url   String
-  created_on DateTime @default(now()) @db.Timestamptz(6)
+  @@index([lecture_material_id])
+  @@index([model_id])
 }
 
 enum assessmentType {
@@ -211,24 +146,118 @@ enum QuestionType {
   MCQ
   SHORT
   ESSAY
+  LIST
+  IMAGE
+}
+
+model Assessment {
+  assessment_id             String             @id @default(uuid())
+  module_id                 String
+  created_by                String
+  created_on                DateTime           @default(now()) @db.Timestamptz(6)
+  updated_on                DateTime           @default(now()) @db.Timestamptz(6)
+  type                      assessmentType
+  title                     String
+  description               String
+  instructions              String[]
+  duration                  Int?
+  deadline                  DateTime           @db.Timestamptz(6)
+  open_at                   DateTime?          @db.Timestamptz(6)
+  close_at                  DateTime?          @db.Timestamptz(6)
+  total_marks               Decimal?           @db.Decimal(5, 2) //total marks calculated by all questions of assessment
+  max_marks                 Decimal?           @db.Decimal(5, 2) //max marks a student can allocate by assessment
+  password                  String?
+  shuffle_questions         Boolean            @default(false) // Whether to shuffle questions
+  max_attempts              Int?
+  auto_grade                Boolean            @default(false)
+  back_navigation           Boolean            @default(true)
+  case_sensitive_evaluation Boolean            @default(false)
+  status                    AvailabilityStatus @default(active)
+
+  module             Module               @relation(fields: [module_id], references: [module_id])
+  educator           Educator             @relation(fields: [created_by], references: [user_id])
+  question_paper     Question_Paper?
+  model_answer_paper Model_Answer_Paper?
+  marking_scheme     Marking_Scheme?
+  submissions        Submission[]
+  questions          Question[]
+  Assessment_Grading Assessment_Grading[]
+}
+
+model Question_Paper {
+  question_paper_id String     @id @default(uuid())
+  assessment_id     String     @unique
+  assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
+
+  file_url   String
+  created_on DateTime @default(now()) @db.Timestamptz(6)
+  updated_on DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model Model_Answer_Paper {
+  id                       String   @id @default(uuid())
+  assessment_id            String   @unique
+  file_url                 String
+  media_extracted_file_url String?
+  created_on               DateTime @default(now()) @db.Timestamptz(6)
+  updated_on               DateTime @default(now()) @db.Timestamptz(6)
+
+  assessment Assessment @relation(fields: [assessment_id], references: [assessment_id])
+  questions  Question[]
 }
 
 model Question {
-  question_id        String       @id @default(cuid())
-  assessment_id      String
-  type               QuestionType
-  created_on         DateTime     @default(now()) @db.Timestamptz(6)
-  question_number    String
-  question           String
-  model_answer       String
-  mcq_answer_options String[]     @default([])
-  marks_allowed      Decimal      @db.Decimal(5, 2)
+  id                    String       @id @default(uuid())
+  model_id              String
+  assessment_id         String
+  model_answer_paper_id String
+  type                  QuestionType
+  question_number       String
+  question_text         String
+  answer_text           String?
+  mcq_answer_options    String[]     @default([])
+  guideline_text        String
+  max_marks             Int
+  created_on            DateTime     @default(now()) @db.Timestamptz(6)
+  updated_on            DateTime     @default(now()) @db.Timestamptz(6)
 
-  assessment     Assessment       @relation(fields: [assessment_id], references: [assessment_id])
-  grades         Question_Grade[]
-  student_answer Student_Answer[]
+  // Relations
+  evaluation_model   Evaluation_Model   @relation(fields: [model_id], references: [model_id])
+  model_answer_paper Model_Answer_Paper @relation(fields: [model_answer_paper_id], references: [id])
+  assessment         Assessment?        @relation(fields: [assessment_id], references: [assessment_id])
+  media              Question_Media[]
+  Student_Answer     Student_Answer[]
+  grading_results    Grading_Results[]
 
   @@index([assessment_id])
+  @@index([model_answer_paper_id])
+  @@index([model_id])
+}
+
+model Question_Media {
+  id            String   @id @default(uuid())
+  model_id      String // FK → Evaluation_Model.model_id
+  question_id   String
+  media_url     String
+  media_summary String?
+  created_on    DateTime @default(now()) @db.Timestamptz(6)
+  updated_on    DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  question         Question         @relation(fields: [question_id], references: [id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+
+  @@index([question_id])
+  @@index([model_id])
+}
+
+model Marking_Scheme {
+  marking_scheme_id String     @id @default(uuid())
+  assessment_id     String     @unique
+  assessment        Assessment @relation(fields: [assessment_id], references: [assessment_id])
+
+  file_url   String
+  created_on DateTime @default(now()) @db.Timestamptz(6)
 }
 
 enum SubmissionType {
@@ -237,293 +266,171 @@ enum SubmissionType {
 }
 
 model Submission {
-  submission_id       String         @id @default(uuid())
-  student_id          String
-  assessment_id       String
-  type                SubmissionType
-  submission_start_at DateTime       @default(now()) @db.Timestamptz(6)
-  submission_end_at   DateTime?      @db.Timestamptz(6)
-  file_url            String? // for DOCUMENT
-  updated_file_url    String? 
-  ip_address          String? // for ONLINE
-  device_info         String? // for ONLINE
-  // total_marks     Decimal?       @db.Decimal(5, 2)
-  // obtained_marks  Decimal?       @db.Decimal(5, 2)
-  is_graded           Boolean        @default(false)
+  submission_id            String         @id @default(uuid())
+  student_id               String
+  assessment_id            String
+  type                     SubmissionType
+  submission_start_at      DateTime       @default(now()) @db.Timestamptz(6)
+  submission_end_at        DateTime?      @db.Timestamptz(6)
+  file_url                 String? // for DOCUMENT
+  media_extracted_file_url String?
+  ip_address               String? // for ONLINE
+  device_info              String? // for ONLINE
+  student_score            Decimal?       @db.Decimal(5, 2)
+  is_graded                Boolean        @default(false)
 
   is_handwritten       Boolean @default(false)
   handwritten_file_url String?
 
-  student    Student           @relation(fields: [student_id], references: [user_id])
-  assessment Assessment        @relation(fields: [assessment_id], references: [assessment_id])
-  answers    Student_Answer[]
-  grade      Assessment_Grade?
-  q_grades   Question_Grade[]
+  student         Student           @relation(fields: [student_id], references: [user_id])
+  assessment      Assessment        @relation(fields: [assessment_id], references: [assessment_id])
+  answers         Student_Answer[]
+  grading_results Grading_Results[]
 
   @@index([assessment_id])
   @@index([student_id])
 }
 
 model Student_Answer {
-  submission_id  String
-  question_id    String
-  student_answer String
-  submitted_on   DateTime  @default(now()) @db.Timestamptz(6)
-  is_correct     Boolean?
-  marks_awarded  Decimal?  @db.Decimal(5, 2)
-  graded_at      DateTime? @db.Timestamptz(6)
-  feedback       String?
+  id              String    @id @default(uuid())
+  submission_id   String
+  model_id        String
+  question_id     String
+  question_number String
+  answer_text     String
+  created_on      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_on      DateTime  @default(now()) @db.Timestamptz(6)
+  score           Decimal?  @db.Decimal(5, 2)
+  feedback        String?
+  graded_at       DateTime? @db.Timestamptz(6)
 
-  submission Submission @relation(fields: [submission_id], references: [submission_id])
-  question   Question   @relation(fields: [question_id], references: [question_id])
+  // Relations
+  submission       Submission             @relation(fields: [submission_id], references: [submission_id])
+  evaluation_model Evaluation_Model       @relation(fields: [model_id], references: [model_id])
+  media            Student_Answer_Media[]
+  Question         Question?              @relation(fields: [question_id], references: [id])
 
-  @@id([submission_id, question_id]) // Composite primary key
   @@index([submission_id])
-  @@index([question_id])
-}
-
-model Question_Grade {
-  question_id      String
-  submission_id    String
-  marks_awarded    Decimal  @db.Decimal(5, 2)
-  max_marks        Decimal  @db.Decimal(5, 2)
-  graded_at        DateTime @default(now()) @db.Timestamptz(6)
-  grading_duration Decimal  @db.Decimal(6, 2)
-  auto_graded      Boolean
-  feedback         String?
-  educator_id      String?
-  model_id         String?
-
-  question         Question          @relation(fields: [question_id], references: [question_id])
-  submission       Submission        @relation(fields: [submission_id], references: [submission_id])
-  educator         Educator?         @relation(fields: [educator_id], references: [user_id])
-  evaluation_model Evaluation_Model? @relation(fields: [model_id], references: [model_id])
-
-  @@id([submission_id, question_id])
-  @@index([educator_id])
   @@index([model_id])
 }
 
-model Assessment_Grade {
-  grade_id      String   @id
-  submission_id String   @unique
-  max_marks     Decimal  @db.Decimal(5, 2)
-  marks_awarded Decimal  @db.Decimal(5, 2)
-  feedback      String
-  graded_at     DateTime @default(now()) @db.Timestamptz(6)
-  auto_graded   Boolean
-  educator_id   String?
-  model_id      String?
+model Student_Answer_Media {
+  id                String   @id @default(uuid())
+  model_id          String
+  student_answer_id String
+  media_url         String
+  media_summary     String?
+  created_on        DateTime @default(now()) @db.Timestamptz(6)
+  updated_on        DateTime @default(now()) @db.Timestamptz(6)
 
-  submission       Submission        @relation(fields: [submission_id], references: [submission_id])
-  educator         Educator?         @relation(fields: [educator_id], references: [user_id])
-  evaluation_model Evaluation_Model? @relation(fields: [model_id], references: [model_id])
+  // Relations
+  student_answer   Student_Answer   @relation(fields: [student_answer_id], references: [id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+
+  @@index([student_answer_id])
+  @@index([model_id])
+}
+
+model Assessment_Grading {
+  id               String   @id @default(uuid())
+  assessment_id    String
+  model_id         String
+  started_at       DateTime @default(now()) @db.Timestamptz(6)
+  ended_at         DateTime @default(now()) @db.Timestamptz(6)
+  submission_count Int?
+  questions_count  Int?
+
+  // Relations
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+  assessment       Assessment       @relation(fields: [assessment_id], references: [assessment_id])
+
+  @@index([assessment_id])
+  @@index([model_id])
 }
 
 model Evaluation_Model {
-  model_id          String          @id @default(uuid())
-  model_name        String          @unique
-  description       String?
-  created_on        DateTime        @default(now()) @db.Timestamptz(6)
+  model_id        String   @id @default(uuid())
+  model_name      String   @unique
+  provider        String
+  chat_model      String?
+  temperature     Float    @default(0.0)
+  embedding_model String
+  description     String?
+  created_on      DateTime @default(now()) @db.Timestamptz(6)
 
-  pricing_plans     Pricing_Plan[]
-  question_grades   Question_Grade[]
-  assessment_grades Assessment_Grade[]
+  // Back-relations
+  questions            Question[]
+  Question_media       Question_Media[]
+  student_answers      Student_Answer[]
+  student_answer_media Student_Answer_Media[]
+
+  pricing_plans          Pricing_Plan[]
+  Lecture_Material_Media Lecture_Material_Media[]
+  Assessment_Grading     Assessment_Grading[]
+  grading_results        Grading_Results[]
 }
 
 model Pricing_Plan {
   pricing_plan_id   String   @id @default(uuid())
   name              String
   billing_period    String
-  price             Decimal  @db.Decimal(9,2)
+  price             Decimal  @db.Decimal(9, 2)
   description       String?
   features          String[]
   stripe_price_id   String   @unique
   stripe_product_id String
   created_on        DateTime @default(now()) @db.Timestamptz(6)
 
-  evaluation_model  Evaluation_Model @relation(fields: [model_id], references: [model_id], onDelete: Cascade)
-  model_id          String
-  subscriptions     Subscription[]
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id], onDelete: Cascade)
+  model_id         String
+  subscriptions    Subscription[]
 }
 
-
-
 model Subscription {
-  subscription_id        String        @id @default(uuid())
-  status                 SubscriptionStatus  @default(INCOMPLETE)     
-  start_date             DateTime      @default(now()) @db.Timestamptz(6)
+  subscription_id        String             @id @default(uuid())
+  status                 SubscriptionStatus @default(INCOMPLETE)
+  start_date             DateTime           @default(now()) @db.Timestamptz(6)
   end_date               DateTime?
   stripe_customer_id     String?
   stripe_subscription_id String?
 
   // link to Pricing Plan
-  pricing_plan           Pricing_Plan  @relation(fields: [pricing_plan_id], references: [pricing_plan_id])
-  pricing_plan_id        String
+  pricing_plan    Pricing_Plan @relation(fields: [pricing_plan_id], references: [pricing_plan_id])
+  pricing_plan_id String
 
   // link to Educator
-  educator               Educator      @relation(fields: [educator_id], references: [user_id])
-  educator_id            String
+  educator    Educator @relation(fields: [educator_id], references: [user_id])
+  educator_id String
 }
+
 enum SubscriptionStatus {
-  ACTIVE      // Subscription is currently active
-  CANCELED    // Subscription was canceled by educator or admin
-  PAST_DUE    // Payment failed or overdue
-  INCOMPLETE  // Payment not completed yet
-  TRIALING    // Trial period before billing starts
+  ACTIVE // Subscription is currently active
+  CANCELED // Subscription was canceled by educator or admin
+  PAST_DUE // Payment failed or overdue
+  INCOMPLETE // Payment not completed yet
+  TRIALING // Trial period before billing starts
   FAILED
 }
 
-
-model student_answers_openai {
-  student_index String
-  module_code   String
-  exam_year     Int
-  exam_month    String
-  answers       Json
-  assessment_id String // NEW
-  submission_id String // NEW
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime @default(now()) @db.Timestamptz(6)
-
-  @@id([assessment_id, student_index, module_code, exam_year, exam_month])
-}
-
-// model student_paper_results_openai {
-//   id             Int      @id @default(autoincrement())
-//   student_index  String
-//   module_code    String
-//   exam_year      Int
-//   exam_month     String
-//   total_marks    Float
-//   total_possible Float
-//   graded_at      DateTime @db.Timestamptz
-//   assessment_id  String // NEW
-
-//   @@unique([student_index, module_code, exam_year, exam_month])
-// }
-
-// model graded_student_answers_openai {
-//   id               Int      @id @default(autoincrement())
-//   student_index    String
-//   module_code      String
-//   exam_year        Int
-//   exam_month       String
-//   full_question_id String
-//   mark             Float
-//   max_marks        Float
-//   reason           String
-//   graded_at        DateTime @db.Timestamptz
-//   is_null_answer   Boolean
-//   assessment_id    String // NEW
-
-//   @@unique([student_index, module_code, exam_year, exam_month, full_question_id])
-// }
-
-model student_paper_results_openai {
-  id             Int      @id @default(autoincrement())
-  student_index  String
-  module_code    String
-  exam_year      Int
-  exam_month     String
-  total_marks    Float
-  total_possible Float
-  graded_at      DateTime @db.Timestamptz
-  assessment_id  String
-
-  @@unique([student_index, module_code, exam_year, exam_month, assessment_id])
-}
-
-model graded_student_answers_openai {
-  id               Int      @id @default(autoincrement())
-  student_index    String
-  module_code      String
-  exam_year        Int
-  exam_month       String
-  full_question_id String
-  mark             Float
+model Grading_Results {
+  id               String   @id @default(uuid())
+  model_id         String
+  submission_id    String
+  question_id      String
+  score            Float
   max_marks        Float
-  reason           String
-  graded_at        DateTime @db.Timestamptz
-  is_null_answer   Boolean
-  assessment_id    String
-  submission_id    String?
+  feedback         String
+  grading_method   String?
+  similarity_score Decimal? @db.Decimal(5, 2)
+  context_used     String?
+  graded_at        DateTime @default(now()) @db.Timestamptz(6)
 
-  @@unique([student_index, module_code, exam_year, exam_month, full_question_id, assessment_id])
-}
+  // Relations
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+  submission       Submission       @relation(fields: [submission_id], references: [submission_id])
+  question         Question         @relation(fields: [question_id], references: [id])
 
-model student_answers_gemini {
-  student_index String
-  module_code   String
-  exam_year     Int
-  exam_month    String
-  answers       Json
-  assessment_id String // NEW
-  submission_id String // NEW
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime @default(now()) @db.Timestamptz(6)
-
-  @@id([assessment_id, student_index, module_code, exam_year, exam_month])
-}
-
-// model student_paper_results_gemini {
-//   id             Int      @id @default(autoincrement())
-//   student_index  String
-//   module_code    String
-//   exam_year      Int
-//   exam_month     String
-//   total_marks    Float
-//   total_possible Float
-//   graded_at      DateTime @db.Timestamptz
-//   assessment_id  String // NEW
-
-//   @@unique([student_index, module_code, exam_year, exam_month])
-// }
-
-// model graded_student_answers_gemini {
-//   id               Int      @id @default(autoincrement())
-//   student_index    String
-//   module_code      String
-//   exam_year        Int
-//   exam_month       String
-//   full_question_id String
-//   mark             Float
-//   max_marks        Float
-//   reason           String
-//   graded_at        DateTime @db.Timestamptz
-//   is_null_answer   Boolean
-//   assessment_id    String // NEW
-
-//   @@unique([student_index, module_code, exam_year, exam_month, full_question_id])
-// }
-model student_paper_results_gemini {
-  id             Int      @id @default(autoincrement())
-  student_index  String
-  module_code    String
-  exam_year      Int
-  exam_month     String
-  total_marks    Float
-  total_possible Float
-  graded_at      DateTime @db.Timestamptz
-  assessment_id  String
-
-  @@unique([student_index, module_code, exam_year, exam_month, assessment_id])
-}
-
-model graded_student_answers_gemini {
-  id               Int      @id @default(autoincrement())
-  student_index    String
-  module_code      String
-  exam_year        Int
-  exam_month       String
-  full_question_id String
-  mark             Float
-  max_marks        Float
-  reason           String
-  graded_at        DateTime @db.Timestamptz
-  is_null_answer   Boolean
-  assessment_id    String
-  submission_id    String?
-
-  @@unique([student_index, module_code, exam_year, exam_month, full_question_id, assessment_id])
+  @@index([model_id])
+  @@index([submission_id])
+  @@index([question_id])
 }

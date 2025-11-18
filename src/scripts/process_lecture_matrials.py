@@ -4,14 +4,14 @@ from dotenv import load_dotenv
 
 from src.services.database_services.lecture_material_db_service import LectureMaterialDBService
 from src.services.extractors.media_extractor_service import MediaExtractorService
-from src.services.summary.image_summarizer import ImageSummarizer
+from src.services.summary.image_summarise_service import ImageSummarizer
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def extract_media_for_lesson(lesson_id: str, provider: str):
+def extract_media_for_lesson(lesson_id: str, model_id: str):
     """
     Steps:
         1. Get lecture materials for lesson_id
@@ -24,7 +24,7 @@ def extract_media_for_lesson(lesson_id: str, provider: str):
     extractor = MediaExtractorService()
 
     # Initialize summarizer with provider from command argument
-    summarizer = ImageSummarizer(provider)
+    summarizer = ImageSummarizer(model_id)
 
     logger.info(f"🔍 Fetching lecture materials for lesson: {lesson_id}")
     lecture_materials = db.fetch_lecture_materials_by_lesson(lesson_id)
@@ -84,7 +84,7 @@ def extract_media_for_lesson(lesson_id: str, provider: str):
 
                     # -------- DATABASE INSERTION (SAVE model_id = provider) --------
                     db.insert_media(
-                        model_id=None,  
+                        model_id=model_id,  
                         lecture_material_id=lecture_material_id,
                         media_url=media_path,
                         media_summary=summary_text
@@ -114,13 +114,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract media for lecture materials of a lesson")
     parser.add_argument("--lesson_id", required=True, help="Lesson ID to extract media for")
     parser.add_argument(
-        "--provider",
+        "--model_id",
         required=False,
-        default="openai",
-        choices=["openai", "gemini"],
-        help="LLM provider to use for image summarizing"
+        default="eaa81306-f9e3-4c96-901d-3b7a80a3f4ac"
     )
 
     args = parser.parse_args()
 
-    extract_media_for_lesson(args.lesson_id, args.provider)
+    extract_media_for_lesson(args.lesson_id, args.model_id)

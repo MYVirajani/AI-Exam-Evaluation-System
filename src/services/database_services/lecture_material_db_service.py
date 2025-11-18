@@ -89,14 +89,49 @@ class LectureMaterialDBService(BaseRelationalDB):
     # ----------------------------------------------------
     def insert_media(self, model_id, lecture_material_id, media_url, media_summary):
         """
-        Inserts a media item into lecture_material_media.
-        Ensures UUID is always created.
+        Insert or update media entry.
+        If (model_id, lecture_material_id, media_url) already exists → update only summary.
+        Otherwise → insert new row.
         """
 
         try:
-            media_id = str(uuid.uuid4())    
+            # -------------------------------
+            # 1. CHECK IF MEDIA ALREADY EXISTS
+            # -------------------------------
+            check_sql = """
+                SELECT id FROM lecture_material_media
+                WHERE model_id = %s
+                  AND lecture_material_id = %s
+                  AND media_url = %s
+                LIMIT 1;
+            """
 
-            sql = """
+            self.cursor.execute(check_sql, (model_id, lecture_material_id, media_url))
+            result = self.cursor.fetchone()
+
+            # -------------------------------
+            # 2. IF EXIST → UPDATE SUMMARY ONLY
+            # -------------------------------
+            if result:
+                media_id = result[0]
+                update_sql = """
+                    UPDATE lecture_material_media
+                    SET media_summary = %s,
+                        updated_on = NOW()
+                    WHERE id = %s;
+                """
+
+                self.cursor.execute(update_sql, (media_summary, media_id))
+                self.conn.commit()
+
+                logger.info(f"Updated existing media summary for media_id={media_id}")
+                return media_id
+
+            # -------------------------------
+            # 3. OTHERWISE INSERT NEW RECORD
+            # -------------------------------
+            media_id = str(uuid.uuid4())
+            insert_sql = """
                 INSERT INTO lecture_material_media (
                     id,
                     model_id,
@@ -105,23 +140,23 @@ class LectureMaterialDBService(BaseRelationalDB):
                     media_summary,
                     created_on,
                     updated_on
-                ) VALUES (
-                    %s, %s, %s, %s,%s, NOW(), NOW()
-                );
+                ) VALUES (%s, %s, %s, %s, %s, NOW(), NOW());
             """
 
             self.cursor.execute(
-                sql,
+                insert_sql,
                 (media_id, model_id, lecture_material_id, media_url, media_summary)
             )
             self.conn.commit()
 
-            logger.info(f"Inserted media entry id={media_id}")
+            logger.info(f"Inserted new media entry id={media_id}")
+            return media_id
 
         except Exception as e:
             self.conn.rollback()
-            logger.error(f"Error inserting lecture material media: {e}")
+            logger.error(f"Error inserting/updating lecture material media: {e}")
             raise
+
 
     # ----------------------------------------------------
     # UPDATE MEDIA SUMMARY

@@ -111,7 +111,8 @@ model Lecture_Material {
   file_name                String?
   file_url                 String
   media_extracted_file_url String?
-  uploaded_on              DateTime @default(now()) @db.Timestamptz(6)
+  created_on               DateTime @default(now()) @db.Timestamptz(6)
+  updated_on               DateTime @default(now()) @db.Timestamptz(6)
   description              String?
 
   lesson                 Lesson                   @relation(fields: [lesson_id], references: [lesson_id])

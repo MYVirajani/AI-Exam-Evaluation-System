@@ -69,7 +69,7 @@ export async function POST(
       const relativeFilePath = path.join("data", "Lecture_materials", moduleId, lessonId, fileName);
 
       // Save metadata to database
-      const newMaterial = await prisma.lectureMaterial.create({
+      const newMaterial = await prisma.lecture_Material.create({
         data: {
           lesson_id: lessonId,
           file_name: fileName,

@@ -20,11 +20,9 @@ class MediaExtractorService:
         - Replacing placeholders inside document
         - Saving updated Word document
         - Ensuring extracted_media folder is created/reset properly
+        - Returning extracted media URLs
     """
 
-    # --------------------------------------------------------
-    # Constructor
-    # --------------------------------------------------------
     def __init__(self):
         pass
 
@@ -32,17 +30,10 @@ class MediaExtractorService:
     # Ensure destination folder exists and is empty
     # --------------------------------------------------------
     def prepare_destination_folder(self, dest_folder: str):
-        """
-        If extracted_media folder:
-            - does NOT exist → create it
-            - exists but NOT empty → clear all files
-        """
-
         if not os.path.exists(dest_folder):
             os.makedirs(dest_folder, exist_ok=True)
             return
 
-        # Folder exists → clear all files
         for filename in os.listdir(dest_folder):
             file_path = os.path.join(dest_folder, filename)
             try:
@@ -56,10 +47,10 @@ class MediaExtractorService:
     def xml_escape(self, text: str) -> str:
         return (
             text.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-            .replace("'", "&apos;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&apos;")
         )
 
     # --------------------------------------------------------
@@ -136,29 +127,29 @@ class MediaExtractorService:
         return f"\\({clean_text}\\)"
 
     # --------------------------------------------------------
-    # MAIN PROCESS FUNCTION
+    # MAIN PROCESS FUNCTION (UPDATED)
     # --------------------------------------------------------
-    def process_document(self, file_url: str, dest_folder: str) -> str:
+    def process_document(self, file_url: str, dest_folder: str):
         """
-        Input:
-            file_url → path/URL of Word doc
-            dest_folder → extracted_media folder
-
-        Returns:
-            updated_doc_path → saved .docx (with media removed and replaced)
+        Extract media, process Word doc, and return:
+          - updated .docx file path
+          - list of extracted media URLs
         """
 
-        # Ensure extracted_media folder is ready
+        # Reset extracted_media folder
         self.prepare_destination_folder(dest_folder)
 
-        # Load document
+        # Load DOCX
         doc = Document(file_url)
+
         basename = os.path.splitext(os.path.basename(file_url))[0]
         file_directory = os.path.dirname(file_url)
 
         img_counter = 0
         tbl_counter = 0
         eqn_counter = 0
+
+        extracted_media_urls = []   # <--- NEW LIST
 
         body_elements = list(doc.element.body)
 
@@ -201,7 +192,13 @@ class MediaExtractorService:
                         image_part = doc.part.related_parts[embed_rid]
                         image_data = image_part.blob
 
+                        # SAVE IMAGE
                         img_path = self.save_image(image_data, basename, img_counter, dest_folder)
+
+                        # ADD TO RETURN LIST
+                        extracted_media_urls.append(img_path)
+
+                        # Replace in document
                         run.text = f"[Image: {img_path}]"
 
                         for blip in blips:
@@ -229,4 +226,5 @@ class MediaExtractorService:
         updated_path = os.path.join(file_directory, f"{basename}_updated.docx")
         doc.save(updated_path)
 
-        return updated_path
+        # NEW: Return media URLs
+        return updated_path, extracted_media_urls

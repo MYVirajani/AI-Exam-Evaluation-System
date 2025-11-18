@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+import uuid
 
 from src.services.database_services.base_relational_db import BaseRelationalDB
 
@@ -16,7 +17,7 @@ class LectureMaterialDBService(BaseRelationalDB):
     # TABLE CREATION
     # ----------------------------------------------------
     def create_tables(self):
-        # MAIN LECTURE MATERIAL TABLE (Corrected name: Lecture_Material)
+        # MAIN LECTURE MATERIAL TABLE
         lecture_material_table = """
         CREATE TABLE IF NOT EXISTS "Lecture_Material" (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,11 +31,11 @@ class LectureMaterialDBService(BaseRelationalDB):
         );
         """
 
-        # MEDIA TABLE (Correct FK Reference)
+        # MEDIA TABLE (model_id NOW NULLABLE)
         lecture_material_media_table = """
         CREATE TABLE IF NOT EXISTS lecture_material_media (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            model_id VARCHAR(255) NOT NULL,
+            model_id VARCHAR(255),  -- NOW NULLABLE
             lecture_material_id UUID NOT NULL,
             media_url TEXT NOT NULL,
             media_summary TEXT,
@@ -84,21 +85,40 @@ class LectureMaterialDBService(BaseRelationalDB):
             raise
 
     # ----------------------------------------------------
-    # INSERT MEDIA
+    # INSERT MEDIA (model_id optional)
     # ----------------------------------------------------
     def insert_media(self, model_id, lecture_material_id, media_url):
-        sql = """
-        INSERT INTO lecture_material_media
-        (model_id, lecture_material_id, media_url)
-        VALUES (%s, %s, %s)
-        RETURNING id;
         """
+        Inserts a media item into lecture_material_media.
+        Ensures UUID is always created.
+        """
+
         try:
-            self.cursor.execute(sql, (model_id, lecture_material_id, media_url))
-            media_id = self.cursor.fetchone()[0]
-            self.commit()
-            return media_id
+            media_id = str(uuid.uuid4())    
+
+            sql = """
+                INSERT INTO lecture_material_media (
+                    id,
+                    model_id,
+                    lecture_material_id,
+                    media_url,
+                    created_on,
+                    updated_on
+                ) VALUES (
+                    %s, %s, %s, %s, NOW(), NOW()
+                );
+            """
+
+            self.cursor.execute(
+                sql,
+                (media_id, model_id, lecture_material_id, media_url)
+            )
+            self.conn.commit()
+
+            logger.info(f"Inserted media entry id={media_id}")
+
         except Exception as e:
+            self.conn.rollback()
             logger.error(f"Error inserting lecture material media: {e}")
             raise
 

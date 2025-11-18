@@ -87,7 +87,7 @@ class LectureMaterialDBService(BaseRelationalDB):
     # ----------------------------------------------------
     # INSERT MEDIA (model_id optional)
     # ----------------------------------------------------
-    def insert_media(self, model_id, lecture_material_id, media_url):
+    def insert_media(self, model_id, lecture_material_id, media_url, media_summary):
         """
         Inserts a media item into lecture_material_media.
         Ensures UUID is always created.
@@ -102,16 +102,17 @@ class LectureMaterialDBService(BaseRelationalDB):
                     model_id,
                     lecture_material_id,
                     media_url,
+                    media_summary,
                     created_on,
                     updated_on
                 ) VALUES (
-                    %s, %s, %s, %s, NOW(), NOW()
+                    %s, %s, %s, %s,%s, NOW(), NOW()
                 );
             """
 
             self.cursor.execute(
                 sql,
-                (media_id, model_id, lecture_material_id, media_url)
+                (media_id, model_id, lecture_material_id, media_url, media_summary)
             )
             self.conn.commit()
 

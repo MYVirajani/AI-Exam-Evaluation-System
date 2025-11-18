@@ -20,7 +20,7 @@ def get_embedder(embedder_name: str):
         raise ValueError(f"Unsupported embedder: {embedder_name}")
 
 
-class LectureMaterialDBService(BaseVectorDBService):
+class LectureMaterialVectorDBService(BaseVectorDBService):
     """
     Database service for saving and retrieving lecture material embeddings.
     Each embedder will have its own table, named:

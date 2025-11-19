@@ -11,7 +11,7 @@ from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
 
 # Import DB service
-from src.services.database_services.lecture_material_vector_db_service import LectureMaterialDBService
+from src.services.database_services.lecture_material_vector_db_service import LectureMaterialVectorDBService
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)

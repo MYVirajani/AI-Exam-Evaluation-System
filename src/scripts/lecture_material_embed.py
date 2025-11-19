@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 # Import embedders
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
-
+from src.utils.text_chunker import chunk_text
 # Import DB service
 from src.services.database_services.lecture_material_vector_db_service import LectureMaterialDBService
 
@@ -62,7 +62,7 @@ def main():
     embedder = get_embedder(args.embedder)
     db_service = LectureMaterialDBService(args.embedder)
 
-    folder_path = os.path.join("data", "Lecture_Materials")
+    folder_path = os.path.join("data", "Lecture_Materials","OS")
 
     if not os.path.exists(folder_path):
         logger.error(f"Lecture materials folder not found: {folder_path}")
@@ -77,6 +77,7 @@ def main():
 
         lecture_material_id = os.path.splitext(filename)[0]
         content = read_lecture_material(file_path)
+        chunks = chunk_text(content, max_tokens=350)
 
         if not content:
             logger.warning(f"No readable content found in {filename}. Skipping.")
@@ -84,13 +85,13 @@ def main():
 
         try:
             # For now, embed whole file as single text (can be chunked later)
-            embeddings = embedder.embed([content])
+            embeddings = embedder.embed(chunks)
             db_service.bulk_insert_embeddings(
                 lecturer_id=args.lecturer_id,
                 module_id=args.module_id,
                 file_path=file_path,
                 lecture_material_id=lecture_material_id,
-                contents=[content],
+                contents=chunks,
                 embeddings=embeddings
             )
         except Exception as e:

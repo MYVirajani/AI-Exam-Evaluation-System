@@ -116,12 +116,12 @@ model Lecture_Material {
   description              String?
 
   lesson                 Lesson                   @relation(fields: [lesson_id], references: [lesson_id])
-  Lecture_Material_Media Lecture_Material_Media[]
+  lecture_material_media lecture_material_media[]
 }
 
-model Lecture_Material_Media {
+model lecture_material_media {
   id                  String   @id @default(uuid())
-  model_id            String
+  model_id            String?
   lecture_material_id String
   media_url           String
   media_summary       String?
@@ -129,8 +129,8 @@ model Lecture_Material_Media {
   updated_on          DateTime @default(now()) @db.Timestamptz(6)
 
   // Relations
-  lecture_material Lecture_Material @relation(fields: [lecture_material_id], references: [id])
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+  lecture_material Lecture_Material  @relation(fields: [lecture_material_id], references: [id])
+  evaluation_model Evaluation_Model? @relation(fields: [model_id], references: [model_id])
 
   @@index([lecture_material_id])
   @@index([model_id])
@@ -366,7 +366,7 @@ model Evaluation_Model {
   student_answer_media Student_Answer_Media[]
 
   pricing_plans          Pricing_Plan[]
-  Lecture_Material_Media Lecture_Material_Media[]
+  lecture_material_media lecture_material_media[]
   Assessment_Grading     Assessment_Grading[]
   grading_results        Grading_Results[]
 }

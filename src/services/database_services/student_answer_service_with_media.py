@@ -38,6 +38,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
     # TABLE INITIALIZATION
     # ----------------------------------------------------------------------
     def _ensure_tables_exist(self):
+        print('Table name: ', {self.student_answer_table})
         """Ensure AI model–specific tables exist (with UUID PKs)."""
         create_query = f"""
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

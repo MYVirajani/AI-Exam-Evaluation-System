@@ -33,11 +33,24 @@ def main():
     """
     # === Editable Parameters ===
     MODEL_NAME = "gemini"  # "openai" or "gemini"
-    ASSESSMENT_ID = "OPERATING_SYSTEMS"      # <-- replace with your assessment_id
-    MODEL_PAPER_ID = "OS"    # <-- replace with your model_paper_id
-    LECTURER_ID = "L123"        # <-- replace with your lecturer_id
-    MODULE_ID = "EE5351" 
-    SUBMISSION_IDS=["EG_2022_4034"]
+    ASSESSMENT_ID = "EE3501"      # <-- replace with your assessment_id
+    MODEL_PAPER_ID = "Control_Systems"    # <-- replace with your model_paper_id
+    LECTURER_ID = "L1234"        # <-- replace with your lecturer_id
+    MODULE_ID = "EE3501" 
+    SUBMISSION_IDS = [ "CS_2021_4017", "CS_2021_4018", "CS_2021_4019", "CS_2021_4020",
+    "CS_2021_4021", "CS_2021_4022", "CS_2021_4023", "CS_2021_4024", "CS_2021_4025",
+    "CS_2021_4026", "CS_2021_4027", "CS_2021_4028", "CS_2021_4029", "CS_2021_4030",
+    "CS_2021_4031", "CS_2021_4032", "CS_2021_4033", "CS_2021_4034", "CS_2021_4035",
+    "CS_2021_4036", "CS_2021_4037", "CS_2021_4038", "CS_2021_4039", "CS_2021_4040",
+    "CS_2021_4041", "CS_2021_4042", "CS_2021_4043", "CS_2021_4044", "CS_2021_4045",
+    "CS_2021_4046", "CS_2021_4047", "CS_2021_4048", "CS_2021_4049", "CS_2021_4050"
+]
+
+    # "CS_2021_4001", "CS_2021_4002", "CS_2021_4003", "CS_2021_4004", "CS_2021_4005",
+    # "CS_2021_4006", "CS_2021_4007", "CS_2021_4008", "CS_2021_4009", "CS_2021_4010",
+    # "CS_2021_4011", "CS_2021_4012", "CS_2021_4013", "CS_2021_4014", "CS_2021_4015",
+    # "CS_2021_4016",
+
 #     SUBMISSION_IDS = [
 #     "EG_2022_4001", "EG_2022_4002", "EG_2022_4003", "EG_2022_4004", "EG_2022_4005",
 #     "EG_2022_4006", "EG_2022_4007", "EG_2022_4008", "EG_2022_4009", "EG_2022_4010",

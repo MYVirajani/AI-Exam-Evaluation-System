@@ -2,11 +2,7 @@ import os
 import json
 import logging
 from psycopg2 import sql
-from docx import Document
-
 from .base_vector_db_service import BaseVectorDBService
-from src.services.database_services.evaluation_model_db import EvaluationModelService
-
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
 
@@ -14,45 +10,39 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def build_embedder(provider: str, embedding_model: str):
-    provider = provider.lower()
-    if provider == "openai":
-        return OpenAIEmbedder(embedding_model=embedding_model)
-    elif provider == "gemini":
-        return GeminiEmbedder(embedding_model=embedding_model)
-    raise ValueError(
-        f"❌ Unsupported provider '{provider}' for embedding model: {embedding_model}"
-    )
+def get_embedder(embedder_name: str):
+    """Factory to return the correct embedder."""
+    if embedder_name.lower() == "openai":
+        return OpenAIEmbedder()
+    elif embedder_name.lower() == "gemini":
+        return GeminiEmbedder()
+    else:
+        raise ValueError(f"Unsupported embedder: {embedder_name}")
 
 
 class LectureMaterialVectorDBService(BaseVectorDBService):
-    def __init__(self, model_id: str):
-        # Load model config from Evaluation_Model table
-        self.model_db = EvaluationModelService()
-        model_config = self.model_db.get_model_config(model_id)
+    """
+    Database service for saving and retrieving lecture material embeddings.
+    Each embedder will have its own table, named:
+        lecture_material_embeddings_<suffix>
+    Example: lecture_material_embeddings_openai, lecture_material_embeddings_gemini
+    """
 
-        if not model_config:
-            raise ValueError(f"Model ID not found in Evaluation_Model: {model_id}")
-
-        self.model_id = model_id
-        self.provider = model_config["provider"]
-        self.chat_model = model_config.get("chat_model")
-        self.embedding_model = model_config.get("embedding_model")
-        self.temperature = model_config.get("temperature")
-        self.model_name = model_config.get("model_name", "").lower()
-
-        logger.info(f"Loaded model config: {model_config}")
-
-        embedder = build_embedder(provider=self.provider, embedding_model=self.embedding_model)
-
+    def __init__(self, model_name: str):
+        # Choose embedder based on provided model name
+        embedder = get_embedder(model_name)
         super().__init__(embedder)
 
-        self.suffix = self.provider.lower()
+        self.model_name = model_name.lower()
+        self.suffix = self.model_name
         self.table_name = f"lecture_material_embeddings_{self.suffix}"
-
         self.ensure_table_exists()
 
+    # ----------------------------------------------------------------------
+    # Table setup
+    # ----------------------------------------------------------------------
     def ensure_table_exists(self):
+        """Creates the embedding table if it doesn't exist."""
         table_identifier = sql.Identifier(self.table_name)
         vector_dim = sql.SQL(str(self.embedder.get_embedding_dimension()))
 
@@ -79,9 +69,13 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
 
         self.cursor.execute(create_table_query)
         self.conn.commit()
-        logger.info(f"Table ready: {self.table_name}")
+        logger.info(f"✅ Ensured table exists: {self.table_name}")
 
+    # ----------------------------------------------------------------------
+    # Insert operations
+    # ----------------------------------------------------------------------
     def already_exists(self, lecturer_id: str, module_id: str, lecture_material_id: str) -> bool:
+        """Check if a given lecture material for a module and lecturer is already embedded."""
         check_query = sql.SQL("""
             SELECT 1 FROM {table_name}
             WHERE lecturer_id = %s AND module_id = %s AND lecture_material_id = %s
@@ -89,119 +83,153 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
         """).format(table_name=sql.Identifier(self.table_name))
 
         self.cursor.execute(check_query, (lecturer_id, module_id, lecture_material_id))
-        return self.cursor.fetchone() is not None
+        exists = self.cursor.fetchone() is not None
 
-    def insert_embedding(self, lecturer_id, module_id, lecture_material_id, file_path, content, embedding):
+        if exists:
+            logger.info(
+                f"Skipping: Lecture material '{lecture_material_id}' for module '{module_id}' and lecturer '{lecturer_id}' already exists."
+            )
+        return exists
+
+    def insert_embedding(self, lecturer_id, module_id, lecture_material_id, file_path, content, embedding, model_name):
+        """Insert a single lecture material embedding, skipping duplicates."""
         if self.already_exists(lecturer_id, module_id, lecture_material_id):
-            logger.info(f"Skipping duplicate: {lecture_material_id}")
-            return
+            return  # Skip if already exists
 
         insert_query = sql.SQL("""
-            INSERT INTO {table_name} 
-            (lecturer_id, module_id, lecture_material_id, file_path, content, embedding, model_name)
+            INSERT INTO {table_name} (lecturer_id, module_id, lecture_material_id, file_path, content, embedding, model_name)
             VALUES (%s, %s, %s, %s, %s, %s, %s);
         """).format(table_name=sql.Identifier(self.table_name))
 
-        # Some embedders return lists/tuples — pass as-is; psycopg2 will adapt
         self.cursor.execute(
             insert_query,
-            (lecturer_id, module_id, lecture_material_id, file_path, content, embedding, self.model_name)
+            (lecturer_id, module_id, lecture_material_id, file_path, content, embedding, model_name)
         )
-
-        logger.info(f"Inserted embedding for {lecture_material_id}")
+        logger.info(f"Inserted embedding for {lecture_material_id} into {self.table_name}")
 
     def bulk_insert_embeddings(self, lecturer_id, module_id, file_path, lecture_material_id, contents, embeddings):
+        """Insert multiple embeddings (if file is chunked). Skip if already exists."""
         if len(contents) != len(embeddings):
-            raise ValueError("Mismatch between contents and embeddings!")
+            raise ValueError("Contents and embeddings length mismatch.")
 
         if self.already_exists(lecturer_id, module_id, lecture_material_id):
-            logger.info(f"Skipping bulk insert for {lecture_material_id} (already embedded)")
+            logger.info(f"Skipping all embeddings for {lecture_material_id} — already in DB.")
             return
 
+        model_name = self.embedder.get_model_name()
         for content, emb in zip(contents, embeddings):
-            self.insert_embedding(lecturer_id, module_id, lecture_material_id, file_path, content, emb)
+            self.insert_embedding(lecturer_id, module_id, lecture_material_id, file_path, content, emb, model_name)
 
         self.commit()
-        logger.info(f"Bulk embeddings inserted for {lecture_material_id}")
 
     # ----------------------------------------------------------------------
-    # NEW FUNCTION:
-    # Generate embeddings for the concatenated content of a DOCX and store it
+    # Semantic Retrieval (text-based)
     # ----------------------------------------------------------------------
-    def generate_and_store_embeddings(self, lecturer_id: str, module_id: str, lecture_material_id: str, file_path: str):
-        """
-        Reads the DOCX (file_path), concatenates all textual content (paragraphs, table cells),
-        generates embeddings using the selected embedder, and inserts them into the vector table.
-        """
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found for embeddings: {file_path}")
-
-        # Read docx text (paragraphs + table cells)
+    def get_similar_chunks(self, question_text: str, lecturer_id: str = None, module_id: str = None, top_k: int = 5):
+        """Retrieve top-k most semantically similar lecture material chunks to a given question text."""
         try:
-            doc = Document(file_path)
+            query_embedding = self.embedder.embed([question_text])[0]
+
+            filters = []
+            params = [query_embedding]
+
+            if lecturer_id:
+                filters.append("lecturer_id = %s")
+                params.append(lecturer_id)
+            if module_id:
+                filters.append("module_id = %s")
+                params.append(module_id)
+
+            where_clause = " AND ".join(filters) if filters else "TRUE"
+            params.append(query_embedding)
+            params.append(top_k)
+
+            query = sql.SQL(f"""
+                SELECT lecture_material_id, file_path, content, 
+                       1 - (embedding <=> %s::vector) AS similarity,
+                       model_name
+                FROM {self.table_name}
+                WHERE {where_clause}
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s;
+            """)
+
+            self.cursor.execute(query, params)
+            rows = self.cursor.fetchall()
+
+            if not rows:
+                logger.warning("⚠️ No similar lecture materials found.")
+                return []
+
+            results = [
+                {
+                    "lecture_material_id": r[0],
+                    "file_path": r[1],
+                    "content": r[2],
+                    "similarity": float(r[3]),
+                    "model_name": r[4],
+                }
+                for r in rows
+            ]
+
+            logger.info(f"✅ Retrieved {len(results)} similar lecture chunks for query.")
+            return results
+
         except Exception as e:
-            logger.error(f"Failed to open DOCX for embedding: {e}")
-            raise
+            logger.error(f"❌ Error retrieving similar lecture chunks: {e}", exc_info=True)
+            return []
 
-        parts = []
-        for p in doc.paragraphs:
-            text = p.text.strip()
-            if text:
-                parts.append(text)
-
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    for p in cell.paragraphs:
-                        text = p.text.strip()
-                        if text:
-                            parts.append(text)
-
-        # Concatenate into a single document content. If this is too large for your embedder,
-        # consider chunking. For now we create one concatenated string.
-        concatenated_content = "\n\n".join(parts).strip()
-        if not concatenated_content:
-            logger.warning(f"No textual content found in DOCX: {file_path}")
-            concatenated_content = ""
-
-        # Generate embeddings using embedder. Try common method names for compatibility.
+    # ----------------------------------------------------------------------
+    # Semantic Retrieval (embedding-based)
+    # ----------------------------------------------------------------------
+    def get_similar_chunks_by_question_embedding(self, question_embedding, lecturer_id: str = None, module_id: str = None, top_k: int = 5):
+        """Retrieve top-k lecture material chunks by comparing similarity to a precomputed question embedding."""
         try:
-            # preferred: embed_texts / embed_documents / embed
-            if hasattr(self.embedder, "embed_texts"):
-                embeddings = self.embedder.embed_texts([concatenated_content])
-            elif hasattr(self.embedder, "embed_documents"):
-                embeddings = self.embedder.embed_documents([concatenated_content])
-            elif hasattr(self.embedder, "embed"):
-                embeddings = self.embedder.embed([concatenated_content])
-            elif hasattr(self.embedder, "get_embeddings"):
-                embeddings = self.embedder.get_embeddings([concatenated_content])
-            else:
-                raise AttributeError("Embedder does not expose a known embed method")
+            filters = []
+            params = [question_embedding]
+
+            if lecturer_id:
+                filters.append("lecturer_id = %s")
+                params.append(lecturer_id)
+            if module_id:
+                filters.append("module_id = %s")
+                params.append(module_id)
+
+            where_clause = " AND ".join(filters) if filters else "TRUE"
+            params.append(question_embedding)
+            params.append(top_k)
+
+            query = sql.SQL(f"""
+                SELECT lecture_material_id, file_path, content,
+                       1 - (embedding <=> %s::vector) AS similarity,
+                       model_name
+                FROM {self.table_name}
+                WHERE {where_clause}
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s;
+            """)
+
+            self.cursor.execute(query, params)
+            rows = self.cursor.fetchall()
+
+            if not rows:
+                logger.warning("⚠️ No similar lecture material chunks found by embedding.")
+                return []
+
+            results = [
+                {
+                    "lecture_material_id": r[0],
+                    "file_path": r[1],
+                    "content": r[2],
+                    "similarity": float(r[3]),
+                    "model_name": r[4],
+                }
+                for r in rows
+            ]
+
+            logger.info(f"✅ Retrieved {len(results)} lecture chunks by question embedding.")
+            return results
+
         except Exception as e:
-            logger.error(f"Failed to generate embeddings: {e}")
-            raise
-
-        # Expect embeddings as list-of-vectors; pull first
-        if not embeddings or len(embeddings) == 0:
-            logger.error("Embedder returned no embeddings")
-            raise ValueError("Embedder returned no embeddings")
-
-        embedding_vector = embeddings[0]
-
-        # Insert embedding into the DB (single insert)
-        try:
-            self.insert_embedding(
-                lecturer_id=lecturer_id,
-                module_id=module_id,
-                lecture_material_id=lecture_material_id,
-                file_path=file_path,
-                content=concatenated_content,
-                embedding=embedding_vector
-            )
-            # commit
-            self.commit()
-            logger.info(f"Embedding saved for lecture_material_id={lecture_material_id}")
-        except Exception as e:
-            self.conn.rollback()
-            logger.error(f"Failed to insert embedding into DB: {e}")
-            raise
+            logger.error(f"❌ Error retrieving chunks by question embedding: {e}", exc_info=True)
+            return []

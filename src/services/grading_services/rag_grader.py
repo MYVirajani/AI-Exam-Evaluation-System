@@ -10,7 +10,7 @@ from openai import OpenAI
 from google.generativeai import GenerativeModel, configure as configure_gemini
 
 from src.prompts.rag_grading_prompt import RAG_GRADING_PROMPT_TEMPLATE
-from src.services.database_services.lecture_material_vector_db_service import LectureMaterialDBService
+from src.services.database_services.lecture_material_vector_db_service import LectureMaterialVectorDBService
 from src.services.database_services.model_answer_vector_service import ModelAnswerVectorService
 from src.services.database_services.student_answer_vector_service import StudentAnswerVectorService
 from src.services.database_services.student_answer_service_with_media import StudentAnswerServiceWithMedia
@@ -57,7 +57,7 @@ class RAGGrader:
         # 🔹 DB Services
         # -------------------------------
         self.model_vector_service = ModelAnswerVectorService(ai_model=self.model_name)
-        self.lecture_db = LectureMaterialDBService(model_name=self.model_name)
+        self.lecture_db = LectureMaterialVectorDBService(model_name=self.model_name)
         self.student_vector_service = StudentAnswerVectorService(ai_model=self.model_name)
         self.student_db_service = StudentAnswerServiceWithMedia(ai_model=self.model_name)
         self.result_db = GradingResultDB(ai_model=self.chat_model)

@@ -46,16 +46,68 @@ Final marks **must never exceed the specified maximum ({max_marks})**.
 
 ---
 
-### OUTPUT FORMAT
-Return **only valid JSON** (no markdown, no commentary outside JSON):
+### FEW-SHOT GRADING EXAMPLES (for strict consistency)
+
+Example 1: Perfect Answer - Full Marks  
+Grading Result:
+{{
+  "score": 4.0,
+  "confidence": 10,
+  "feedback": "Perfect answer! ...",
+  "key_points_covered": ["labeled data concept", "input-output pairs", "prediction on new data", "detailed valid example"],
+  "missing_elements": []
+}}
+
+Example 2: Good Answer - Near Full Marks
+Grading Result:
+{{
+  "score": 5.5,
+  "confidence": 9,
+  "feedback": "Excellent identification of all three types...",
+  "key_points_covered": ["all three types correctly named", "supervised description accurate", "unsupervised pattern discovery", "reinforcement trial-and-error concept"],
+  "missing_elements": ["explicit mention of rewards/penalties in reinforcement learning"]
+}}
+
+Example 3: Partial Answer - Half Marks
+Grading Result:
+{{
+  "score": 4.0,
+  "confidence": 8,
+  "feedback": "Good basic understanding...",
+  "key_points_covered": ["basic overfitting definition", "poor performance on new data", "more data as prevention"],
+  "missing_elements": ["learning noise/details too specifically", "cross-validation", "regularization techniques"]
+}}
+
+Example 4: Weak Answer - Low Marks
+Grading Result:
+{{
+  "score": 0.5,
+  "confidence": 9,
+  "feedback": "Very vague response...",
+  "key_points_covered": ["mentions data is important"],
+  "missing_elements": ["specific preprocessing activities", "cleaning/transforming data", "impact on model performance", "concrete reasons for importance"]
+}}
+
+Example 5: Wrong Topic - Zero Marks
+Grading Result:
+{{
+  "score": 0,
+  "confidence": 10,
+  "feedback": "Answer discusses database systems...",
+  "key_points_covered": [],
+  "missing_elements": ["neural network definition", "brain-inspired concept", "layer structure", "node connections", "information processing"]
+}}
+
+Example 6: Empty Answer - Zero Marks  
+(Return zero for blank answers.)
+
+---
+
+### OUTPUT FORMAT  
+Return **only valid JSON**:
 
 {{
   "score": <numeric value between 0 and {max_marks}>,
-  "feedback": "<detailed but concise explanation including how each rubric instruction was met, partially met, or missed, and a short summary of how the final marks were derived strictly according to the guideline rubric>"
+  "feedback": "<detailed explanation>"
 }}
-
-Ensure:
-- The **score** is a numeric value (float or int).  
-- The **feedback** is clear and structured (criterion-wise reasoning).  
-- JSON syntax is valid and directly parsable.
 """

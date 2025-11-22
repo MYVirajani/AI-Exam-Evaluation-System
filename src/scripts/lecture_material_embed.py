@@ -82,7 +82,7 @@ def main():
     parser.add_argument(
         "--folder",
         required=False,
-        default="data/Lecture_Materials",
+        default="data/Lecture_Materials/Control_Systems",
         help="Base lecture materials folder",
     )
 
@@ -95,7 +95,7 @@ def main():
     db_service = LectureMaterialVectorDBService(args.embedder)
 
     # Dynamic folder path: <base_folder>/<module_id>
-    module_folder = os.path.join(args.folder, args.module_id)
+    module_folder = os.path.join(args.folder)
 
     if not os.path.exists(module_folder):
         logger.error(f"Lecture materials folder not found: {module_folder}")

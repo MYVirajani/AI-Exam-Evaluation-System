@@ -167,47 +167,139 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
     # --------------------------------------------------------
     # Retrieval (same as before)
     # --------------------------------------------------------
-    def get_similar_chunks(self, question_text, lecturer_id=None, module_id=None, top_k=5):
+     # --------------------------------------------------------
+    # Retrieve similar chunks using pgvector similarity search
+    # --------------------------------------------------------
+    def get_similar_chunks(self, question_text: str,
+                           lecturer_id: str = None,
+                           module_id: str = None,
+                           top_k: int = 5):
+        """
+        Retrieve top-K most similar lecture material chunks
+        using pgvector cosine / inner product similarity.
+        """
+
         try:
+            # 1) Create vector for the query
             query_embedding = self.embedder.embed([question_text])[0]
+
+            # 2) Dynamic WHERE clause
             filters = []
-            params = [query_embedding]
+            params = [query_embedding]   # first parameter => embedding for distance calc
 
             if lecturer_id:
                 filters.append("lecturer_id = %s")
                 params.append(lecturer_id)
+
             if module_id:
                 filters.append("module_id = %s")
                 params.append(module_id)
 
             where_clause = " AND ".join(filters) if filters else "TRUE"
-            params.append(query_embedding)
+
+            # 3) Add parameters for ORDER BY and LIMIT
+            params.append(query_embedding)   # for ORDER BY embedding <=> $X
             params.append(top_k)
 
-            query = sql.SQL(f"""
-                SELECT lecture_material_id, file_path, content, 
-                       1 - (embedding <=> %s::vector) AS similarity,
-                       model_name
-                FROM {self.table_name}
-                WHERE {where_clause}
+            # 4) Build SQL query safely
+            query = sql.SQL("""
+                SELECT 
+                    lecture_material_id,
+                    file_path,
+                    content,
+                    1 - (embedding <=> %s::vector) AS similarity,
+                    model_name
+                FROM {table_name}
+                WHERE """ + where_clause + """
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s;
-            """)
+            """).format(
+                table_name=sql.Identifier(self.table_name)
+            )
 
+            # 5) Execute query
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
+            # 6) Format response
             return [
                 {
-                    "lecture_material_id": r[0],
-                    "file_path": r[1],
-                    "content": r[2],
-                    "similarity": float(r[3]),
-                    "model_name": r[4],
+                    "lecture_material_id": row[0],
+                    "file_path": row[1],
+                    "content": row[2],
+                    "similarity": float(row[3]),
+                    "model_name": row[4],
                 }
-                for r in rows
+                for row in rows
             ]
 
         except Exception as e:
-            logger.error(f"❌ Error retrieving similar lecture chunks: {e}", exc_info=True)
+            logger.error(f"❌ Error during similarity search: {e}", exc_info=True)
+            return []
+    
+        # --------------------------------------------------------
+    # Retrieve similar chunks using a given embedding
+    # --------------------------------------------------------
+    def get_similar_chunks_by_embedding(self, query_embedding,
+                                        lecturer_id: str = None,
+                                        module_id: str = None,
+                                        top_k: int = 5):
+        """
+        Retrieve top-K most similar lecture material chunks
+        using a given embedding vector.
+        """
+
+        try:
+            # 1) Dynamic WHERE clause
+            filters = []
+            params = [query_embedding]   # first parameter => embedding for distance calc
+
+            if lecturer_id:
+                filters.append("lecturer_id = %s")
+                params.append(lecturer_id)
+
+            if module_id:
+                filters.append("module_id = %s")
+                params.append(module_id)
+
+            where_clause = " AND ".join(filters) if filters else "TRUE"
+
+            # 2) Add parameters for ORDER BY and LIMIT
+            params.append(query_embedding)   # for ORDER BY embedding <=> $X
+            params.append(top_k)
+
+            # 3) Build SQL query safely
+            query = sql.SQL("""
+                SELECT 
+                    lecture_material_id,
+                    file_path,
+                    content,
+                    1 - (embedding <=> %s::vector) AS similarity,
+                    model_name
+                FROM {table_name}
+                WHERE """ + where_clause + """
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s;
+            """).format(
+                table_name=sql.Identifier(self.table_name)
+            )
+
+            # 4) Execute query
+            self.cursor.execute(query, params)
+            rows = self.cursor.fetchall()
+
+            # 5) Format response
+            return [
+                {
+                    "lecture_material_id": row[0],
+                    "file_path": row[1],
+                    "content": row[2],
+                    "similarity": float(row[3]),
+                    "model_name": row[4],
+                }
+                for row in rows
+            ]
+
+        except Exception as e:
+            logger.error(f"❌ Error during similarity search: {e}", exc_info=True)
             return []

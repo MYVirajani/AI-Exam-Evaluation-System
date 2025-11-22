@@ -127,8 +127,8 @@ class RAGGrader:
                         continue
 
                     # --- Step 5: Retrieve lecture chunks
-                    lecture_chunks = self.lecture_db.get_similar_chunks_by_question_embedding(
-                        question_embedding=model_embedding,
+                    lecture_chunks = self.lecture_db.get_similar_chunks_by_embedding(
+                        query_embedding=model_embedding,
                         lecturer_id=lecturer_id,
                         module_id=module_id,
                         top_k=top_k

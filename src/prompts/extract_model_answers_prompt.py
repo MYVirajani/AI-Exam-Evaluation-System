@@ -38,19 +38,24 @@ Return one valid JSON object using this structure:
 {
   "answers": {
     "Q1": {
-      "question": "Draw a grouped bar chart to represent the sales data of all four products across the quarters.",
-      "answer": "Key Points: Purpose: To visually compare... Expected Chart Features: Grouped bar chart...",
-      "guideline": "Instructions for Checking: 0-2 marks for correctly labeled axes and titles...",
-      "marks": 10,
-      "media_urls": []
+      "i": {
+        "a": {
+          "question": "Define supervised learning.",
+          "answer": "Supervised learning is ...",
+          "guideline": "Include mention of labeled data and prediction tasks.",
+          "media_urls": ["path/to/image1.png", "path/to/image2.jpg"],
+          "marks": 5
+        }
+      },
+      "ii": {
+        "question": "Explain overfitting in ML.",
+        "answer": "Overfitting happens when ...",
+        "guideline": "",
+        "media_urls": [],
+        "marks": 3
+      }
     },
-    "Q2": {
-      "question": "Draw a pie chart to represent the above expense distribution.",
-      "answer": "Key Points: Purpose: To show how total business expenses... Expected Chart Features: Pie chart divided into five sectors...",
-      "guideline": "Instructions for Checking: 0-3 marks for correctly drawn proportional slices...",
-      "marks": 10,
-      "media_urls": []
-    }
+    "Q2": { ... }
   }
 }
 
@@ -58,7 +63,7 @@ Return one valid JSON object using this structure:
 ### Strict Rules
 
 * Output **only valid JSON** — no markdown, no explanations, no code fences.
-* Maintain **exact question numbering** (e.g., Q1, Q2.a, Q3.i).
+* Maintain **exact question numbering** (e.g., Q1, Q2_a, Q3_i).
 * Each question node **must contain**:
   `"question"`, `"answer"`, `"guideline"`, `"marks"`, and `"media_urls"`.
 * Remove `[Image: ...]` tags from text body after extracting URLs.

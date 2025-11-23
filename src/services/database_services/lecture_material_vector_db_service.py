@@ -70,8 +70,6 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
         table_identifier = sql.Identifier(self.table_name)
         vector_dim = sql.SQL(str(self.embedder.get_embedding_dimension()))
 
-        # IMPORTANT CHANGE ↓↓↓
-        # Removed uniqueness constraint → replaced with a UNIQUE per chunk
         create_table_query = sql.SQL("""
             CREATE EXTENSION IF NOT EXISTS vector;
             CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -108,9 +106,7 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
         """).format(table_name=sql.Identifier(self.table_name))
 
         self.cursor.execute(check_query, (lecturer_id, module_id, lecture_material_id))
-        exists = self.cursor.fetchone() is not None
-
-        return exists
+        return self.cursor.fetchone() is not None
 
     # --------------------------------------------------------
     # Insert operations
@@ -124,9 +120,7 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
                  file_path, content, embedding, model_name)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING;
-        """).format(
-            table_name=sql.Identifier(self.table_name)
-        )
+        """).format(table_name=sql.Identifier(self.table_name))
 
         self.cursor.execute(insert_query, (
             lecturer_id, module_id, lecture_material_id, chunk_index,
@@ -134,28 +128,24 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
         ))
 
     # --------------------------------------------------------
-    # Main public function: Save long lecture material safely
+    # Save full lecture material
     # --------------------------------------------------------
     def save_lecture_material(self, lecturer_id, module_id, lecture_material_id,
                               file_path, full_content: str):
 
         logger.info(f"📘 Chunking lecture material: {lecture_material_id}")
 
-        # 1) Chunk content
         chunks = chunk_text(full_content, max_len=1500)
-
         logger.info(f"👉 Total chunks: {len(chunks)}")
 
-        # 2) Generate embeddings
         embeddings = self.embedder.embed(chunks)
 
-        # 3) Store chunk by chunk
         for i, (chunk, emb) in enumerate(zip(chunks, embeddings)):
             self.insert_single_chunk(
                 lecturer_id,
                 module_id,
                 lecture_material_id,
-                i,  # chunk index
+                i,
                 file_path,
                 chunk,
                 emb
@@ -165,27 +155,18 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
         logger.info(f"✅ Stored {len(chunks)} chunks for {lecture_material_id}")
 
     # --------------------------------------------------------
-    # Retrieval (same as before)
-    # --------------------------------------------------------
-     # --------------------------------------------------------
-    # Retrieve similar chunks using pgvector similarity search
+    # Retrieve similar chunks (text query)
     # --------------------------------------------------------
     def get_similar_chunks(self, question_text: str,
                            lecturer_id: str = None,
                            module_id: str = None,
                            top_k: int = 5):
-        """
-        Retrieve top-K most similar lecture material chunks
-        using pgvector cosine / inner product similarity.
-        """
 
         try:
-            # 1) Create vector for the query
             query_embedding = self.embedder.embed([question_text])[0]
 
-            # 2) Dynamic WHERE clause
             filters = []
-            params = [query_embedding]   # first parameter => embedding for distance calc
+            params = [query_embedding]
 
             if lecturer_id:
                 filters.append("lecturer_id = %s")
@@ -197,11 +178,9 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
 
             where_clause = " AND ".join(filters) if filters else "TRUE"
 
-            # 3) Add parameters for ORDER BY and LIMIT
-            params.append(query_embedding)   # for ORDER BY embedding <=> $X
+            params.append(query_embedding)
             params.append(top_k)
 
-            # 4) Build SQL query safely
             query = sql.SQL("""
                 SELECT 
                     lecture_material_id,
@@ -213,15 +192,11 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
                 WHERE """ + where_clause + """
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s;
-            """).format(
-                table_name=sql.Identifier(self.table_name)
-            )
+            """).format(table_name=sql.Identifier(self.table_name))
 
-            # 5) Execute query
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
-            # 6) Format response
             return [
                 {
                     "lecture_material_id": row[0],
@@ -236,9 +211,9 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
         except Exception as e:
             logger.error(f"❌ Error during similarity search: {e}", exc_info=True)
             return []
-    
-        # --------------------------------------------------------
-    # Retrieve similar chunks using a given embedding
+
+    # --------------------------------------------------------
+    # Retrieve similar chunks using an embedding (DETERMINISTIC)
     # --------------------------------------------------------
     def get_similar_chunks_by_embedding(self, query_embedding,
                                         lecturer_id: str = None,
@@ -247,12 +222,12 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
         """
         Retrieve top-K most similar lecture material chunks
         using a given embedding vector.
+        Returns deterministic sorted results including chunk ID + chunk index.
         """
 
         try:
-            # 1) Dynamic WHERE clause
             filters = []
-            params = [query_embedding]   # first parameter => embedding for distance calc
+            params = [query_embedding]
 
             if lecturer_id:
                 filters.append("lecturer_id = %s")
@@ -264,14 +239,14 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
 
             where_clause = " AND ".join(filters) if filters else "TRUE"
 
-            # 2) Add parameters for ORDER BY and LIMIT
-            params.append(query_embedding)   # for ORDER BY embedding <=> $X
+            params.append(query_embedding)
             params.append(top_k)
 
-            # 3) Build SQL query safely
             query = sql.SQL("""
                 SELECT 
+                    id,
                     lecture_material_id,
+                    chunk_index,
                     file_path,
                     content,
                     1 - (embedding <=> %s::vector) AS similarity,
@@ -280,25 +255,35 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
                 WHERE """ + where_clause + """
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s;
-            """).format(
-                table_name=sql.Identifier(self.table_name)
-            )
+            """).format(table_name=sql.Identifier(self.table_name))
 
-            # 4) Execute query
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
-            # 5) Format response
-            return [
+            chunks = [
                 {
-                    "lecture_material_id": row[0],
-                    "file_path": row[1],
-                    "content": row[2],
-                    "similarity": float(row[3]),
-                    "model_name": row[4],
+                    "id": str(row[0]),
+                    "lecture_material_id": row[1],
+                    "chunk_index": row[2],
+                    "file_path": row[3],
+                    "content": row[4],
+                    "similarity": float(row[5]),
+                    "model_name": row[6],
                 }
                 for row in rows
             ]
+
+            chunks = sorted(
+                chunks,
+                key=lambda x: (
+                    -x["similarity"],
+                    x["lecture_material_id"],
+                    x["chunk_index"],
+                    x["id"]
+                )
+            )
+
+            return chunks
 
         except Exception as e:
             logger.error(f"❌ Error during similarity search: {e}", exc_info=True)

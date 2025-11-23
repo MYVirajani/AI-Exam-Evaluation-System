@@ -23,51 +23,43 @@ log = logging.getLogger(__name__)
 
 
 class RAGGrader:
-    """Retrieval-Augmented Grader using precomputed embeddings for model answers,
-    student answers, and lecture materials.
-    """
-
     def __init__(self, model_name: str):
         self.model_name = model_name.lower().strip()
         self.client = None
-        self.temperature = 0.2
+        self.temperature = 0.0
 
-        # -------------------------------
-        # 🔹 Choose provider
-        # -------------------------------
+        # Provider setup
         if self.model_name == "openai":
             self.provider = os.getenv("OPENAI_PROVIDER", "openai")
             self.api_key = os.getenv("OPENAI_API_KEY")
             self.chat_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-            self.temperature = float(os.getenv("OPENAI_TEMPERATURE", 0.2))
+            self.temperature = float(os.getenv("OPENAI_TEMPERATURE", 0.0))
             self.client = OpenAI(api_key=self.api_key)
 
         elif self.model_name == "gemini":
             self.provider = os.getenv("GEMINI_PROVIDER", "google")
             self.api_key = os.getenv("GOOGLE_API_KEY")
             self.chat_model = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
-            self.temperature = float(os.getenv("GEMINI_TEMPERATURE", 0.2))
+            self.temperature = float(os.getenv("GEMINI_TEMPERATURE", 0.0))
             configure_gemini(api_key=self.api_key)
-            self.client = GenerativeModel(self.chat_model)
+            self.client = GenerativeModel(self.chat_model,generation_config={
+    "temperature": 0,
+    "top_p": 1,
+})
 
         else:
-            raise ValueError(f"❌ Unsupported model_name '{model_name}'. Use 'openai' or 'gemini'.")
+            raise ValueError(f"Unsupported model_name '{model_name}'.")
 
-        # -------------------------------
-        # 🔹 DB Services
-        # -------------------------------
         self.model_vector_service = ModelAnswerVectorService(ai_model=self.model_name)
         self.lecture_db = LectureMaterialVectorDBService(model_name=self.model_name)
         self.student_vector_service = StudentAnswerVectorService(ai_model=self.model_name)
         self.student_db_service = StudentAnswerServiceWithMedia(ai_model=self.model_name)
         self.result_db = GradingResultDB(ai_model=self.chat_model)
 
-        log.info(f"🧠 RAGGrader initialized with provider={self.provider}, model={self.chat_model}")
-
     # -------------------------------------------------------------------------
     def grade_all_submissions(self, submission_ids: List[str], model_paper_id: str,
                               assessment_id: str, lecturer_id: str, module_id: str, top_k: int = 5):
-        """Grades all submissions using stored embeddings."""
+
         graded_records = []
         model_answer_db = ModelAnswerDBService(ai_model=self.model_name)
 
@@ -79,35 +71,56 @@ class RAGGrader:
                     continue
 
                 for ans in student_answers:
+
                     question_number = ans.get("question_number")
                     student_answer_text = (ans.get("answer_text") or "").strip()
                     media_items = ans.get("media_items", [])
                     base64_images = []
 
-                    # --- Step 1: Collect image data
+                    # Load images
                     for media in media_items:
                         media_url = media.get("media_url")
                         if media_url and os.path.exists(media_url):
                             try:
                                 with open(media_url, "rb") as img_file:
-                                    base64_images.append(base64.b64encode(img_file.read()).decode("utf-8"))
+                                    base64_images.append(
+                                        base64.b64encode(img_file.read()).decode("utf-8")
+                                    )
                             except Exception as e:
-                                log.warning(f"⚠️ Could not read image {media_url}: {e}")
+                                log.warning(f"Could not read image {media_url}: {e}")
 
-                    # --- Step 2: Build student answer description
+                    if not student_answer_text and not base64_images:
+                        score = 0.0
+                        feedback = "Student hasn't provided the answer."
+
+                        record = GradingResultRecord(
+                            submission_id=submission_id,
+                            question_number=question_number,
+                            score=score,
+                            max_marks=0,  # You can replace this with actual max_marks if needed
+                            feedback=feedback,
+                            grading_method=f"RAG_{self.chat_model.upper()}",
+                            similarity_score=0.0,
+                            context_used="No answer provided."
+                        )
+
+                        self.result_db.save_result_record(record, suffix="rag")
+                        graded_records.append(record)
+                        continue
+                    # 🔥🔥🔥 END LOGIC
+
+                    # Build student answer description
                     if student_answer_text and base64_images:
                         student_answer_description = (
                             f"The student provided both written and visual components.\n\n"
-                            f"**Written Answer:**\n{student_answer_text}\n\n**Images:** Included below."
+                            f"Written Answer:\n{student_answer_text}\n\nImages included below."
                         )
                     elif not student_answer_text and base64_images:
-                        student_answer_description = "The student's entire answer is in the attached image(s)."
-                    elif student_answer_text:
-                        student_answer_description = student_answer_text
+                        student_answer_description = "The student's entire answer is in the attached images."
                     else:
-                        student_answer_description = "No answer provided."
+                        student_answer_description = student_answer_text
 
-                    # --- Step 3: Load embeddings
+                    # Load embeddings
                     model_embedding = self.model_vector_service.get_embeddings_by_question(
                         assessment_id=assessment_id,
                         model_paper_id=model_paper_id,
@@ -118,15 +131,14 @@ class RAGGrader:
                         question_number=question_number
                     )
 
-                    # --- Step 4: Normalize
                     model_embedding = self._normalize_embedding(model_embedding)
                     student_embedding = self._normalize_embedding(student_embedding)
 
                     if not model_embedding or not student_embedding:
-                        log.warning(f"Missing embeddings for Q{question_number}, skipping...")
+                        log.warning(f"Missing embeddings for {question_number}, skipping...")
                         continue
 
-                    # --- Step 5: Retrieve lecture chunks
+                    # Retrieve lecture chunks
                     lecture_chunks = self.lecture_db.get_similar_chunks_by_embedding(
                         query_embedding=model_embedding,
                         lecturer_id=lecturer_id,
@@ -135,14 +147,14 @@ class RAGGrader:
                     )
                     context_text = "\n\n".join([chunk["content"] for chunk in lecture_chunks])
 
-                    # --- Step 6: Retrieve model answer
+                    # Retrieve model answer
                     model_answer_data = model_answer_db.get_model_answer(
                         model_answer_paper_id=model_paper_id,
                         assessment_id=assessment_id,
                         question_number=question_number
                     )
                     if not model_answer_data:
-                        log.warning(f"⚠️ No model answer found for Q{question_number}, skipping...")
+                        log.warning(f"No model answer found for Q{question_number}")
                         continue
 
                     question_text = model_answer_data.get("question_text")
@@ -150,30 +162,29 @@ class RAGGrader:
                     max_marks = model_answer_data.get("max_marks")
                     model_answer_text = model_answer_data["model_answer"]["answer_text"]
 
-                    # --- Step 7: Similarity
+                    # Similarity score
                     sim_score = self._compute_cosine_similarity(
-                        np.array(model_embedding),
-                        np.array(student_embedding)
+                        np.array(model_embedding), np.array(student_embedding)
                     )
 
-                    # --- Step 8: Prepare full grading context
                     context_full = (
-                        f"Question:\n{question_text}\n\n"
-                        f"Lecture Context:\n{context_text}\n\n"
+                        f"Question:\n{question_text}\n\nLecture Context:\n{context_text}\n\n"
                         f"Model Answer:\n{model_answer_text}"
                     )
 
-                    # --- Step 9: LLM grading
+                    # LLM grading
                     if self.model_name == "openai":
                         score, feedback = self._call_openai(
-                            context_full, question_text, guideline_text, student_answer_description, base64_images, max_marks
+                            context_full, question_text, guideline_text,
+                            student_answer_description, base64_images, max_marks
                         )
                     else:
                         score, feedback = self._call_gemini(
-                            context_full, question_text, guideline_text, student_answer_description, base64_images, max_marks
+                            context_full, question_text, guideline_text,
+                            student_answer_description, base64_images, max_marks
                         )
 
-                    # --- ✅ Step 10: Save result including full context
+                    # Save result
                     record = GradingResultRecord(
                         submission_id=submission_id,
                         question_number=question_number,
@@ -182,7 +193,6 @@ class RAGGrader:
                         feedback=feedback,
                         grading_method=f"RAG_{self.chat_model.upper()}",
                         similarity_score=float(sim_score),
-                        # short preview for readability
                         context_used=context_full
                     )
 
@@ -190,11 +200,10 @@ class RAGGrader:
                     graded_records.append(record)
 
             except Exception as e:
-                log.error(f"❌ Error grading submission {submission_id}: {e}", exc_info=True)
+                log.error(f"Error grading submission {submission_id}: {e}", exc_info=True)
                 self.result_db.rollback()
 
         self.result_db.commit()
-        log.info(f"✅ RAG grading complete. Graded {len(graded_records)} answers.")
         return graded_records
 
     # -------------------------------------------------------------------------
@@ -222,7 +231,6 @@ class RAGGrader:
 
     # -------------------------------------------------------------------------
     def _call_openai(self, context, question_text, guideline_text, student_answer_description, student_images, max_marks):
-        """Calls OpenAI multimodal model and prints raw LLM output."""
         try:
             prompt = RAG_GRADING_PROMPT_TEMPLATE.format(
                 context=context,
@@ -239,6 +247,9 @@ class RAGGrader:
             response = self.client.chat.completions.create(
                 model=self.chat_model,
                 temperature=self.temperature,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
                 max_tokens=800,
                 messages=[
                     {"role": "system", "content": "You are an expert academic examiner."},
@@ -249,19 +260,18 @@ class RAGGrader:
             raw = response.choices[0].message.content.strip()
 
             print("\n" + "=" * 70)
-            print(f"🧠 OPENAI RAW OUTPUT for Question: {question_text}")
+            print(f"OPENAI RAW OUTPUT for Question: {question_text}")
             print("-" * 70)
             print(raw)
             print("=" * 70 + "\n")
 
             return self._parse_json_response(raw)
         except Exception as e:
-            log.error(f"[OpenAI] ❌ Error: {e}", exc_info=True)
+            log.error(f"[OpenAI] Error: {e}", exc_info=True)
             return 0.0, "Grading failed due to OpenAI error."
 
     # -------------------------------------------------------------------------
     def _call_gemini(self, context, question_text, guideline_text, student_answer_description, student_images, max_marks):
-        """Calls Gemini multimodal model and prints raw LLM output."""
         try:
             prompt = RAG_GRADING_PROMPT_TEMPLATE.format(
                 context=context,
@@ -282,19 +292,18 @@ class RAGGrader:
             raw = result.candidates[0].content.parts[0].text
 
             print("\n" + "=" * 70)
-            print(f"🧠 GEMINI RAW OUTPUT for Question: {question_text}")
+            print(f"GEMINI RAW OUTPUT for Question: {question_text}")
             print("-" * 70)
             print(raw)
             print("=" * 70 + "\n")
 
             return self._parse_json_response(raw)
         except Exception as e:
-            log.error(f"[Gemini] ❌ Error: {e}", exc_info=True)
+            log.error(f"[Gemini] Error: {e}", exc_info=True)
             return 0.0, "Grading failed due to Gemini error."
 
     # -------------------------------------------------------------------------
     def _parse_json_response(self, raw_output: str):
-        """Safely parses LLM JSON output."""
         try:
             if raw_output.startswith("```"):
                 raw_output = raw_output.strip("`").replace("json", "").strip()
@@ -303,6 +312,5 @@ class RAGGrader:
             feedback = data.get("feedback", "No feedback provided.")
             return score, feedback
         except Exception:
-            print("\n⚠️ INVALID JSON RESPONSE from LLM:\n", raw_output)
-            log.warning(f"⚠️ Invalid JSON output:\n{raw_output}")
+            log.warning(f"Invalid JSON:\n{raw_output}")
             return 0.0, "Grading failed due to invalid LLM response."

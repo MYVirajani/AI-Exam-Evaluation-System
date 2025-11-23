@@ -33,11 +33,11 @@ def main():
     """
     # === Editable Parameters ===
     MODEL_NAME = "gemini"  # "openai" or "gemini"
-    ASSESSMENT_ID = "EE3501"      # <-- replace with your assessment_id
-    MODEL_PAPER_ID = "Control_Systems"    # <-- replace with your model_paper_id
-    LECTURER_ID = "Konara"        # <-- replace with your lecturer_id
-    MODULE_ID = "EE3501" 
-    SUBMISSION_IDS = ["CS_2021_4021"]
+    ASSESSMENT_ID = "Flow_Charts"      # <-- replace with your assessment_id
+    MODEL_PAPER_ID = "Flow_Charts"    # <-- replace with your model_paper_id
+    LECTURER_ID = "L12345"        # <-- replace with your lecturer_id
+    MODULE_ID = "Flow_Charts" 
+    SUBMISSION_IDS = ["FC_2020_4010"]
     
 #     SUBMISSION_IDS = [ "CS_2021_4017", "CS_2021_4018", "CS_2021_4019", "CS_2021_4020",
 #     "CS_2021_4021", "CS_2021_4022", "CS_2021_4023", "CS_2021_4024", "CS_2021_4025",

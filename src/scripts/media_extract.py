@@ -14,10 +14,10 @@ from docx2pdf import convert  # pip install docx2pdf
 # -----------------------------
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(ROOT_DIR, "data")
-INPUT_DIR = os.path.join(DATA_DIR, "raw_answer_scripts_docs")
-EXTRACT_DIR = os.path.join(DATA_DIR, "extracted_media")
-OUTPUT_DIR = os.path.join(DATA_DIR, "updated_answer_scripts_docs")
-PDF_DIR = os.path.join(DATA_DIR, "Answer_scripts")
+INPUT_DIR = os.path.join(DATA_DIR, "raw_answer_scripts_docs","Model_Paper")
+EXTRACT_DIR = os.path.join(DATA_DIR, "extracted_media","Model_Paper")
+OUTPUT_DIR = os.path.join(DATA_DIR, "updated_answer_scripts_docs","Model_Paper")
+PDF_DIR = os.path.join(DATA_DIR, "Answer_scripts","Model_Paper")
 
 os.makedirs(EXTRACT_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)

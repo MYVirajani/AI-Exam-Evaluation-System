@@ -102,7 +102,7 @@ class RAGGrader:
                     similarity = 1.0
 
                     # ✅ Call OpenAI for grading
-                    score, feedback = self._call_llm_openai(
+                    score, feedback, answer_source = self._call_llm_openai(
                         question_text=question_text,
                         model_answer=combined_model_answer,
                         student_answer=combined_student_answer,
@@ -117,6 +117,7 @@ class RAGGrader:
                     score=float(score),
                     max_marks=float(model_answer.get("max_marks", 0.0)),
                     feedback=feedback,
+                    answer_source=answer_source,
                     grading_method=GradingMethod.RAG,
                     similarity_score=float(similarity),
                     context_used=retrieved_context

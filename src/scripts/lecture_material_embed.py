@@ -82,7 +82,7 @@ def main():
     parser.add_argument(
         "--folder",
         required=False,
-        default="data/Lecture_Materials/Control_Systems",
+        default="data/Lecture_Materials/Flow_Charts",
         help="Base lecture materials folder",
     )
 

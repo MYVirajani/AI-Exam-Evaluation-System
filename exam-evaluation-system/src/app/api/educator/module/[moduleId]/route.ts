@@ -19,7 +19,8 @@ export async function GET(
                 id: true,
                 file_name: true,
                 file_url: true,
-                uploaded_on: true,
+                created_on: true,
+                updated_on: true,
                 description: true,
               },
             },
@@ -40,7 +41,6 @@ export async function GET(
               select: { submissions: true },
             },
           },
-          // ⚠️ remove orderBy here — we’ll sort manually
         },
         enrollments: {
           select: {

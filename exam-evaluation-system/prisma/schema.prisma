@@ -33,10 +33,12 @@ model Educator {
   official_email      String @unique
   education_institute String
 
-  user          User           @relation(fields: [user_id], references: [user_id])
-  modules       Module[]
-  assessments   Assessment[]
-  subscriptions Subscription[]
+  user             User               @relation(fields: [user_id], references: [user_id])
+  modules          Module[]
+  assessments      Assessment[]
+  subscriptions    Subscription[]
+  Lesson           Lesson[]
+  Lecture_Material Lecture_Material[]
 }
 
 model Student {
@@ -98,10 +100,13 @@ model Lesson {
   lesson_id  String   @id @default(uuid())
   module_id  String
   title      String
+  created_by String?
   created_on DateTime @default(now()) @db.Timestamptz(6)
   updated_on DateTime @default(now()) @db.Timestamptz(6)
 
-  module    Module             @relation(fields: [module_id], references: [module_id])
+  module   Module    @relation(fields: [module_id], references: [module_id])
+  educator Educator? @relation(fields: [created_by], references: [user_id])
+
   materials Lecture_Material[]
 }
 
@@ -111,13 +116,31 @@ model Lecture_Material {
   file_name                String?
   file_url                 String
   media_extracted_file_url String?
+  created_by               String?
   created_on               DateTime @default(now()) @db.Timestamptz(6)
   updated_on               DateTime @default(now()) @db.Timestamptz(6)
   description              String?
 
-  lesson                 Lesson                   @relation(fields: [lesson_id], references: [lesson_id])
+  lesson   Lesson    @relation(fields: [lesson_id], references: [lesson_id])
+  educator Educator? @relation(fields: [created_by], references: [user_id])
+
   lecture_material_media lecture_material_media[]
 }
+
+/**
+ * model lecture_material_embedding {
+ * id                  String   @id @default(uuid())
+ * lecture_material_id String
+ * chunk_index         Int
+ * content             String?
+ * embedding           Bytes    @db.Vector(1536)
+ * model_id            String
+ * created_on          DateTime @default(now()) @db.Timestamptz(6)
+ * evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
+ * lecture_material Lecture_Material @relation(fields: [lecture_material_id], references: [id])
+ * @@unique([lecture_material_id, chunk_index])
+ * }
+ */
 
 model lecture_material_media {
   id                  String   @id @default(uuid())
@@ -130,7 +153,7 @@ model lecture_material_media {
 
   // Relations
   lecture_material Lecture_Material  @relation(fields: [lecture_material_id], references: [id])
-  evaluation_model Evaluation_Model? @relation(fields: [model_id], references: [model_id])
+  evaluation_model Evaluation_Model? @relation(fields: [model_id], references: [id])
 
   @@index([lecture_material_id])
   @@index([model_id])
@@ -223,7 +246,7 @@ model Question {
   updated_on            DateTime     @default(now()) @db.Timestamptz(6)
 
   // Relations
-  evaluation_model   Evaluation_Model   @relation(fields: [model_id], references: [model_id])
+  evaluation_model   Evaluation_Model   @relation(fields: [model_id], references: [id])
   model_answer_paper Model_Answer_Paper @relation(fields: [model_answer_paper_id], references: [id])
   assessment         Assessment?        @relation(fields: [assessment_id], references: [assessment_id])
   media              Question_Media[]
@@ -246,7 +269,7 @@ model Question_Media {
 
   // Relations
   question         Question         @relation(fields: [question_id], references: [id])
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
 
   @@index([question_id])
   @@index([model_id])
@@ -307,7 +330,7 @@ model Student_Answer {
 
   // Relations
   submission       Submission             @relation(fields: [submission_id], references: [submission_id])
-  evaluation_model Evaluation_Model       @relation(fields: [model_id], references: [model_id])
+  evaluation_model Evaluation_Model       @relation(fields: [model_id], references: [id])
   media            Student_Answer_Media[]
   Question         Question?              @relation(fields: [question_id], references: [id])
 
@@ -326,7 +349,7 @@ model Student_Answer_Media {
 
   // Relations
   student_answer   Student_Answer   @relation(fields: [student_answer_id], references: [id])
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
 
   @@index([student_answer_id])
   @@index([model_id])
@@ -342,7 +365,7 @@ model Assessment_Grading {
   questions_count  Int?
 
   // Relations
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
   assessment       Assessment       @relation(fields: [assessment_id], references: [assessment_id])
 
   @@index([assessment_id])
@@ -350,7 +373,7 @@ model Assessment_Grading {
 }
 
 model Evaluation_Model {
-  model_id        String   @id @default(uuid())
+  id              String   @id @default(uuid())
   model_name      String   @unique
   provider        String
   chat_model      String?
@@ -382,7 +405,7 @@ model Pricing_Plan {
   stripe_product_id String
   created_on        DateTime @default(now()) @db.Timestamptz(6)
 
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id], onDelete: Cascade)
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id], onDelete: Cascade)
   model_id         String
   subscriptions    Subscription[]
 }
@@ -427,7 +450,7 @@ model Grading_Results {
   graded_at        DateTime @default(now()) @db.Timestamptz(6)
 
   // Relations
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [model_id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
   submission       Submission       @relation(fields: [submission_id], references: [submission_id])
   question         Question         @relation(fields: [question_id], references: [id])
 

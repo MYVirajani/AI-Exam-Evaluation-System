@@ -127,20 +127,6 @@ model Lecture_Material {
   lecture_material_media lecture_material_media[]
 }
 
-/**
- * model lecture_material_embedding {
- * id                  String   @id @default(uuid())
- * lecture_material_id String
- * chunk_index         Int
- * content             String?
- * embedding           Bytes    @db.Vector(1536)
- * model_id            String
- * created_on          DateTime @default(now()) @db.Timestamptz(6)
- * evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
- * lecture_material Lecture_Material @relation(fields: [lecture_material_id], references: [id])
- * @@unique([lecture_material_id, chunk_index])
- * }
- */
 
 model lecture_material_media {
   id                  String   @id @default(uuid())
@@ -158,6 +144,21 @@ model lecture_material_media {
   @@index([lecture_material_id])
   @@index([model_id])
 }
+
+/**
+ * model lecture_material_embedding {
+ * id                  String   @id @default(uuid())
+ * lecture_material_id String
+ * chunk_index         Int
+ * content             String?
+ * embedding           Bytes    @db.Vector(1536)
+ * model_id            String
+ * created_on          DateTime @default(now()) @db.Timestamptz(6)
+ * evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
+ * lecture_material Lecture_Material @relation(fields: [lecture_material_id], references: [id])
+ * @@unique([lecture_material_id, chunk_index])
+ * }
+ */
 
 enum assessmentType {
   endExam

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {prisma} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 export async function DELETE(
   req: NextRequest,
@@ -8,11 +8,10 @@ export async function DELETE(
   const { lessonId } = params;
   console.log('[DELETE] Incoming request to delete lesson:', lessonId);
 
-  const currentUserId = req.headers.get('userId'); 
-  console.log('[DELETE] Extracted currentUserId from headers:', currentUserId);
+  const currentUserId = req.headers.get('userId');
+  console.log('[DELETE] Extracted currentUserId:', currentUserId);
 
   if (!currentUserId) {
-    console.warn('[DELETE] Unauthorized: Missing userId in headers');
     return NextResponse.json(
       { success: false, error: 'Unauthorized access: educator not identified' },
       { status: 401 }
@@ -22,55 +21,63 @@ export async function DELETE(
   try {
     const lesson = await prisma.lesson.findUnique({
       where: { lesson_id: lessonId },
-      include: {
+      include: { 
         module: true,
+        materials: {
+          include: {
+            lecture_material_media: true,
+          }
+        }
       },
     });
 
     if (!lesson) {
-      console.warn('[DELETE] Lesson not found for lessonId:', lessonId);
       return NextResponse.json(
         { success: false, error: 'Lesson not found' },
         { status: 404 }
       );
     }
 
-    console.log('[DELETE] Fetched lesson and module details:', {
-      lessonId: lesson.lesson_id,
-      moduleId: lesson.module.module_id,
-      createdBy: lesson.module.created_by,
-    });
-
     if (lesson.module.created_by !== currentUserId) {
-      console.warn('[DELETE] Unauthorized delete attempt:', {
-        currentUserId,
-        createdBy: lesson.module.created_by,
-      });
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized to delete this lesson',
-          currentUserId,
-          createdBy: lesson.module.created_by,
-        },
+        { success: false, error: 'Unauthorized to delete this lesson' },
         { status: 403 }
       );
     }
 
-    console.log('[DELETE] Deleting associated lecture materials...');
+    console.log('[DELETE] Starting cascading deletion...');
+
+    // 1️⃣ DELETE ALL MEDIA FOR EACH LECTURE MATERIAL
+    const materialIds = lesson.materials.map(mat => mat.id);
+
+    console.log('[DELETE] Deleting media for materials:', materialIds);
+
+    await prisma.lecture_material_media.deleteMany({
+      where: {
+        lecture_material_id: { in: materialIds }
+      },
+    });
+
+    // 2️⃣ DELETE LECTURE MATERIALS
+    console.log('[DELETE] Deleting lecture materials...');
     await prisma.lecture_Material.deleteMany({
       where: { lesson_id: lessonId },
     });
 
+    // 3️⃣ DELETE THE LESSON
     console.log('[DELETE] Deleting lesson...');
     await prisma.lesson.delete({
       where: { lesson_id: lessonId },
     });
 
-    console.log('[DELETE] Lesson deleted successfully:', lessonId);
-    return NextResponse.json({ success: true, message: 'Lesson deleted successfully' });
+    console.log('[DELETE] Lesson and all associated data deleted successfully.');
+    return NextResponse.json({
+      success: true,
+      message: 'Lesson, materials, and media deleted successfully',
+    });
+
   } catch (error) {
-    console.error('[DELETE] Error deleting lesson:', error);
+    console.error('[DELETE] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

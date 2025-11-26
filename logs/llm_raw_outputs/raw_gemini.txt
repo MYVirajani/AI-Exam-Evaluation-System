@@ -1,0 +1,36 @@
+```json
+{
+  "answers": {
+    "Q1": {
+      "answer_text": "",
+      "media_urls": [
+        "E:\\Semester 7\\FYP\\AI-Exam-Evaluation-System\\src\\data\\extracted_media\\Graph\\graph_4050_img_1.png"
+      ]
+    },
+    "Q2": {
+      "answer_text": "",
+      "media_urls": [
+        "E:\\Semester 7\\FYP\\AI-Exam-Evaluation-System\\src\\data\\extracted_media\\Graph\\graph_4050_img_2.png"
+      ]
+    },
+    "Q3": {
+      "answer_text": "",
+      "media_urls": [
+        "E:\\Semester 7\\FYP\\AI-Exam-Evaluation-System\\src\\data\\extracted_media\\Graph\\graph_4050_img_3.png"
+      ]
+    },
+    "Q4": {
+      "answer_text": "",
+      "media_urls": [
+        "E:\\Semester 7\\FYP\\AI-Exam-Evaluation-System\\src\\data\\extracted_media\\Graph\\graph_4050_img_4.png"
+      ]
+    },
+    "Q5": {
+      "answer_text": "",
+      "media_urls": [
+        "E:\\Semester 7\\FYP\\AI-Exam-Evaluation-System\\src\\data\\extracted_media\\Graph\\graph_4050_img_5.png"
+      ]
+    }
+  }
+}
+```

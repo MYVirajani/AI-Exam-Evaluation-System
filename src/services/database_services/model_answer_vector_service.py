@@ -12,9 +12,12 @@ logger.setLevel(logging.INFO)
 
 class ModelAnswerVectorService(BaseVectorDBService):
     """
-    Handles embedding and storing model answers with separate columns for
-    question and answer embeddings (guideline text not embedded).
-    Supports both OpenAIEmbedder and GeminiEmbedder depending on --ai_model.
+    Handles embedding and storing model answers with SEPARATE embeddings for:
+      - Question text
+      - Model answer text (+ media summaries)
+      - Guideline text
+
+    If an existing row has empty embeddings (NULL), the missing ones are embedded and updated.
     """
 
     def __init__(self, ai_model: str):
@@ -24,10 +27,7 @@ class ModelAnswerVectorService(BaseVectorDBService):
         self._ensure_vector_table()
 
     # ----------------------------------------------------------------------
-    # Embedder selection
-    # ----------------------------------------------------------------------
     def _select_embedder(self, ai_model: str):
-        """Return embedder based on model name."""
         model_lower = ai_model.lower()
         if "gemini" in model_lower:
             logger.info(f"🔹 Using GeminiEmbedder for model: {ai_model}")
@@ -37,10 +37,7 @@ class ModelAnswerVectorService(BaseVectorDBService):
             return OpenAIEmbedder()
 
     # ----------------------------------------------------------------------
-    # Table setup
-    # ----------------------------------------------------------------------
     def _ensure_vector_table(self):
-        """Ensure table exists for this embedder (question and answer embeddings only)."""
         self.table_name = f"model_answer_embeddings_{self.suffix}"
         dim = self.embedder.get_embedding_dimension()
 
@@ -54,19 +51,14 @@ class ModelAnswerVectorService(BaseVectorDBService):
             model_paper_id VARCHAR(255) NOT NULL,
             model_answer_id UUID UNIQUE NOT NULL,
             question_number VARCHAR(50),
+
             question_embedding VECTOR({dim}),
             answer_embedding VECTOR({dim}),
+            guideline_embedding VECTOR({dim}),
+
             model_name VARCHAR(255) NOT NULL,
             created_on TIMESTAMP DEFAULT NOW()
         );
-
-        CREATE INDEX IF NOT EXISTS idx_{self.table_name}_question
-        ON {self.table_name} USING ivfflat (question_embedding vector_cosine_ops)
-        WITH (lists = 100);
-
-        CREATE INDEX IF NOT EXISTS idx_{self.table_name}_answer
-        ON {self.table_name} USING ivfflat (answer_embedding vector_cosine_ops)
-        WITH (lists = 100);
         """
 
         self.cursor.execute(create_table_query)
@@ -74,148 +66,149 @@ class ModelAnswerVectorService(BaseVectorDBService):
         logger.info(f"✅ Ensured table exists: {self.table_name}")
 
     # ----------------------------------------------------------------------
-    # Main embedding logic
+    # Main logic
     # ----------------------------------------------------------------------
     def embed_and_store_model_answers(self, model_paper_id: str, assessment_id: str, db_service):
-        """
-        Fetch model answers and embed only question and answer texts.
-        Skip re-embedding if the same model_answer_id already exists.
-        """
+        logger.info(f"📥 Fetching model answers with media using db_service.get_model_answer_with_media()...")
 
-        # ✅ Use the correct model-specific tables from db_service
-        model_answer_table = getattr(db_service, "model_answer_table", "model_answer")
-        model_answer_media_table = getattr(db_service, "model_answer_media_table", "model_answer_media")
-
-        query = f"""
-        SELECT
-            ma.id AS model_answer_id,
-            ma.assessment_id,
-            ma.model_answer_paper_id AS model_paper_id,
-            ma.question_number,
-            ma.question_text,
-            ma.answer_text,
-            ARRAY_REMOVE(ARRAY_AGG(mam.media_summary), NULL) AS media_summaries
-        FROM {model_answer_table} ma
-        LEFT JOIN {model_answer_media_table} mam ON mam.model_answer_id = ma.id
-        WHERE ma.assessment_id = %s AND ma.model_answer_paper_id = %s
-        GROUP BY ma.id;
-        """
-
-        db_service.cursor.execute(query, (assessment_id, model_paper_id))
-        rows = db_service.cursor.fetchall()
+        rows = db_service.get_model_answer_with_media(
+            assessment_id=assessment_id,
+            model_paper_id=model_paper_id
+        )
 
         if not rows:
             logger.warning(f"⚠️ No model answers found for assessment_id={assessment_id}")
             return
 
-        print("\n================= RAW DATA FETCHED FROM DB =================")
-        for i, row in enumerate(rows, 1):
-            print(f"\n🧩 Record {i}:")
-            print(f"  Model Answer ID: {row[0]}")
-            print(f"  Question Number: {row[3]}")
-            print(f"  Question Text: {row[4]}")
-            print(f"  Answer Text: {row[5]}")
-            print(f"  Media Summaries: {row[6]}")
-        print("============================================================\n")
-
-        logger.info(f"📦 Total raw records fetched: {len(rows)}")
+        logger.info(f"📦 Total model answer records fetched = {len(rows)}")
 
         model_name = self.embedder.get_model_name()
 
-        # Get already embedded entries to skip duplicates
+        # Fetch full existing rows (not just IDs)
         existing_query = f"""
-            SELECT model_answer_id FROM {self.table_name}
+            SELECT model_answer_id, question_embedding, answer_embedding, guideline_embedding
+            FROM {self.table_name}
             WHERE assessment_id = %s AND model_paper_id = %s AND model_name = %s;
         """
         self.cursor.execute(existing_query, (assessment_id, model_paper_id, model_name))
-        existing_ids = {r[0] for r in self.cursor.fetchall()}
+        existing_map = {
+            row[0]: {
+                "question_embedding": row[1],
+                "answer_embedding": row[2],
+                "guideline_embedding": row[3],
+            }
+            for row in self.cursor.fetchall()
+        }
 
-        embeddings_to_generate = []
+        inserts = []
+        updates = []
 
         for row in rows:
-            model_answer_id, _, model_paper_id_db, question_number, question_text, answer_text, media_summaries = row
+            model_answer_id = row["model_answer_id"]
+            qnum = row["question_number"]
 
-            if model_answer_id in existing_ids:
-                logger.info(f"⏭️ Skipping existing embeddings for {model_answer_id}")
+            question_text = (row["question_text"] or "").strip()
+            answer_text = (row["answer_text"] or "").strip()
+            guideline_text = (row["guideline_text"] or "").strip()
+            media_summaries = row.get("media_summaries", [])
+
+            media_concat = " ".join(media_summaries)
+            full_answer_text = f"{answer_text} {media_concat}".strip()
+
+            # Case 1: NEW RECORD → insert full embedding set
+            if model_answer_id not in existing_map:
+                logger.info(f"🆕 New model_answer_id={model_answer_id} → generating all embeddings")
+
+                q_emb = self.embedder.embed([question_text])[0] if question_text else None
+                a_emb = self.embedder.embed([full_answer_text])[0] if full_answer_text else None
+                g_emb = self.embedder.embed([guideline_text])[0] if guideline_text else None
+
+                inserts.append((
+                    assessment_id, model_paper_id, model_answer_id, qnum,
+                    q_emb, a_emb, g_emb, model_name, datetime.now()
+                ))
                 continue
 
-            media_concat = " ".join(ms for ms in media_summaries or [])
-            full_answer_text = f"{answer_text or ''} {media_concat or ''}".strip()
+            # Case 2: EXISTING RECORD → only embed missing columns
+            existing = existing_map[model_answer_id]
+            q_emb = existing["question_embedding"]
+            a_emb = existing["answer_embedding"]
+            g_emb = existing["guideline_embedding"]
 
-            q_text = question_text.strip() if question_text else None
-            a_text = full_answer_text if full_answer_text else None
+            updated_fields = {}
+            if q_emb is None and question_text:
+                logger.info(f"✨ Updating missing QUESTION embedding for {model_answer_id}")
+                updated_fields["question_embedding"] = self.embedder.embed([question_text])[0]
 
-            embeddings_to_generate.append((model_answer_id, q_text, a_text, model_paper_id_db, question_number))
+            if a_emb is None and full_answer_text:
+                logger.info(f"✨ Updating missing ANSWER embedding for {model_answer_id}")
+                updated_fields["answer_embedding"] = self.embedder.embed([full_answer_text])[0]
 
-        if not embeddings_to_generate:
-            logger.info("⚠️ No new embeddings to generate.")
-            return
+            if g_emb is None and guideline_text:
+                logger.info(f"✨ Updating missing GUIDELINE embedding for {model_answer_id}")
+                updated_fields["guideline_embedding"] = self.embedder.embed([guideline_text])[0]
 
-        logger.info(f"🚀 Generating embeddings for {len(embeddings_to_generate)} model answers using {model_name} ...")
+            if updated_fields:
+                # Build dynamic SQL for partial update
+                set_clause = ", ".join([f"{col} = %s" for col in updated_fields.keys()])
+                update_values = list(updated_fields.values())
+                update_values.append(model_answer_id)
 
-        insert_data = []
+                updates.append((set_clause, update_values))
+            else:
+                logger.info(f"⏭️ Complete row exists for model_answer_id={model_answer_id}, nothing to update")
 
-        for model_answer_id, q_text, a_text, model_paper_id_db, question_number in embeddings_to_generate:
-            question_emb = self.embedder.embed([q_text])[0] if q_text else None
-            answer_emb = self.embedder.embed([a_text])[0] if a_text else None
+        # Perform all INSERTS
+        if inserts:
+            logger.info(f"📝 Inserting {len(inserts)} new rows...")
+            insert_query = f"""
+            INSERT INTO {self.table_name} (
+                assessment_id, model_paper_id, model_answer_id, question_number,
+                question_embedding, answer_embedding, guideline_embedding,
+                model_name, created_on
+            ) VALUES %s;
+            """
+            execute_values(self.cursor, insert_query, inserts)
 
-            insert_data.append((
-                assessment_id,
-                model_paper_id_db,
-                model_answer_id,
-                question_number,
-                question_emb,
-                answer_emb,
-                model_name,
-                datetime.now(),
-            ))
+        # Perform all UPDATES
+        for set_clause, values in updates:
+            update_query = f"""
+                UPDATE {self.table_name}
+                SET {set_clause}
+                WHERE model_answer_id = %s;
+            """
+            self.cursor.execute(update_query, values)
 
-        insert_query = f"""
-        INSERT INTO {self.table_name} (
-            assessment_id, model_paper_id, model_answer_id, question_number,
-            question_embedding, answer_embedding,
-            model_name, created_on
-        ) VALUES %s;
-        """
-
-        execute_values(self.cursor, insert_query, insert_data)
         self.commit()
-        logger.info(f"✅ Inserted {len(insert_data)} new records into {self.table_name}")
 
-    # ----------------------------------------------------------------------
-    #  Fetch embeddings for a question
+        logger.info(f"✅ Completed: {len(inserts)} inserted, {len(updates)} updated.")
+
     # ----------------------------------------------------------------------
     def get_embeddings_by_question(self, assessment_id: str, model_paper_id: str, question_number: str):
-        """
-        Retrieve question_embedding and answer_embedding for a given assessment_id,
-        model_paper_id, and question_number.
-        """
         try:
             query = f"""
-            SELECT question_embedding, answer_embedding
+            SELECT question_embedding, answer_embedding, guideline_embedding
             FROM {self.table_name}
             WHERE assessment_id = %s
               AND model_paper_id = %s
               AND question_number = %s;
             """
+
             self.cursor.execute(query, (assessment_id, model_paper_id, question_number))
             result = self.cursor.fetchone()
 
             if not result:
                 logger.warning(
-                    f"⚠️ No embeddings found for assessment_id={assessment_id}, "
-                    f"model_paper_id={model_paper_id}, question_number={question_number}"
+                    f"⚠️ No embeddings for assessment_id={assessment_id}, model_paper_id={model_paper_id}, question={question_number}"
                 )
                 return None
 
-            question_embedding, answer_embedding = result
-            logger.info(
-                f"✅ Retrieved embeddings for assessment_id={assessment_id}, "
-                f"model_paper_id={model_paper_id}, question_number={question_number}"
-            )
+            q_emb, a_emb, g_emb = result
+
             return {
-                "question_embedding": question_embedding,
-                "answer_embedding": answer_embedding,
+                "question_embedding": q_emb,
+                "answer_embedding": a_emb,
+                "guideline_embedding": g_emb,
             }
 
         except Exception as e:

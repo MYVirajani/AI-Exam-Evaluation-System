@@ -1,25 +1,35 @@
 ```json
 {
-  "metadata": {
-    "student_index": "EG/2020/4020",
-    "module_code": "EE3350",
-    "exam_year": 2025,
-    "exam_month": "June"
-  },
   "answers": {
     "Q1": {
-      "i": "CRUD stands for Create, Read, Update, and Delete",
-      "ii": "Primary key is a key used to unlock tables.",
-      "iii": "Foreign key helps link data from other tables but not always required.",
-      "iv": "One-to-One, One-to-Many, Many-to-One, Many-to-Many, and Self-referencing relationships are the most common types.",
-      "v": "Good schema design ensures scalability and performance by using normalization, indexing, naming conventions, and access control practices."
+      "answer_text": "",
+      "media_urls": [
+        "E:/Semester 7/FYP/AI-Exam-Evaluation-System/src/data/extracted_media/Graph/graph_4050_img_1.png"
+      ]
     },
     "Q2": {
-      "i": "It connects Node apps with databases using object-based queries.",
-      "ii": "JWTs contain user info and are sent with requests.",
-      "iii": "Used for auth, parsing, error handling between request and response.",
-      "iv": "Read\nCreate\nModify\nEdit\nDestroy",
-      "v": "Combining JWT and RBAC supports scalable, secure access to protected resources. Authentication uses JWTs after login. RBAC checks role in JWT to grant permissions. Each endpoint verifies user identity and role before responding. JWTs contain user info and are sent with requests."
+      "answer_text": "",
+      "media_urls": [
+        "E:/Semester 7/FYP/AI-Exam-Evaluation-System/src/data/extracted_media/Graph/graph_4050_img_2.png"
+      ]
+    },
+    "Q3": {
+      "answer_text": "",
+      "media_urls": [
+        "E:/Semester 7/FYP/AI-Exam-Evaluation-System/src/data/extracted_media/Graph/graph_4050_img_3.png"
+      ]
+    },
+    "Q4": {
+      "answer_text": "",
+      "media_urls": [
+        "E:/Semester 7/FYP/AI-Exam-Evaluation-System/src/data/extracted_media/Graph/graph_4050_img_4.png"
+      ]
+    },
+    "Q5": {
+      "answer_text": "",
+      "media_urls": [
+        "E:/Semester 7/FYP/AI-Exam-Evaluation-System/src/data/extracted_media/Graph/graph_4050_img_5.png"
+      ]
     }
   }
 }

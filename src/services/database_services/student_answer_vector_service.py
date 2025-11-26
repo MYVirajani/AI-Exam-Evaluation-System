@@ -74,22 +74,7 @@ class StudentAnswerVectorService(BaseVectorDBService):
         Fetch student answers + media summaries for a submission and store embeddings.
         Skip re-embedding if already exists for the same student_answer_id.
         """
-        query = f"""
-        SELECT 
-            sa.id AS student_answer_id,
-            sa.submission_id,
-            sa.question_number,
-            sa.answer_text,
-            ARRAY_REMOVE(ARRAY_AGG(sam.media_summary), NULL) AS media_summaries
-        FROM {db_service.student_answer_table} sa
-        LEFT JOIN {db_service.student_answer_media_table} sam
-            ON sa.id = sam.student_answer_id
-        WHERE sa.submission_id = %s
-        GROUP BY sa.id;
-        """
-
-        db_service.cursor.execute(query, (submission_id,))
-        rows = db_service.cursor.fetchall()
+        rows = db_service.fetch_answers_for_embedding(submission_id)
         if not rows:
             logger.warning(f"⚠️ No student answers found for submission_id={submission_id}")
             return

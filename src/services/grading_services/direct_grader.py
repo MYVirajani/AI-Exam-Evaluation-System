@@ -151,7 +151,7 @@ class DirectGrader:
                         student_answer_description, max_marks
                     )
                 else:
-                    score, feedback = self._call_openai(
+                    score, feedback, answer_source = self._call_openai(
                         question_text, combined_model_answer, guideline_text,
                         student_answer_description, base64_images, max_marks
                     )
@@ -163,6 +163,7 @@ class DirectGrader:
                     score=float(score),
                     max_marks=float(max_marks),
                     feedback=feedback,
+                    answer_source=answer_source,
                     grading_method=f"{self.provider.upper()}_{self.mode.upper()}",
                     similarity_score=None,
                     context_used=None,

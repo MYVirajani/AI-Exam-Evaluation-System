@@ -25,7 +25,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
       await logout();
       setShowLogoutConfirm(false);
       setUser(null);
-      toast.success("Logged out successfully ✅");
+      toast.success("Logged out successfully");
     } catch (error) {
       console.error("Logout failed:", error);
       toast.error("Logout failed. Please try again.");

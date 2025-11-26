@@ -1,73 +1,96 @@
 EXTRACT_MODEL_ANSWERS_PROMPT = """
 You will receive the full text of an *official model-answer or marking guide* document.
-The text may include charts, tables, or image references represented as:
-[Image: <absolute_or_relative_path_to_image>]
+The text may include charts, tables, equations, or image references written as:
+[Image: <absolute_or_relative_path>]
 
-It may also contain **mathematical equations** or **tabular data** representing problem data or solutions.
+Your job is to extract the question hierarchy and model answers in a clean JSON structure.
 
 -----------------------------------
 ### Your Tasks
 
 1. **Detect Question Hierarchy**
-   - Identify each main question and sub-question using their numbering patterns (e.g., Q1, Q1.a, Q1.i).
-   - Maintain exact hierarchy and numbering as in the original document.
+   - Identify every main question and sub-question using numbering patterns (e.g., Q1, Q1.a, Q1.i).
+   - Preserve the original hierarchy exactly as in the document.
 
-2. **Extract Fields for Each Question**
-   For each lowest-level question (e.g., Q1, Q1.i, Q1.a):
-   - `"question"`: The question text (e.g., “Draw a bar chart to represent the data.”).
-   - `"answer"`: Everything describing the **expected answer or model content**, including:
-       - Explanations, key points, purposes, observations, expected features, or data tables.
-       - Any content except “Instructions for Checking”.
-   - `"guideline"`: The *“Instructions for Checking”* section under that question.
-       - If found, extract it verbatim as a single string.
-       - If not found, set `"guideline": ""`.
-   - `"marks"`: Total marks for the question (integer if given, else `null`).
-   - `"media_urls"`: A list of image paths extracted from `[Image: ...]` tags (if any).
+2. **Pre-processing of Image References**
+   - Detect all `[Image: ...]` patterns.
+   - Extract the image paths into a list under `"media_urls"`.
+   - **Remove these tags entirely from the text BEFORE extracting question text or answers.**
+   - **Under no circumstances should the question text include the image path.**
 
-3. **Special Handling Rules**
-   - When a question includes **tables**, preserve the table content as readable text (rows separated by newlines, columns separated by tabs or commas).
-   - When “Key Points”, “Expected Chart Features”, or “Observations” appear, include them as part of the `"answer"` field.
-   - Do **not** include “Instructions for Checking” in the `"answer"`.
-   - Maintain meaningful newlines and formatting for clarity (especially for multi-line data).
+3. **Extract Fields for Each Lowest-Level Question**
+   For each leaf node (e.g., Q1, Q1.a, Q1.i):
+
+   - `"question"`:
+       - The exact question text only.
+       - Must NOT include any `[Image: ...]` tags, media URLs, or removed tag placeholders.
+
+   - `"answer"`:
+       - All expected answer content, including descriptions, reasoning, features, observations, tables, or equations.
+       - Include all relevant text except instructions for checking.
+
+   - `"guideline"`:
+       - Extract the “Instructions for Checking” section if available.
+       - Return verbatim as a single string.
+       - If not present, return an empty string.
+
+   - `"marks"`:
+       - Extract marks if explicitly mentioned.
+       - Use integer values.
+       - If missing, return `null`.
+
+   - `"media_urls"`:
+       - A list of all image paths extracted from `[Image: ...]` tags belonging to this question.
+
+4. **Special Handling Rules**
+   - Tables must be preserved exactly in readable multi-line text.
+   - Equations must be included as plain text in the answer.
+   - “Key points”, “Expected features”, “Observations”, etc., belong in `"answer"`.
+   - Do not include the guideline text inside `"answer"`.
+   - Keep helpful newlines for formatting.
 
 -----------------------------------
 ### Output Format — JSON Only
 
-Return one valid JSON object using this structure:
+Return one valid JSON object, following this format:
 
 {
   "answers": {
     "Q1": {
-      "question": "Draw a grouped bar chart to represent the sales data of all four products across the quarters.",
-      "answer": "Key Points: Purpose: To visually compare... Expected Chart Features: Grouped bar chart...",
-      "guideline": "Instructions for Checking: 0-2 marks for correctly labeled axes and titles...",
-      "marks": 10,
-      "media_urls": []
+      "i": {
+        "a": {
+          "question": "Define supervised learning.",
+          "answer": "Supervised learning is ...",
+          "guideline": "Include mention of labeled data and prediction tasks.",
+          "media_urls": ["path/to/image1.png"],
+          "marks": 5
+        }
+      },
+      "ii": {
+        "question": "Explain overfitting in ML.",
+        "answer": "Overfitting happens when ...",
+        "guideline": "",
+        "media_urls": [],
+        "marks": 3
+      }
     },
-    "Q2": {
-      "question": "Draw a pie chart to represent the above expense distribution.",
-      "answer": "Key Points: Purpose: To show how total business expenses... Expected Chart Features: Pie chart divided into five sectors...",
-      "guideline": "Instructions for Checking: 0-3 marks for correctly drawn proportional slices...",
-      "marks": 10,
-      "media_urls": []
-    }
+    "Q2": { ... }
   }
 }
 
 -----------------------------------
 ### Strict Rules
 
-* Output **only valid JSON** — no markdown, no explanations, no code fences.
+* Output **only valid JSON** — no markdown, no explanations.
 * Maintain **exact question numbering** (e.g., Q1, Q2.a, Q3.i).
-* Each question node **must contain**:
+* Every question node MUST include:
   `"question"`, `"answer"`, `"guideline"`, `"marks"`, and `"media_urls"`.
-* Remove `[Image: ...]` tags from text body after extracting URLs.
-* Preserve **tables, equations, and lists** exactly as they appear.
-* `marks` must be an integer if explicitly given, or `null` if not found.
-* `media_urls` must always be a list (e.g., `[]` if none).
-* Do not infer or summarize missing data.
-* Do not merge or omit sub-questions unless explicitly hierarchical in numbering.
-* Keep internal newlines (`\\n`) where formatting is meaningful.
+* **All `[Image: ...]` tags must be removed from “question”, “answer”, and “guideline” after extraction.**
+* **Media URLs must NEVER appear inside the “question” text.**
+* `marks` must be integer or `null`.
+* Do not guess, infer, or fix missing data — extract only what exists.
+* Keep meaningful original formatting (tables, lists, equations, newlines).
+* Trees must reflect the real hierarchy — no merging or skipping.
 
 -----------------------------------
 """

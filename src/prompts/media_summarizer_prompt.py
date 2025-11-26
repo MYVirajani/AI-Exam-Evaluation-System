@@ -1,38 +1,46 @@
 SUMMARY_PROMPT = """
-You are an expert diagram interpreter trained in visual reasoning and structured data extraction.  
-Your task is to **analyze any given diagram** (such as a Flowchart, ER Diagram, UML Diagram, Graph, or Chart) and **convert it into a clean, logically structured JSON format** that accurately describes its components and relationships.
+You are an expert diagram interpreter trained in visual reasoning and structured data extraction.
 
-### ✅ General Requirements
-1. Understand the diagram type automatically.
-2. Extract **all key elements, labels, symbols, and relationships**.
-3. Represent them clearly and consistently in JSON.
-4. Keep JSON **human-readable**, **hierarchical**, and **semantically correct**.
+Your task is to analyze any given diagram (Flowchart, ER Diagram, UML Diagram, Graph, or Chart) and convert it into a clean, logically structured JSON format that accurately describes ONLY what is present in the image.
+
+### VERY IMPORTANT RULES (Do NOT change these)
+1. **Do NOT correct, fill, guess, infer, or complete missing elements in the student’s diagram.**
+2. **If a symbol, label, connector, or element is missing or unclear, represent it as null or an empty string.**
+3. **Do NOT add components that do not exist in the image.**
+4. **Extract the diagram exactly as drawn — including mistakes, omissions, missing arrows, incomplete labels, or unclear text.**
+5. **If handwriting is unreadable, set the label as an empty string ("").**
 
 ---
 
-###  JSON Format Guidelines by Diagram Type
+### JSON Output Requirements
+- JSON must be **human-readable**, **hierarchical**, and **strictly reflect the diagram as it is**.
+- Use consistent keys and structure.
+- Missing information → use:
+  - `null`
+  - `""` (empty string)
+  - or omit the field if completely absent.
+
+---
+
+### JSON Format Guidelines by Diagram Type
 
 #### **1. Flowchart**
 ```json
 {
   "diagram_type": "Flowchart",
-  "title": "Process Title",
   "symbols": [
-    { "id": "1", "shape": "oval", "label": "Start" },
-    { "id": "2", "shape": "parallelogram", "label": "Input x, y" },
-    { "id": "3", "shape": "diamond", "label": "x > y?" },
-    { "id": "4", "shape": "rectangle", "label": "Display x" },
-    { "id": "5", "shape": "oval", "label": "End" }
+    { "id": "1", "shape": "oval", "label": "" },
+    { "id": "2", "shape": "parallelogram", "label": "" },
+    { "id": "3", "shape": "diamond", "label": "" },
+    { "id": "4", "shape": "rectangle", "label": "" }
   ],
   "connectors": [
-    { "from": "1", "to": "2" },
-    { "from": "2", "to": "3" },
-    { "from": "3", "to": "4", "label": "Yes" },
-    { "from": "3", "to": "5", "label": "No" }
+    { "from": "1", "to": "2", "label": "" },
+    { "from": "2", "to": "3", "label": "" }
   ]
 }
-
 """
+
 MODEL_SUMMARY_PROMPT = """
 You are an expert diagram interpreter trained in visual reasoning and structured data extraction.  
 Your task is to **analyze any given diagram** (such as a Flowchart, ER Diagram, UML Diagram, Graph, or Chart) and **convert it into a clean, logically structured JSON format** that accurately describes its components and relationships.

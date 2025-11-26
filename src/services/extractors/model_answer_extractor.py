@@ -65,9 +65,6 @@ class ModelAnswerExtractor:
 
         return self._flatten(
             answers_h,
-            module_code=meta.get("module_code"),
-            exam_year=meta.get("exam_year"),
-            exam_month=meta.get("exam_month")
         )
 
     # ----------------------------------------------------------
@@ -118,9 +115,6 @@ class ModelAnswerExtractor:
     def _flatten(
         self,
         nested: dict,
-        module_code: Optional[str],
-        exam_year: Optional[int],
-        exam_month: Optional[str]
     ) -> List[ModelAnswer]:
         """Flatten nested JSON into a list of ModelAnswer objects."""
         flat: List[ModelAnswer] = []
@@ -153,9 +147,6 @@ class ModelAnswerExtractor:
                     max_marks=node.get("marks"),
                     media_urls=media_urls,
                     media_summary=media_summary,
-                    module_code=module_code,
-                    exam_year=exam_year,
-                    exam_month=exam_month
                 ))
                 return
 

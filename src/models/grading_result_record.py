@@ -16,6 +16,7 @@ class GradingResultRecord:
     max_marks: float
     feedback: str      
     grading_method: GradingMethod
+    answer_source: str
     similarity_score: float = 0.0
     confidence_score: Optional[float] = None
     context_used: Optional[str] = None

@@ -98,7 +98,7 @@ class ImageSummarizer:
         if mode == "model":
             system_prompt = MODEL_SUMMARY_PROMPT.strip()
             user_context = (
-                f"Extract and describe the visible content of this model answer image in the domain of {domain}. "
+                f"Extract and describe the visible content of this image in the domain of {domain}. "
                 "Provide a clear, structured text representation of everything present — including written text, symbols, "
                 "labels, diagrams, and shapes — exactly as shown in the image, without adding, omitting, or interpreting any information. "
                 "Preserve terminology, equations, and diagram notations exactly as they appear. "
@@ -177,33 +177,3 @@ class ImageSummarizer:
             return None
 
 
-# ----------------------------------------------------------------------
-# Manual Testing (Run directly)
-# ----------------------------------------------------------------------
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Test image-to-text extraction using environment-based LLM config.")
-    parser.add_argument("--provider", required=True, choices=["openai", "gemini", "deepseek"], help="LLM provider key")
-    parser.add_argument("--image_path", required=True, help="Path to a local image file (e.g., ./sample.png)")
-    parser.add_argument("--mode", default="student", choices=["student", "model"], help="Type of image to process")
-    parser.add_argument("--domain", default="General", help="Academic domain (e.g., Physics, Civil Engineering)")
-    parser.add_argument("--guideline", default=None, help="Path to a text file with model guidelines")
-
-    args = parser.parse_args()
-
-    guideline_text = None
-    if args.guideline and os.path.exists(args.guideline):
-        with open(args.guideline, "r", encoding="utf-8") as f:
-            guideline_text = f.read()
-
-    summarizer = ImageSummarizer(args.provider)
-    summary = summarizer.summarize_image(
-        args.image_path,
-        mode=args.mode,
-        domain=args.domain,
-        guideline_text=guideline_text
-    )
-
-    print("\n🧠 IMAGE TEXT EXTRACTION RESULT\n" + "-" * 60)
-    print(summary or "❌ No result generated.")

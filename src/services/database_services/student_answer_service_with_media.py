@@ -38,6 +38,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
     # TABLE INITIALIZATION
     # ----------------------------------------------------------------------
     def _ensure_tables_exist(self):
+        print('Table name: ', {self.student_answer_table})
         """Ensure AI model–specific tables exist (with UUID PKs)."""
         create_query = f"""
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -257,6 +258,54 @@ ORDER BY a.question_number;
 
         except Exception as e:
             logger.error(f"❌ Failed to fetch answers for submission_id={submission_id}: {e}", exc_info=True)
+            self.rollback()
+            return []
+
+
+        # ----------------------------------------------------------------------
+    # FETCH ANSWERS IN THE SAME FORMAT USED BY EMBEDDING PIPELINE
+    # ----------------------------------------------------------------------
+    def fetch_answers_for_embedding(self, submission_id: str) -> List[tuple]:
+        """
+        Fetch student answers exactly in the structure required by
+        StudentAnswerVectorService.embed_and_store_student_answers():
+
+            [
+                (
+                    student_answer_id,
+                    submission_id,
+                    question_number,
+                    answer_text,
+                    [media_summary_1, media_summary_2, ...]
+                ),
+                ...
+            ]
+        """
+
+        query = f"""
+        SELECT 
+            sa.id AS student_answer_id,
+            sa.submission_id,
+            sa.question_number,
+            sa.answer_text,
+            ARRAY_REMOVE(ARRAY_AGG(sam.media_summary), NULL) AS media_summaries
+        FROM {self.student_answer_table} sa
+        LEFT JOIN {self.student_answer_media_table} sam
+            ON sa.id = sam.student_answer_id
+        WHERE sa.submission_id = %s
+        GROUP BY sa.id;
+        """
+
+        try:
+            self.cursor.execute(query, (submission_id,))
+            rows = self.cursor.fetchall()
+
+            logger.info(f"📦 fetch_answers_for_embedding → {len(rows)} answers retrieved for submission_id={submission_id}")
+
+            return rows
+
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch answers for embedding: {e}", exc_info=True)
             self.rollback()
             return []
 

@@ -56,7 +56,7 @@ python -m src.scripts.embed_model_answers --provider GoogleGemini --model gemini
 
 python -m src.scripts.embed_lecture_materials --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001 --module EE3350 --root data/Lecture_Materials
 
-python -m src.scripts.run_extract_and_save --provider gemini --folder data/Answer_Scripts
+python -m src.scripts.run_extract_and_save --provider gemini --folder src/data/updated_answer_scripts_docs/CS
 
 python -m src.scripts.embed_from_db --provider GoogleGemini --model models/embedding-001 --module_code EE3350 --year 2025 --month June
 

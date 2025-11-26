@@ -339,7 +339,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             return None
 
     # ------------------------------------------------------------------
-    # ✅ New Function: Get All Model Answers with Media
+    #  Get All Model Answers with Media
     # ------------------------------------------------------------------
     def get_model_answer_with_media(
         self,

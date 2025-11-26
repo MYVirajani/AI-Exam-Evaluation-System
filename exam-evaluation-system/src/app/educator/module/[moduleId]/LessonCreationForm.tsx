@@ -247,12 +247,12 @@ const LessonCreationForm: React.FC<LessonCreationFormProps> = ({
                 placeholder="Enter a descriptive lesson title..."
                 disabled={loading}
               />
-              {title.trim() && (
+              {/* {title.trim() && (
                 <p className="text-xs text-green-600 flex items-center gap-1">
                   <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                   Title looks good!
                 </p>
-              )}
+              )} */}
             </div>
 
             {/* File Upload Area */}

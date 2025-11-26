@@ -2,6 +2,7 @@ import logging
 from typing import List, Dict, Any, Union, Optional
 from dataclasses import asdict, is_dataclass
 from .base_relational_db import BaseRelationalDB
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ class GradingResultDB(BaseRelationalDB):
                 max_marks FLOAT,
                 feedback TEXT,
                 grading_method VARCHAR(100),
+                answer_source TEXT,
                 similarity_score FLOAT,
                 context_used TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -79,9 +81,15 @@ class GradingResultDB(BaseRelationalDB):
                     "max_marks": getattr(record, "max_marks", None),
                     "feedback": getattr(record, "feedback", None),
                     "grading_method": getattr(record, "grading_method", None),
+                    "answer_source": getattr(record, "answer_source", None),
                     "similarity_score": getattr(record, "similarity_score", None),
                     "context_used": getattr(record, "context_used", None),
                 }
+
+            # Convert any Enum fields to strings
+            for key, value in record.items():
+                if isinstance(value, Enum):
+                    record[key] = value.value
 
             # Validate essential fields
             if not record.get("submission_id") or not record.get("question_number"):
@@ -96,6 +104,7 @@ class GradingResultDB(BaseRelationalDB):
                     max_marks,
                     feedback,
                     grading_method,
+                    answer_source,
                     similarity_score,
                     context_used
                 )
@@ -106,6 +115,7 @@ class GradingResultDB(BaseRelationalDB):
                     %(max_marks)s,
                     %(feedback)s,
                     %(grading_method)s,
+                    %(answer_source)s,
                     %(similarity_score)s,
                     %(context_used)s
                 )
@@ -115,6 +125,7 @@ class GradingResultDB(BaseRelationalDB):
                     max_marks = EXCLUDED.max_marks,
                     feedback = EXCLUDED.feedback,
                     grading_method = EXCLUDED.grading_method,
+                    answer_source = EXCLUDED.answer_source,
                     similarity_score = EXCLUDED.similarity_score,
                     context_used = EXCLUDED.context_used,
                     updated_at = CURRENT_TIMESTAMP;
@@ -179,6 +190,7 @@ class GradingResultDB(BaseRelationalDB):
                     max_marks,
                     feedback,
                     grading_method,
+                    answer_source,
                     similarity_score,
                     context_used,
                     updated_at
@@ -196,9 +208,10 @@ class GradingResultDB(BaseRelationalDB):
                     "max_marks": float(r[3]) if r[3] is not None else None,
                     "feedback": r[4],
                     "grading_method": r[5],
-                    "similarity_score": float(r[6]) if r[6] is not None else None,
-                    "context_used": r[7],
-                    "updated_at": r[8],
+                    "answer_source": r[6],
+                    "similarity_score": float(r[7]) if r[7] is not None else None,
+                    "context_used": r[8],
+                    "updated_at": r[9],
                 }
                 for r in rows
             ]

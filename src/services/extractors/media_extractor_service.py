@@ -1,142 +1,230 @@
 import os
+import re
+import html
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
+from urllib.parse import urlparse
+from PIL import Image
 from docx import Document
 from docx.oxml import parse_xml
 from docx.oxml.ns import qn
-from docx2pdf import convert
-import logging
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+from lxml import etree
+import shutil
 
 
 class MediaExtractorService:
     """
-    Service for extracting images and tables from a .docx file,
-    saving them in the same folder, updating references inside the document,
-    and converting it to PDF.
+    Service for:
+        - Extracting images from Word documents
+        - Converting tables → LaTeX
+        - Converting equations → LaTeX
+        - Replacing placeholders inside document
+        - Saving updated Word document
+        - Ensuring extracted_media folder is created/reset properly
+        - Returning extracted media URLs
     """
 
     def __init__(self):
-        logger.info("✅ MediaExtractorService initialized.")
+        pass
 
-    # -----------------------------
-    # Internal helper methods
-    # -----------------------------
-    def _save_image(self, image_blob, folder_path, doc_basename, counter):
-        """Save image bytes as PNG in the same folder as the DOCX."""
-        image_name = f"{doc_basename}_img_{counter}.png"
-        image_path = os.path.join(folder_path, image_name)
+    # --------------------------------------------------------
+    # Ensure destination folder exists and is empty
+    # --------------------------------------------------------
+    def prepare_destination_folder(self, dest_folder: str):
+        if not os.path.exists(dest_folder):
+            os.makedirs(dest_folder, exist_ok=True)
+            return
+
+        for filename in os.listdir(dest_folder):
+            file_path = os.path.join(dest_folder, filename)
+            try:
+                os.remove(file_path)
+            except:
+                shutil.rmtree(file_path, ignore_errors=True)
+
+    # --------------------------------------------------------
+    # XML escaping helper
+    # --------------------------------------------------------
+    def xml_escape(self, text: str) -> str:
+        return (
+            text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&apos;")
+        )
+
+    # --------------------------------------------------------
+    # Save Extracted Image
+    # --------------------------------------------------------
+    def save_image(self, image_blob, file_basename, counter, destination_folder):
+        os.makedirs(destination_folder, exist_ok=True)
+        image_name = f"{file_basename}_img_{counter}.png"
+        image_path = os.path.join(destination_folder, image_name)
         image = Image.open(BytesIO(image_blob))
         image.save(image_path)
         return image_path
 
-    def _save_table_as_image(self, table, folder_path, doc_basename, counter):
-        """Convert a Word table to an image representation."""
+    # --------------------------------------------------------
+    # Convert Table → LaTeX
+    # --------------------------------------------------------
+    def table_to_latex(self, table):
         rows = []
         for row in table.rows:
-            cols = [cell.text.strip() for cell in row.cells]
-            rows.append(" | ".join(cols))
-        text = "\n".join(rows) or "(Empty Table)"
+            cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
+            rows.append(" & ".join(cells) + " \\\\")
+        num_cols = max(len(row.cells) for row in table.rows)
+        column_format = "|".join(["c"] * num_cols)
+        latex = (
+            "\\begin{tabular}{" + f"|{column_format}|" + "}\n"
+            "\\hline\n" + "\n\\hline\n".join(rows) +
+            "\n\\hline\n\\end{tabular}"
+        )
+        return latex
 
-        img_name = f"{doc_basename}_tbl_{counter}.png"
-        img_path = os.path.join(folder_path, img_name)
+    # --------------------------------------------------------
+    # Extract plain text from OMML
+    # --------------------------------------------------------
+    def extract_text_from_omml(self, xml_fragment: str) -> str:
+        xml_fragment = re.sub(r"<.*?>", "", xml_fragment)
+        xml_fragment = html.unescape(xml_fragment)
+        return xml_fragment.strip()
 
-        font = ImageFont.load_default()
-        lines = text.splitlines()
-        width = int(max(font.getlength(line) for line in lines) + 20)
-        height = int(15 * len(lines) + 20)
-        img = Image.new("RGB", (width, height), "white")
-        draw = ImageDraw.Draw(img)
-        y = 10
-        for line in lines:
-            draw.text((10, y), line, fill="black", font=font)
-            y += 15
-        img.save(img_path)
-        return img_path
+    # --------------------------------------------------------
+    # Convert OMML Equation → LaTeX
+    # --------------------------------------------------------
+    def omml_to_latex(self, omml_xml: str) -> str:
+        omml_xml = re.sub(r"\s+", " ", omml_xml)
 
-    # -----------------------------
-    # Core document processing
-    # -----------------------------
-    def process_docx(self, file_path):
+        # Fractions
+        omml_xml = re.sub(
+            r"<m:f>.*?<m:num>(.*?)</m:num>.*?<m:den>(.*?)</m:den>.*?</m:f>",
+            lambda m: f"\\frac{{{self.extract_text_from_omml(m.group(1))}}}{{{self.extract_text_from_omml(m.group(2))}}}",
+            omml_xml,
+        )
+
+        # Superscripts
+        omml_xml = re.sub(
+            r"<m:sSup>.*?<m:e>(.*?)</m:e>.*?<m:sup>(.*?)</m:sup>.*?</m:sSup>",
+            lambda m: f"{self.extract_text_from_omml(m.group(1))}^{{{self.extract_text_from_omml(m.group(2))}}}",
+            omml_xml,
+        )
+
+        # Subscripts
+        omml_xml = re.sub(
+            r"<m:sSub>.*?<m:e>(.*?)</m:e>.*?<m:sub>(.*?)</m:sub>.*?</m:sSub>",
+            lambda m: f"{self.extract_text_from_omml(m.group(1))}_{{{self.extract_text_from_omml(m.group(2))}}}",
+            omml_xml,
+        )
+
+        # Root
+        omml_xml = re.sub(
+            r"<m:rad>.*?<m:e>(.*?)</m:e>.*?</m:rad>",
+            lambda m: f"\\sqrt{{{self.extract_text_from_omml(m.group(1))}}}",
+            omml_xml,
+        )
+
+        clean_text = self.extract_text_from_omml(omml_xml)
+        return f"\\({clean_text}\\)"
+
+    # --------------------------------------------------------
+    # MAIN PROCESS FUNCTION (UPDATED)
+    # --------------------------------------------------------
+    def process_document(self, file_url: str, dest_folder: str):
         """
-        Processes a .docx file:
-          - Extracts images & tables.
-          - Saves them as PNGs in the same folder.
-          - Replaces them with placeholders in the doc.
-          - Saves an updated .docx & converts it to PDF.
-          - Returns the updated .docx absolute path.
+        Extract media, process Word doc, and return:
+          - updated .docx file path
+          - list of extracted media URLs
         """
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"❌ File not found: {file_path}")
 
-        if not file_path.lower().endswith(".docx"):
-            raise ValueError("❌ Only .docx files are supported.")
+        # Reset extracted_media folder
+        self.prepare_destination_folder(dest_folder)
 
-        folder_path = os.path.dirname(file_path)
-        basename = os.path.splitext(os.path.basename(file_path))[0]
+        # Load DOCX
+        doc = Document(file_url)
 
-        logger.info(f"📄 Processing file: {file_path}")
-        doc = Document(file_path)
+        basename = os.path.splitext(os.path.basename(file_url))[0]
+        file_directory = os.path.dirname(file_url)
+
         img_counter = 0
         tbl_counter = 0
+        eqn_counter = 0
 
-        # Process elements in reading order
+        extracted_media_urls = []   # <--- NEW LIST
+
         body_elements = list(doc.element.body)
 
         for element in body_elements:
             tag = element.tag
 
-            # ---- Table extraction ----
+            # ----------------------------------------------------
+            # TABLES
+            # ----------------------------------------------------
             if tag.endswith("tbl"):
                 tbl_counter += 1
                 for tbl in doc.tables:
                     if tbl._element is element:
-                        tbl_path = self._save_table_as_image(tbl, folder_path, basename, tbl_counter)
+                        latex_code = self.table_to_latex(tbl)
+                        safe_latex = self.xml_escape(latex_code)
                         parent = element.getparent()
                         idx = parent.index(element)
                         placeholder = parse_xml(
                             f'<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-                            f'<w:r><w:t>[Table: {os.path.basename(tbl_path)}]</w:t></w:r></w:p>'
+                            f'<w:r><w:t>{safe_latex}</w:t></w:r></w:p>'
                         )
                         parent.insert(idx + 1, placeholder)
                         parent.remove(element)
                         break
 
-            # ---- Image extraction ----
+            # ----------------------------------------------------
+            # PARAGRAPHS (images + equations)
+            # ----------------------------------------------------
             elif tag.endswith("p"):
-                paragraph = None
-                for p in doc.paragraphs:
-                    if p._element is element:
-                        paragraph = p
-                        break
+                paragraph = next((p for p in doc.paragraphs if p._element is element), None)
+                if not paragraph:
+                    continue
 
-                if paragraph:
-                    for run in paragraph.runs:
-                        blips = run.element.xpath(".//a:blip")
-                        if blips:
-                            img_counter += 1
-                            embed_rid = blips[0].get(qn("r:embed"))
-                            image_part = doc.part.related_parts[embed_rid]
-                            image_data = image_part.blob
-                            img_path = self._save_image(image_data, folder_path, basename, img_counter)
-                            run.text = f"[Image: {os.path.basename(img_path)}]"
-                            for blip in blips:
-                                blip.getparent().remove(blip)
+                # Extract images
+                for run in paragraph.runs:
+                    blips = run.element.xpath(".//a:blip")
+                    if blips:
+                        img_counter += 1
+                        embed_rid = blips[0].get(qn("r:embed"))
+                        image_part = doc.part.related_parts[embed_rid]
+                        image_data = image_part.blob
 
-        # ---- Save updated DOCX ----
-        updated_path = os.path.join(folder_path, f"updated_{basename}.docx")
+                        # SAVE IMAGE
+                        img_path = self.save_image(image_data, basename, img_counter, dest_folder)
+
+                        # ADD TO RETURN LIST
+                        extracted_media_urls.append(img_path)
+
+                        # Replace in document
+                        run.text = f"[Image: {img_path}]"
+
+                        for blip in blips:
+                            blip.getparent().remove(blip)
+
+                # Extract OMML equations
+                math_elems = paragraph._element.xpath(".//m:oMath | .//m:oMathPara")
+                for math_elem in math_elems:
+                    eqn_counter += 1
+                    eqn_xml = etree.tostring(math_elem, encoding="unicode")
+                    latex_code = self.omml_to_latex(eqn_xml)
+                    safe_latex = self.xml_escape(latex_code)
+
+                    math_elem.getparent().replace(
+                        math_elem,
+                        parse_xml(
+                            f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                            f'<w:t>{safe_latex}</w:t></w:r>'
+                        ),
+                    )
+
+        # --------------------------------------------------------
+        # SAVE UPDATED DOCX
+        # --------------------------------------------------------
+        updated_path = os.path.join(file_directory, f"{basename}_updated.docx")
         doc.save(updated_path)
-        logger.info(f"✅ Saved updated Word file: {updated_path}")
 
-        # ---- Convert to PDF ----
-        pdf_path = os.path.join(folder_path, f"{basename}.pdf")
-        try:
-            convert(updated_path, pdf_path)
-            logger.info(f"📘 Converted to PDF: {pdf_path}")
-        except Exception as e:
-            logger.warning(f"⚠️ PDF conversion failed: {e}")
-
-        logger.info(f"📊 Extracted {img_counter} images, {tbl_counter} tables.")
-        return os.path.abspath(updated_path)
+        # NEW: Return media URLs
+        return updated_path, extracted_media_urls

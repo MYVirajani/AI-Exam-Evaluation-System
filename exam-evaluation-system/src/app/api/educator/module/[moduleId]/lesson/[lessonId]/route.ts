@@ -8,8 +8,7 @@ export async function DELETE(
   const { lessonId } = params;
   console.log('[DELETE] Incoming request to delete lesson:', lessonId);
 
-  // Simulated user_id of currently logged-in educator (replace this with real logic)
-  const currentUserId = req.headers.get('userId'); // e.g., from middleware or auth
+  const currentUserId = req.headers.get('userId'); 
   console.log('[DELETE] Extracted currentUserId from headers:', currentUserId);
 
   if (!currentUserId) {
@@ -59,7 +58,7 @@ export async function DELETE(
     }
 
     console.log('[DELETE] Deleting associated lecture materials...');
-    await prisma.lectureMaterial.deleteMany({
+    await prisma.lecture_Material.deleteMany({
       where: { lesson_id: lessonId },
     });
 

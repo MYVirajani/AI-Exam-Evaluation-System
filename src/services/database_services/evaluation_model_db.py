@@ -13,11 +13,11 @@ class EvaluationModelService(BaseRelationalDB):
 
     def get_model_config(self, model_id: str):
         """
-        Fetch model configuration from Evaluation_Model by model_id.
+        Fetch model configuration from Evaluation_Model by id.
 
         Returns:
             dict -> {
-                "model_id": str,
+                "id": str,
                 "provider": str,
                 "chat_model": str,
                 "embedding_model": str,
@@ -28,12 +28,19 @@ class EvaluationModelService(BaseRelationalDB):
 
         try:
             query = """
-                SELECT model_id, provider, chat_model, embedding_model, temperature, model_name
+                SELECT 
+                    id,
+                    provider,
+                    chat_model,
+                    embedding_model,
+                    temperature,
+                    model_name
                 FROM "Evaluation_Model"
-                WHERE model_id = %s
+                WHERE id = %s
                 LIMIT 1;
             """
 
+            # FIXED: pass model_id instead of undefined id
             self.cursor.execute(query, (model_id,))
             row = self.cursor.fetchone()
 
@@ -42,7 +49,7 @@ class EvaluationModelService(BaseRelationalDB):
                 return None
 
             result = {
-                "model_id": row[0],
+                "id": row[0],
                 "provider": row[1],
                 "chat_model": row[2],
                 "embedding_model": row[3],
@@ -54,5 +61,5 @@ class EvaluationModelService(BaseRelationalDB):
             return result
 
         except Exception as e:
-            logger.error(f"Failed to get model config for {model_id}: {e}")
+            logger.error(f"Failed to get model config for model_id {model_id}: {e}")
             raise

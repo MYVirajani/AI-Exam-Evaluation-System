@@ -9,29 +9,27 @@ from src.services.database_services.lecture_material_db_service import LectureMa
 from src.services.database_services.lecture_material_vector_db_service import LectureMaterialVectorDBService
 from src.services.extractors.media_extractor_service import MediaExtractorService
 from src.services.summary.image_summarise_service import ImageSummarizer
+from src.services.extractors.content_extractor_service import ContentExtractorService  
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+
+# ---------------------------------------------------------
+# Replace image tags
+# ---------------------------------------------------------
 def replace_image_tags_in_docx(docx_path: str, media_items: list) -> list:
-    """
-    For each item in media_items (dict with keys: media_url, media_summary),
-    attempt to replace occurrences of "[Image: {media_url}]" in the DOCX paragraphs and table cells.
-    Returns list of media_items that were NOT matched (to be appended at end).
-    """
     if not os.path.exists(docx_path):
         raise FileNotFoundError(f"DOCX not found: {docx_path}")
 
     doc = Document(docx_path)
     unmatched = []
-    # Precompute patterns to search for exact substring occurrences
-    # We'll treat media_url as literal inside the bracket
+
     for media in media_items:
         media['matched'] = False
 
-    # Helper to process paragraphs (works for paragraphs and table cell paragraphs)
     def process_paragraphs(paragraphs):
         for p in paragraphs:
             text = p.text
@@ -40,58 +38,43 @@ def replace_image_tags_in_docx(docx_path: str, media_items: list) -> list:
             for media in media_items:
                 pattern = f"[Image: {media['media_url']}]"
                 if pattern in text:
-                    # Replace all occurrences inside this paragraph
                     new_text = text.replace(pattern, media.get('media_summary') or "")
                     p.text = new_text
                     media['matched'] = True
-                    # update text reference in case multiple media are in same paragraph
                     text = new_text
 
-    # Process top-level paragraphs
     process_paragraphs(doc.paragraphs)
 
-    # Process tables (cells)
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 process_paragraphs(cell.paragraphs)
 
-    # Collect unmatched media items
     for media in media_items:
         if not media.get('matched', False):
             unmatched.append(media)
 
-    # If there are unmatched summaries, append them at the end under heading "Image Summaries"
     if unmatched:
         doc.add_page_break()
         doc.add_paragraph("Image Summaries:")
         for media in unmatched:
             summary = media.get('media_summary') or ""
-            # put the media_url label and the summary
             p = doc.add_paragraph()
             p.add_run(f"{media['media_url']}: ").bold = True
             p.add_run(summary)
 
-    # Save the updated docx back to same path (overwrite)
     doc.save(docx_path)
     return unmatched
 
 
+# ---------------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------------
 def extract_media_for_lesson(lesson_id: str, model_id: str):
-    """
-    Steps:
-        1. Get lecture materials for lesson_id
-        2. Extract media
-        3. Summarize using selected provider (model_id)
-        4. Save media summary in DB with model_id = provider
-        5. If media_extracted_file_url not null -> fetch media list for the lesson,
-           replace [Image: media_url] tokens in extracted docx with corresponding media_summary,
-           append unmatched summaries, save docx
-        6. Generate embeddings for the updated docx and insert into vector DB
-    """
     db = LectureMaterialDBService()
     extractor = MediaExtractorService()
     summarizer = ImageSummarizer(model_id)
+    content_extractor = ContentExtractorService()  # For PDF, PPTX, DOCX, TXT
 
     logger.info(f"🔍 Fetching lecture materials for lesson: {lesson_id}")
     lecture_materials = db.fetch_lecture_materials_by_lesson(lesson_id)
@@ -101,13 +84,19 @@ def extract_media_for_lesson(lesson_id: str, model_id: str):
         db.close()
         return
 
-    # Initialize vector DB service (we will use same model_id to build embedder)
+    # Init vector DB
     try:
         vector_service = LectureMaterialVectorDBService(model_id=model_id)
+        print(f"Using vector service with model_id: {model_id}")
+        logger.info("✅ Vector service initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize LectureMaterialVectorDBService: {e}")
+        logger.error(f"❌ Failed to initialize vector service: {e}")
         vector_service = None
 
+
+    # ---------------------------------------------------------
+    # PROCESS EACH MATERIAL
+    # ---------------------------------------------------------
     for material in lecture_materials:
         (
             lecture_material_id,
@@ -129,7 +118,7 @@ def extract_media_for_lesson(lesson_id: str, model_id: str):
         parent_folder = os.path.dirname(file_url)
         extracted_dest = os.path.join(parent_folder, "extracted_media")
 
-        # extract media from file (DOCX -> images extracted)
+        # extract media (images)
         try:
             updated_doc_path, extracted_media_paths = extractor.process_document(file_url, extracted_dest)
             logger.info(f"✅ Updated DOCX Created: {updated_doc_path}")
@@ -137,10 +126,7 @@ def extract_media_for_lesson(lesson_id: str, model_id: str):
             logger.error(f"❌ Failed to extract media from {file_url}: {e}")
             continue
 
-        # ----------------------------------------------------
-        # SAVE extracted media URLs + SUMMARIES into DB
-        # ----------------------------------------------------
-        saved_any_media = False
+        # Save extracted media + summaries
         if extracted_media_paths:
             logger.info(f"🖼 Saving {len(extracted_media_paths)} extracted media items...")
 
@@ -152,10 +138,7 @@ def extract_media_for_lesson(lesson_id: str, model_id: str):
                         mode="model",
                         domain="Engineering"
                     )
-                    if summary_text:
-                        logger.info("   → Summary generated successfully")
-                    else:
-                        logger.warning("   → No summary generated")
+                    if not summary_text:
                         summary_text = None
 
                     db.insert_media(
@@ -164,83 +147,99 @@ def extract_media_for_lesson(lesson_id: str, model_id: str):
                         media_url=media_path,
                         media_summary=summary_text
                     )
-                    saved_any_media = True
                     logger.info(f"   → Inserted media: {media_path}")
 
                 except Exception as e:
                     logger.error(f"❌ Failed inserting media {media_path}: {e}")
 
-        # ----------------------------------------------------
-        # Update lecture_material.extracted_file_url (DB)
-        # ----------------------------------------------------
+        # Update extracted_file_url
         try:
             db.update_extracted_file_path(lecture_material_id, updated_doc_path)
-            logger.info(f"📌 Updated DB: extracted_file_url = {updated_doc_path}")
         except Exception as e:
             logger.error(f"❌ Failed to update extracted_file_url: {e}")
 
-        # ----------------------------------------------------
-        # If extracted_file_url exists -> fetch media summaries for this lesson
-        # and replace [Image: media_url] tokens with summaries
-        # ----------------------------------------------------
+        # Replace [Image: ...] tags
         try:
             if updated_doc_path and os.path.exists(updated_doc_path):
-                # fetch all lecture_material entries for this lesson with their media
                 full_data = db.get_full_material_data_by_lesson_ids([lesson_id])
-                # find the entry for current lecture_material_id
-                current_entry = None
-                for entry in full_data:
-                    if str(entry["lecture_material_id"]) == str(lecture_material_id):
-                        current_entry = entry
-                        break
+                current_entry = next(
+                    (entry for entry in full_data if str(entry["lecture_material_id"]) == str(lecture_material_id)),
+                    None
+                )
 
                 if current_entry:
                     media_items = current_entry.get("media", [])
                     if media_items:
-                        # replace tokens in the docx. This function also appends unmatched summaries.
                         unmatched = replace_image_tags_in_docx(updated_doc_path, media_items)
                         if unmatched:
-                            logger.info(f"   → {len(unmatched)} media summaries appended at end for {updated_doc_path}")
-                        else:
-                            logger.info(f"   → All media tags replaced in {updated_doc_path}")
-                    else:
-                        logger.info(f"   → No media rows found for lecture_material_id={lecture_material_id}")
+                            logger.info(f"→ {len(unmatched)} media summaries appended")
                 else:
-                    logger.warning(f"   → Could not find lecture material entry for id={lecture_material_id} in full_data")
-            else:
-                logger.warning(f"   → Extracted DOCX not present for lecture_material_id={lecture_material_id}")
+                    logger.warning(f"No full data entry found for {lecture_material_id}")
 
         except Exception as e:
-            logger.error(f"❌ Failed to replace image tags in docx for {lecture_material_id}: {e}")
+            logger.error(f"❌ Failed to replace image tags: {e}")
 
-        # ----------------------------------------------------
-        # Generate embeddings for the updated docx and insert into vector DB
-        # ----------------------------------------------------
-        if vector_service:
-            try:
-                # NOTE: lecturer_id set to "unknown" — replace if you have a real lecturer id
-                lecturer_id = "unknown"
-                module_id = lesson_id
-                logger.info(f"🔗 Generating & storing embeddings for lecture_material_id={lecture_material_id}")
-                vector_service.generate_and_store_embeddings(
-                    lecturer_id=lecturer_id,
-                    module_id=module_id,
-                    lecture_material_id=str(lecture_material_id),
-                    file_path=updated_doc_path
-                )
-            except Exception as e:
-                logger.error(f"❌ Failed to generate/store embeddings: {e}")
+    # --------------------------------------------------------------------
+    # 🔥 NEW LOGIC ADDED — ALWAYS GENERATE VECTOR EMBEDDINGS
+    # --------------------------------------------------------------------
+    logger.info("\n📌 Fetching materials again for embedding generation...")
 
-    # close DBs
+    updated_materials = db.fetch_lecture_materials_by_lesson(lesson_id)
+
+    for material in updated_materials:
+        (
+            lecture_material_id,
+            lesson_id,
+            file_name,
+            file_url,
+            extracted_file_url,
+            created_on,
+            updated_on,
+            description
+        ) = material
+
+        final_path = extracted_file_url if extracted_file_url else file_url
+
+        if not os.path.exists(final_path):
+            logger.error(f"❌ Final file not found for embedding: {final_path}")
+            continue
+
+        logger.info(f"📝 Extracting text for embeddings from: {final_path}")
+
+        try:
+            full_text = content_extractor.extract_text(final_path)
+            print(f"Extracted text length: {len(full_text)} characters")
+            logger.info(f"✅ Text extraction completed for {final_path}")
+        except Exception as e:
+            logger.error(f"❌ Failed extracting text from {final_path}: {e}")
+            continue
+
+        if not full_text or full_text.strip() == "":
+            logger.warning(f"⚠️ No text extracted for {lecture_material_id}, skipping embedding")
+            continue
+
+        # Save embeddings
+        try:
+            vector_service.save_lecture_material(
+                lecture_material_id=str(lecture_material_id),
+                full_content=full_text
+            )
+            logger.info(f"✅ Embeddings saved for lecture_material_id={lecture_material_id}")
+        except Exception as e:
+            logger.error(f"❌ Failed saving embeddings: {e}")
+
+    # ---------------------------------------------------------
+    # CLOSE CONNECTIONS
+    # ---------------------------------------------------------
     try:
         db.close()
-    except Exception:
+    except:
         pass
 
     if vector_service:
         try:
             vector_service.close()
-        except Exception:
+        except:
             pass
 
     logger.info("\n🎉 Media extraction + summarization + DB update + embeddings completed!\n")

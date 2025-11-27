@@ -24,16 +24,25 @@ class LectureMaterialDBService(BaseRelationalDB):
             file_name TEXT,
             file_url TEXT NOT NULL,
             media_extracted_file_url TEXT,
+            created_by VARCHAR(255),
             created_on TIMESTAMPTZ DEFAULT NOW(),
             updated_on TIMESTAMPTZ DEFAULT NOW(),
-            description TEXT
+            description TEXT,
+
+            CONSTRAINT fk_lesson
+                FOREIGN KEY (lesson_id)
+                REFERENCES "Lesson"(lesson_id),
+
+            CONSTRAINT fk_educator
+                FOREIGN KEY (created_by)
+                REFERENCES "Educator"(user_id)
         );
         """
 
         lecture_material_media_table = """
         CREATE TABLE IF NOT EXISTS lecture_material_media (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            model_id VARCHAR(255),
+            model_id UUID,
             lecture_material_id UUID NOT NULL,
             media_url TEXT NOT NULL,
             media_summary TEXT,
@@ -43,7 +52,11 @@ class LectureMaterialDBService(BaseRelationalDB):
             CONSTRAINT fk_lecture_material
                 FOREIGN KEY (lecture_material_id)
                 REFERENCES "Lecture_Material"(id)
-                ON DELETE CASCADE
+                ON DELETE CASCADE,
+
+            CONSTRAINT fk_evaluation_model
+                FOREIGN KEY (model_id)
+                REFERENCES "Evaluation_Model"(id)
         );
 
         CREATE INDEX IF NOT EXISTS idx_lmm_lecture_material_id 
@@ -64,19 +77,31 @@ class LectureMaterialDBService(BaseRelationalDB):
     # ----------------------------------------------------
     # INSERT LECTURE MATERIAL
     # ----------------------------------------------------
-    def insert_lecture_material(self, lesson_id, file_name, file_url, media_extracted_file_url=None, description=None):
+    def insert_lecture_material(self, lesson_id, file_name, file_url,
+                                media_extracted_file_url=None, description=None, created_by=None):
         sql = """
         INSERT INTO "Lecture_Material"
-        (lesson_id, file_name, file_url, media_extracted_file_url, description)
-        VALUES (%s, %s, %s, %s, %s)
+        (lesson_id, file_name, file_url, media_extracted_file_url, description, created_by)
+        VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING id;
         """
 
         try:
-            self.cursor.execute(sql, (lesson_id, file_name, file_url, media_extracted_file_url, description))
+            self.cursor.execute(
+                sql,
+                (
+                    lesson_id,
+                    file_name,
+                    file_url,
+                    media_extracted_file_url,
+                    description,
+                    created_by
+                )
+            )
             lecture_material_id = self.cursor.fetchone()[0]
             self.commit()
             return lecture_material_id
+
         except Exception as e:
             logger.error(f"Error inserting lecture material: {e}")
             raise
@@ -105,7 +130,6 @@ class LectureMaterialDBService(BaseRelationalDB):
                         updated_on = NOW()
                     WHERE id = %s;
                 """
-
                 self.cursor.execute(update_sql, (media_summary, media_id))
                 self.conn.commit()
 
@@ -113,6 +137,7 @@ class LectureMaterialDBService(BaseRelationalDB):
                 return media_id
 
             media_id = str(uuid.uuid4())
+
             insert_sql = """
                 INSERT INTO lecture_material_media (
                     id,
@@ -217,14 +242,9 @@ class LectureMaterialDBService(BaseRelationalDB):
             raise
 
     # ----------------------------------------------------
-    # FETCH FULL DATA FOR MULTIPLE LESSON IDs (WITH OPTIONAL MEDIA ID FILTER)
+    # FETCH FULL DATA FOR MULTIPLE LESSON IDs
     # ----------------------------------------------------
     def get_full_material_data_by_lesson_ids(self, lesson_ids: list, media_ids: list = None):
-        """
-        Returns full material & media summary details for given lesson_ids.
-        Optionally filters by media_id if media_ids is provided.
-        """
-
         sql = """
         SELECT 
             lm.id AS lecture_material_id,

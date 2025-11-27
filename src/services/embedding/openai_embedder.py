@@ -9,32 +9,56 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAIEmbedder(AbstractEmbedder):
-    def __init__(self, embedding_model: str = None, provider_suffix="openai"):
+    def __init__(self, model_id: str = None):
         """
-        Initialize OpenAI Embedder.
+        Initialize embedder. 
+        Priority order for selecting embedding_model:
 
-        Args:
-            embedding_model (str): Override embedding model name.
-                                   If None → read from env (OPENAI_EMBEDDING_MODEL).
-            provider_suffix (str): Suffix for DB table naming.
+        1. If model_id provided → fetch from Evaluation_Model table
+        2. Else → use OPENAI_EMBEDDING_MODEL env variable
+        3. Else → fallback "text-embedding-3-small"
         """
 
-        # Runtime override → env → default
+        from src.services.database_services.evaluation_model_db import EvaluationModelService
+
+        # --------------------------------------
+        # 1. Fetch embedding_model from DB
+        # --------------------------------------
+        db_model_name = None
+        if model_id:
+            try:
+                config = EvaluationModelService().get_model_config(model_id)
+                if config:
+                    db_model_name = config.get("embedding_model")
+                    provider = config.get("provider")
+                else:
+                    logger.warning(f"⚠️ Model ID '{model_id}' not found in DB. Using fallback model.")
+            except Exception as e:
+                logger.error(f"❌ Failed to fetch model config for model_id={model_id}: {e}")
+
+        # --------------------------------------
+        # 2. Pick embedding model with priority
+        # --------------------------------------
         self.model_name = (
-            embedding_model
-            or os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+            db_model_name
+            or os.getenv("OPENAI_EMBEDDING_MODEL")
+            or "text-embedding-3-small"
         )
 
-        self.provider_suffix = provider_suffix
+        # --------------------------------------
+        # 3. Read API key
+        # --------------------------------------
         self.api_key = os.getenv("OPENAI_API_KEY")
-
         if not self.api_key:
             raise ValueError("❌ Missing OPENAI_API_KEY in environment variables.")
 
+        # --------------------------------------
+        # 4. Initialize OpenAI client
+        # --------------------------------------
         self.client = OpenAI(api_key=self.api_key)
 
         logger.info(
-            f"🔹 Initialized OpenAIEmbedder: model={self.model_name}, suffix={provider_suffix}"
+            f"🔹 Initialized OpenAIEmbedder | model_id={model_id} | embedding_model={self.model_name}"
         )
 
     # -----------------------------------------------------------
@@ -49,7 +73,7 @@ class OpenAIEmbedder(AbstractEmbedder):
                 input=cleaned_texts,
                 model=self.model_name
             )
-            return [r.embedding for r in response.data]
+            return [item.embedding for item in response.data]
 
         except Exception as e:
             logger.exception(f"❌ Error during embedding: {e}")
@@ -60,8 +84,8 @@ class OpenAIEmbedder(AbstractEmbedder):
         return self.model_name
 
     def get_embedding_dimension(self):
-        # OpenAI models currently return 1536 dimensions
+        # If needed, load dimension based on model_name
+        # text-embedding-3-small = 1536
         return 1536
-
     def get_table_suffix(self) -> str:
-        return self.provider_suffix
+        return "openai"

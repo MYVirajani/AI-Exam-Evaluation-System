@@ -13,40 +13,61 @@ load_dotenv()
 
 class GeminiEmbedder(AbstractEmbedder):
     """
-    Wrapper for Google Gemini embedding API.
-    Uses passed embedding model if provided;
-    otherwise reads from .env(GEMINI_EMBEDDING_MODEL).
+    Gemini Embedder that loads embedding model from DB using model_id.
+    Fallback priority:
+       DB → ENV → default ("models/embedding-001")
     """
 
-    def __init__(self, embedding_model: Optional[str] = None):
-        """
-        :param embedding_model: Override for embedding model. 
-                                If None → fallback to env variable.
-        """
-        # Allow runtime selection of embedding model
-        self.model_name = embedding_model or os.getenv(
-            "GEMINI_EMBEDDING_MODEL",
-            "models/embedding-001"
-        )
-        print('embedding_model: ', embedding_model)
+    def __init__(self, model_id: Optional[str] = None):
+        from src.services.database_services.evaluation_model_db import EvaluationModelService
 
-        # Read embedding dimension (default 768)
+        db_model_name = None
+        db_dim = None
+
+        # ------------------------------------------------------
+        # 1. Fetch config from DB
+        # ------------------------------------------------------
+        if model_id:
+            try:
+                config = EvaluationModelService().get_model_config(model_id)
+                if config:
+                    db_model_name = config.get("embedding_model")
+                    # You can store embedding dimension in DB if needed
+                else:
+                    logger.warning(f"⚠️ No model found for model_id={model_id}. Using fallback.")
+            except Exception as e:
+                logger.error(f"❌ Failed to fetch model config for model_id={model_id}: {e}")
+
+        # ------------------------------------------------------
+        # 2. Determine embedding model (priority: DB → ENV → default)
+        # ------------------------------------------------------
+        self.model_name = (
+            db_model_name
+            or os.getenv("GEMINI_EMBEDDING_MODEL")
+            or "models/embedding-001"
+        )
+
+        # ------------------------------------------------------
+        # 3. Determine dimension (priority: DB → ENV → default 768)
+        # ------------------------------------------------------
         dim_str = os.getenv("GEMINI_EMBEDDING_DIMENSION", "768")
         try:
-            self.embedding_dimension = int(dim_str)
-        except ValueError:
-            logger.warning(
-                f"⚠️ Invalid GEMINI_EMBEDDING_DIMENSION='{dim_str}', defaulting to 768"
-            )
+            self.embedding_dimension = int(db_dim) if db_dim else int(dim_str)
+        except Exception:
+            logger.warning(f"⚠️ Invalid embedding dimension. Defaulting to 768.")
             self.embedding_dimension = 768
 
+        # ------------------------------------------------------
+        # 4. API key
+        # ------------------------------------------------------
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise RuntimeError("❌ GOOGLE_API_KEY not set in environment")
 
         genai.configure(api_key=api_key)
+
         logger.info(
-            f"🔹 GeminiEmbedder initialized: model={self.model_name}, dim={self.embedding_dimension}"
+            f"🔹 GeminiEmbedder initialized | model_id={model_id} | model={self.model_name} | dim={self.embedding_dimension}"
         )
 
     # ---------------------------------------------------------------
@@ -58,6 +79,7 @@ class GeminiEmbedder(AbstractEmbedder):
             return []
 
         vectors = []
+
         for text in cleaned_texts:
             try:
                 result = genai.embed_content(
@@ -65,11 +87,12 @@ class GeminiEmbedder(AbstractEmbedder):
                     content=text,
                     task_type="retrieval_document"
                 )
+
                 embedding = self._extract_embedding(result)
 
                 if len(embedding) != self.embedding_dimension:
                     logger.warning(
-                        f"⚠️ Embedding dimension mismatch: got {len(embedding)}, expected {self.embedding_dimension}. Adjusting..."
+                        f"⚠️ Dimension mismatch: got {len(embedding)}, expected {self.embedding_dimension}"
                     )
                     embedding = self._adjust_dimension(embedding)
 
@@ -78,6 +101,7 @@ class GeminiEmbedder(AbstractEmbedder):
             except Exception as e:
                 logger.exception(f"❌ Error embedding text: {e}")
                 vectors.append([0.0] * self.embedding_dimension)
+
         return vectors
 
     # ---------------------------------------------------------------
@@ -85,7 +109,7 @@ class GeminiEmbedder(AbstractEmbedder):
         """Extract embedding vector from Gemini API response."""
         try:
             if hasattr(result, "embedding"):
-                emb = getattr(result, "embedding")
+                emb = result.embedding
                 if hasattr(emb, "values"):
                     return self._to_1d_vector(emb.values)
                 return self._to_1d_vector(emb)
@@ -110,29 +134,22 @@ class GeminiEmbedder(AbstractEmbedder):
                 return self._to_1d_vector(result)
 
             raise ValueError("Invalid Gemini embedding response format")
+
         except Exception as e:
             logger.error(f"❌ Failed to extract embedding: {e}")
-            raise ValueError(
-                "Invalid embedding format: missing 'embedding' key or numeric sequence"
-            )
+            raise ValueError("Invalid embedding format received from Gemini API")
 
     # ---------------------------------------------------------------
     def _to_1d_vector(self, embedding):
-        """Ensure embedding is a flat list of floats."""
+        """Convert embedding to a flat float list."""
         if hasattr(embedding, "values"):
             embedding = embedding.values
-        elif hasattr(embedding, "embedding"):
-            embedding = embedding.embedding
-            if hasattr(embedding, "values"):
-                embedding = embedding.values
 
         if isinstance(embedding, (list, tuple, np.ndarray)):
             arr = np.array(embedding, dtype=float).flatten()
             return arr.tolist()
 
-        raise ValueError(
-            f"Embedding cannot be converted to 1D vector: {type(embedding)}"
-        )
+        raise ValueError(f"Cannot convert embedding to list: {type(embedding)}")
 
     # ---------------------------------------------------------------
     def _adjust_dimension(self, embedding):
@@ -141,8 +158,8 @@ class GeminiEmbedder(AbstractEmbedder):
         if len(arr) > self.embedding_dimension:
             return arr[:self.embedding_dimension].tolist()
         if len(arr) < self.embedding_dimension:
-            padded = np.pad(arr, (0, self.embedding_dimension - len(arr)))
-            return padded.tolist()
+            padding = np.pad(arr, (0, self.embedding_dimension - len(arr)))
+            return padding.tolist()
         return arr.tolist()
 
     # ---------------------------------------------------------------

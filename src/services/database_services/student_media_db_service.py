@@ -10,21 +10,17 @@ logging.basicConfig(level=logging.INFO)
 
 class StudentMediaDBService(BaseRelationalDB):
     """
-    Database service to handle fetching and updating student_answer_media_<ai_model> records.
-    Each AI model has its own set of student_answer and student_answer_media tables.
-    Example:
-      - student_answer_openai
-      - student_answer_media_openai
+    Database service to handle fetching and updating student_answer_media records.
+    Now supports optional filtering by model_id.
     """
 
     # ----------------------------------------------------------------------
     # INIT
     # ----------------------------------------------------------------------
-    def __init__(self, ai_model: str = "openai"):
+    def __init__(self, model_id: str = None):
         super().__init__()
-        self.ai_model = ai_model.lower().replace("-", "_").replace(".", "_")
-        self.student_answer_table = f"student_answer_{self.ai_model}"
-        self.student_answer_media_table = f"student_answer_media_{self.ai_model}"
+        self.student_answer_table = '"Student_Answer"'
+        self.student_answer_media_table = '"Student_Answer_Media"'
         self._ensure_tables_exist()
         logging.info(f"[DB] Using tables: {self.student_answer_table}, {self.student_answer_media_table}")
 
@@ -32,7 +28,7 @@ class StudentMediaDBService(BaseRelationalDB):
     # CREATE TABLES IF NOT EXISTS
     # ----------------------------------------------------------------------
     def _ensure_tables_exist(self):
-        """Create dynamic tables for student answers and media if not already present."""
+        """Create tables with model_id column if not already present."""
         create_query = f"""
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -41,6 +37,7 @@ class StudentMediaDBService(BaseRelationalDB):
             submission_id TEXT NOT NULL,
             question_number TEXT,
             answer_text TEXT,
+            model_id TEXT,                           -- NEW COLUMN
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
         );
@@ -50,6 +47,7 @@ class StudentMediaDBService(BaseRelationalDB):
             student_answer_id UUID REFERENCES {self.student_answer_table}(id) ON DELETE CASCADE,
             submission_id TEXT NOT NULL,
             media_url TEXT NOT NULL,
+            model_id TEXT,                           -- NEW COLUMN
             media_summary JSONB,
             created_at TIMESTAMP DEFAULT NOW()
         );
@@ -57,39 +55,44 @@ class StudentMediaDBService(BaseRelationalDB):
         try:
             self.cursor.execute(create_query)
             self.conn.commit()
-            logging.info(f"✅ Ensured tables exist: {self.student_answer_table}, {self.student_answer_media_table}")
+            logging.info(f"✅ Ensured tables exist with model_id support.")
         except Exception as e:
             logging.error(f"❌ Failed to create tables: {e}", exc_info=True)
             self.conn.rollback()
             raise
 
     # ----------------------------------------------------------------------
-    # FETCH MEDIA BY SUBMISSION ID
+    # FETCH MEDIA BY SUBMISSION ID + model_id
     # ----------------------------------------------------------------------
-    def get_media_by_submission(self, submission_id: str):
+    def get_media_by_submission(self, submission_id: str, model_id: str = None):
         """
-        Fetch all media records for a given submission_id from the AI-model-specific table.
-        Returns:
-            List[Dict[str, str]] = [
-                {"id": str, "student_answer_id": str, "media_url": str},
-                ...
-            ]
+        Fetch media records for a submission_id and optional model_id.
         """
+
         if not submission_id:
             logging.warning("[DB] get_media_by_submission called with empty submission_id.")
             return []
 
         try:
+            # Base query
             query = f"""
                 SELECT id, student_answer_id, media_url
                 FROM {self.student_answer_media_table}
-                WHERE submission_id = %s;
+                WHERE submission_id = %s
             """
-            self.cursor.execute(query, (submission_id,))
+
+            params = [submission_id]
+
+            # Add model_id filter only if provided
+            if model_id:
+                query += " AND model_id = %s"
+                params.append(model_id)
+
+            self.cursor.execute(query, tuple(params))
             records = self.cursor.fetchall()
 
             if not records:
-                logging.info(f"[DB] No media found for submission_id={submission_id}")
+                logging.info(f"[DB] No media found for submission_id={submission_id}, model_id={model_id}")
                 return []
 
             return [
@@ -102,41 +105,61 @@ class StudentMediaDBService(BaseRelationalDB):
             ]
 
         except Exception as e:
-            logging.error(f"[DB] ❌ Failed to fetch media for submission_id={submission_id}: {e}", exc_info=True)
+            logging.error(
+                f"[DB] ❌ Failed to fetch media for submission_id={submission_id}, model_id={model_id}: {e}",
+                exc_info=True,
+            )
             self.conn.rollback()
             return []
 
     # ----------------------------------------------------------------------
-    # UPDATE MEDIA SUMMARY
+    # UPDATE MEDIA SUMMARY + model_id filter
     # ----------------------------------------------------------------------
-    def update_media_summary(self, media_id: str, summary_text: str):
+    def update_media_summary(self, media_id: str, summary_text: str, model_id: str = None):
         """
-        Update media_summary JSON field for a given media record
-        in the model-specific student_answer_media_<ai_model> table.
+        Update media_summary JSON field for given media_id + optional model_id.
         """
+
         if not media_id:
             logging.warning("[DB] update_media_summary called with empty media_id.")
             return False
 
         try:
-            summary_json = json.dumps( summary_text)
+            summary_json = json.dumps(summary_text)
+
+            # Base update query
             query = f"""
                 UPDATE {self.student_answer_media_table}
                 SET media_summary = %s
-                WHERE id = %s;
+                WHERE id = %s
             """
-            self.cursor.execute(query, (summary_json, media_id))
+            params = [summary_json, media_id]
+
+            # Add model_id filter
+            if model_id:
+                query += " AND model_id = %s"
+                params.append(model_id)
+
+            self.cursor.execute(query, tuple(params))
 
             if self.cursor.rowcount == 0:
-                logging.warning(f"[DB] ⚠️ No media found with id={media_id}")
+                logging.warning(
+                    f"[DB] ⚠️ No media found with id={media_id}, model_id={model_id}"
+                )
                 self.conn.rollback()
                 return False
 
             self.commit()
-            logging.info(f"[DB] ✅ Updated media summary for media_id={media_id} in {self.student_answer_media_table}")
+
+            logging.info(
+                f"[DB] ✅ Updated media summary for media_id={media_id}, model_id={model_id}"
+            )
             return True
 
         except Exception as e:
-            logging.error(f"[DB] ❌ Failed to update media_id={media_id}: {e}", exc_info=True)
+            logging.error(
+                f"[DB] ❌ Failed to update media_id={media_id}, model_id={model_id}: {e}",
+                exc_info=True,
+            )
             self.conn.rollback()
             return False

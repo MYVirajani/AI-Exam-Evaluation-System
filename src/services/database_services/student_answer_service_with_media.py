@@ -10,85 +10,83 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 from src.services.database_services.base_relational_db import BaseRelationalDB
 from src.models.student_answer import StudentAnswer
 
-# --------------------------------------------------------------------------
-# Configure logging
-# --------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# --------------------------------------------------------------------------
-# CLASS: StudentAnswerServiceWithMedia
-# --------------------------------------------------------------------------
+# ======================================================================================
+# CLASS: StudentAnswerServiceWithMedia 
+# ======================================================================================
 class StudentAnswerServiceWithMedia(BaseRelationalDB):
-    """
-    Handles saving, updating, deleting, and fetching student answers and media,
-    using dynamically named tables based on the AI model (e.g., student_answer_gemini_1_5_pro).
-    """
 
-    def __init__(self, ai_model: str = "openai"):
+    def __init__(self, model_id: str):
         super().__init__()
-        self.ai_model = ai_model.lower().replace("-", "_").replace(".", "_")
-        self.student_answer_table = f"student_answer_{self.ai_model}"
-        self.student_answer_media_table = f"student_answer_media_{self.ai_model}"
+        self.model_id = model_id
+        self.student_answer_table = '"Student_Answer"'
+        self.student_answer_media_table = '"Student_Answer_Media"'
         self._ensure_tables_exist()
         logger.info(f"[DB] Using tables: {self.student_answer_table}, {self.student_answer_media_table}")
 
-    # ----------------------------------------------------------------------
-    # TABLE INITIALIZATION
-    # ----------------------------------------------------------------------
+    # ==================================================================================
+    # CREATE TABLES
+    # ==================================================================================
     def _ensure_tables_exist(self):
-        print('Table name: ', {self.student_answer_table})
-        """Ensure AI model–specific tables exist (with UUID PKs)."""
+
         create_query = f"""
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
         CREATE TABLE IF NOT EXISTS {self.student_answer_table} (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             submission_id TEXT NOT NULL,
+            model_id TEXT NOT NULL,
             question_number TEXT,
             answer_text TEXT,
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
+            created_on TIMESTAMPTZ DEFAULT NOW(),
+            updated_on TIMESTAMPTZ DEFAULT NOW(),
+            score DECIMAL(5,2),
+            feedback TEXT,
+            graded_at TIMESTAMPTZ,
+            CONSTRAINT fk_submission FOREIGN KEY(submission_id)
+                REFERENCES Submission(submission_id) ON DELETE CASCADE,
+            CONSTRAINT fk_model FOREIGN KEY(model_id)
+                REFERENCES Evaluation_Model(id)
         );
 
         CREATE TABLE IF NOT EXISTS {self.student_answer_media_table} (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            student_answer_id UUID REFERENCES {self.student_answer_table}(id) ON DELETE CASCADE,
-            submission_id TEXT NOT NULL,
+            model_id TEXT NOT NULL,
+            student_answer_id UUID NOT NULL REFERENCES {self.student_answer_table}(id) ON DELETE CASCADE,
             media_url TEXT NOT NULL,
-            media_summary JSONB,
-            created_on TIMESTAMP DEFAULT NOW(),
-            updated_on TIMESTAMP DEFAULT NOW()
+            media_summary TEXT,
+            created_on TIMESTAMPTZ DEFAULT NOW(),
+            updated_on TIMESTAMPTZ DEFAULT NOW(),
+            CONSTRAINT fk_media_model FOREIGN KEY(model_id)
+                REFERENCES Evaluation_Model(id)
         );
         """
+
         try:
             self.cursor.execute(create_query)
             self.conn.commit()
-            logger.info(f"✅ Checked/created tables: {self.student_answer_table}, {self.student_answer_media_table}")
+            logger.info("✅ Tables verified and aligned with schema")
         except Exception as e:
-            logger.error(f"❌ Failed to create tables: {e}", exc_info=True)
+            logger.error(f"❌ Failed creating tables: {e}", exc_info=True)
             self.conn.rollback()
             raise
 
-    # ----------------------------------------------------------------------
-    # HELPERS
-    # ----------------------------------------------------------------------
+    # ==================================================================================
+    # HELPER
+    # ==================================================================================
     def build_question_number(self, *parts):
-        """Join non-empty question parts safely into a normalized string."""
         filtered = [str(p).strip() for p in parts if p and str(p).strip() != ""]
         return "_".join(filtered)
 
-    # ----------------------------------------------------------------------
-    # CREATE / SAVE ANSWERS
-    # ----------------------------------------------------------------------
+    # ==================================================================================
+    # SAVE ANSWERS
+    # ==================================================================================
     def save_answers(self, answers: List[StudentAnswer], submission_id: str):
-        """
-        Save multiple student answers and their associated media.
-        Before inserting new data, delete existing rows with the same submission_id.
-        """
         if not answers:
-            logger.warning("⚠️ No answers provided to save.")
+            logger.warning("⚠️ No answers provided.")
             return
 
         answer_values = []
@@ -96,190 +94,163 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
 
         for ans in answers:
             answer_id = str(uuid.uuid4())
-            q_number = self.build_question_number(
+            qnum = self.build_question_number(
                 getattr(ans, "question_id", None),
                 getattr(ans, "sub_question_id", None),
                 getattr(ans, "sub_sub_question_id", None),
                 getattr(ans, "sub_sub_sub_question_id", None)
             )
 
-            answer_values.append((answer_id, submission_id, q_number, ans.answer_text))
+            answer_values.append((
+                answer_id,
+                submission_id,
+                self.model_id,
+                qnum,
+                ans.answer_text,
+                None,
+                None,
+                None
+            ))
 
             if getattr(ans, "media_urls", None):
                 for url in ans.media_urls:
-                    media_id = str(uuid.uuid4())
-                    media_values.append((media_id, answer_id, submission_id, url, None))
+                    media_values.append((
+                        str(uuid.uuid4()),
+                        self.model_id,
+                        answer_id,
+                        url,
+                        None
+                    ))
 
         try:
-            # 🧹 Step 1: Delete old records for same submission_id
-            self.cursor.execute(f"DELETE FROM {self.student_answer_media_table} WHERE submission_id = %s;", (submission_id,))
-            self.cursor.execute(f"DELETE FROM {self.student_answer_table} WHERE submission_id = %s;", (submission_id,))
-            logger.info(f"🧹 Deleted existing records for submission_id={submission_id}")
+            # DELETE MEDIA FIRST
+            self.cursor.execute(f"""
+                DELETE FROM {self.student_answer_media_table}
+                WHERE student_answer_id IN (
+                    SELECT id FROM {self.student_answer_table}
+                    WHERE submission_id=%s AND model_id=%s
+                );
+            """, (submission_id, self.model_id))
 
-            # 🧩 Step 2: Insert new answers
+            # DELETE ANSWERS
+            self.cursor.execute(f"""
+                DELETE FROM {self.student_answer_table}
+                WHERE submission_id=%s AND model_id=%s;
+            """, (submission_id, self.model_id))
+
+            # INSERT ANSWERS
             insert_answers = f"""
-                INSERT INTO {self.student_answer_table} 
-                (id, submission_id, question_number, answer_text)
-                VALUES %s;
+            INSERT INTO {self.student_answer_table}
+            (id, submission_id, model_id, question_number, answer_text, score, feedback, graded_at)
+            VALUES %s;
             """
-            execute_values(self.cursor, insert_answers, [(*vals,) for vals in answer_values])
+            execute_values(self.cursor, insert_answers, answer_values)
 
-            # 🧩 Step 3: Insert new media (if any)
+            # INSERT MEDIA
             if media_values:
                 insert_media = f"""
-                    INSERT INTO {self.student_answer_media_table}
-                    (id, student_answer_id, submission_id, media_url, media_summary)
-                    VALUES %s;
+                INSERT INTO {self.student_answer_media_table}
+                (id, model_id, student_answer_id, media_url, media_summary)
+                VALUES %s;
                 """
-                execute_values(self.cursor, insert_media, [(*vals,) for vals in media_values])
+                execute_values(self.cursor, insert_media, media_values)
 
             self.commit()
-            logger.info(f"✅ Saved {len(answer_values)} answers and {len(media_values)} media for submission_id={submission_id}")
+            logger.info(f"✅ Saved answers and media (submission={submission_id}, model_id={self.model_id})")
+
         except Exception as e:
-            logger.error(f"❌ Failed to save student answers: {e}", exc_info=True)
+            logger.error(f"❌ Failed saving answers: {e}", exc_info=True)
             self.rollback()
             raise
 
-    # ----------------------------------------------------------------------
+    # ==================================================================================
     # UPDATE ANSWER
-    # ----------------------------------------------------------------------
+    # ==================================================================================
     def update_answer(self, answer_id: str, new_text: str) -> bool:
-        """Update a single student answer."""
+
         query = f"""
         UPDATE {self.student_answer_table}
-        SET answer_text = %s,
-            updated_at = NOW()
-        WHERE id = %s;
+        SET answer_text=%s, updated_on=NOW()
+        WHERE id=%s AND model_id=%s;
         """
+
         try:
-            self.cursor.execute(query, (new_text, answer_id))
+            self.cursor.execute(query, (new_text, answer_id, self.model_id))
             self.commit()
-            logger.info(f"✅ Updated answer_id={answer_id} (updated_at refreshed)")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Failed to update answer {answer_id}: {e}")
+            return self.cursor.rowcount > 0
+        except:
             self.rollback()
             return False
 
-    # ----------------------------------------------------------------------
-    # UPDATE MEDIA SUMMARY
-    # ----------------------------------------------------------------------
-    def update_media_summary(self, media_id: str, summary: Any) -> bool:
-        """Update media_summary JSON for a given media record and refresh updated_on."""
-        query = f"""
-        UPDATE {self.student_answer_media_table}
-        SET media_summary = %s,
-            updated_on = NOW()
-        WHERE id = %s;
-        """
-        try:
-            self.cursor.execute(query, (json.dumps(summary), media_id))
-            self.commit()
-            logger.info(f"✅ Updated media summary for {media_id} (updated_on refreshed)")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Failed to update media summary: {e}")
-            self.rollback()
-            return False
-
-    # ----------------------------------------------------------------------
-    # DELETE ANSWER (cascade deletes media)
-    # ----------------------------------------------------------------------
-    def delete_answer(self, answer_id: str) -> bool:
-        """Delete a student answer and associated media."""
-        query = f"DELETE FROM {self.student_answer_table} WHERE id = %s;"
-        try:
-            self.cursor.execute(query, (answer_id,))
-            self.commit()
-            logger.info(f"🗑️ Deleted student_answer {answer_id}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Failed to delete answer {answer_id}: {e}")
-            self.rollback()
-            return False
-
-    # ----------------------------------------------------------------------
-    # ✅ FIXED: FETCH ANSWERS FOR ONE SUBMISSION (LIST FORMAT)
-    # ----------------------------------------------------------------------
+    # ==================================================================================
+    # GET ALL ANSWERS (FIXED)
+    # ==================================================================================
     def get_all_answers(self, submission_id: str) -> List[Dict[str, Any]]:
-        """
-        Return all answers and associated media for a given submission_id
-        as a list of dictionaries (not keyed by question_number).
-        """
+
         query = f"""
-SELECT 
-    a.id AS student_answer_id,
-    a.question_number,
-    a.answer_text,
-    a.updated_at,
-    m.media_url,
-    m.media_summary,
-    m.updated_on
-FROM {self.student_answer_table} AS a
-LEFT JOIN {self.student_answer_media_table} AS m
-    ON a.id = m.student_answer_id
-WHERE a.submission_id = %s
-ORDER BY a.question_number;
-"""
+        SELECT 
+            a.id,
+            a.question_number,
+            a.answer_text,
+            a.updated_on,
+            m.media_url,
+            m.media_summary,
+            m.updated_on
+        FROM {self.student_answer_table} a
+        LEFT JOIN {self.student_answer_media_table} m
+            ON a.id = m.student_answer_id AND m.model_id = %s
+        WHERE a.submission_id=%s AND a.model_id=%s
+        ORDER BY a.question_number;
+        """
+
         try:
-            self.cursor.execute(query, (submission_id,))
+            self.cursor.execute(query, (self.model_id, submission_id, self.model_id))
             rows = self.cursor.fetchall()
 
-            answer_map = {}
-            for ans_id, qnum, text, updated_at, url, summary, updated_on in rows:
-                if ans_id not in answer_map:
-                    answer_map[ans_id] = {
+            data = {}
+            for ans_id, qnum, text, updated, url, summary, m_updated in rows:
+                if ans_id not in data:
+                    data[ans_id] = {
                         "student_answer_id": ans_id,
                         "question_number": qnum,
-                        "answer_text": text or "",
-                        "updated_at": updated_at,
+                        "answer_text": text,
+                        "updated_on": updated,
                         "media_items": []
                     }
 
-                if url or summary:
+                if url:
+                    # decode JSON summary if stored as JSON string
                     try:
-                        parsed_summary = (
-                            json.loads(summary)
-                            if isinstance(summary, str)
-                            else summary
-                        )
-                    except Exception:
-                        parsed_summary = summary
+                        summary = json.loads(summary) if summary else None
+                    except:
+                        pass
 
-                    answer_map[ans_id]["media_items"].append({
+                    data[ans_id]["media_items"].append({
                         "media_url": url,
-                        "media_summary": parsed_summary,
-                        "updated_on": updated_on
+                        "media_summary": summary,
+                        "updated_on": m_updated
                     })
 
-            result_list = list(answer_map.values())
-            logger.info(f"✅ Retrieved {len(result_list)} answers for submission_id={submission_id}")
-            return result_list
+            return list(data.values())
 
         except Exception as e:
-            logger.error(f"❌ Failed to fetch answers for submission_id={submission_id}: {e}", exc_info=True)
+            logger.error(f"[DB] ❌ Failed fetching answers: {e}", exc_info=True)
             self.rollback()
             return []
 
-
-        # ----------------------------------------------------------------------
-    # FETCH ANSWERS IN THE SAME FORMAT USED BY EMBEDDING PIPELINE
+    # ----------------------------------------------------------------------
+    # FIXED: FETCH ANSWERS FOR EMBEDDING
     # ----------------------------------------------------------------------
     def fetch_answers_for_embedding(self, submission_id: str) -> List[tuple]:
         """
-        Fetch student answers exactly in the structure required by
-        StudentAnswerVectorService.embed_and_store_student_answers():
-
-            [
-                (
-                    student_answer_id,
-                    submission_id,
-                    question_number,
-                    answer_text,
-                    [media_summary_1, media_summary_2, ...]
-                ),
-                ...
-            ]
+        Returns list of tuples in format:
+            (
+                student_answer_id,
+                submission_id,
+                question_number,
+                answer_text,
+                [media_summaries]
+            )
         """
 
         query = f"""
@@ -288,36 +259,61 @@ ORDER BY a.question_number;
             sa.submission_id,
             sa.question_number,
             sa.answer_text,
-            ARRAY_REMOVE(ARRAY_AGG(sam.media_summary), NULL) AS media_summaries
+            ARRAY_REMOVE(ARRAY_AGG(
+                CASE 
+                    WHEN sam.media_summary IS NOT NULL THEN sam.media_summary
+                    ELSE NULL
+                END
+            ), NULL) AS media_summaries
         FROM {self.student_answer_table} sa
         LEFT JOIN {self.student_answer_media_table} sam
             ON sa.id = sam.student_answer_id
+            AND sam.model_id = %s
         WHERE sa.submission_id = %s
-        GROUP BY sa.id;
+        AND sa.model_id = %s
+        GROUP BY sa.id
+        ORDER BY sa.question_number;
         """
 
         try:
-            self.cursor.execute(query, (submission_id,))
+            self.cursor.execute(query, (self.model_id, submission_id, self.model_id))
             rows = self.cursor.fetchall()
 
-            logger.info(f"📦 fetch_answers_for_embedding → {len(rows)} answers retrieved for submission_id={submission_id}")
+            clean_rows = []
+            for row in rows:
+                (
+                    ans_id,
+                    sub_id,
+                    qnum,
+                    text,
+                    media_summaries
+                ) = row
 
-            return rows
+                # decode summaries
+                decoded = []
+                if media_summaries:
+                    for item in media_summaries:
+                        try:
+                            decoded.append(json.loads(item))
+                        except:
+                            decoded.append(item)
+
+                clean_rows.append((ans_id, sub_id, qnum, text, decoded))
+
+            logger.info(f"📦 fetch_answers_for_embedding → {len(clean_rows)} answers for submission_id={submission_id}")
+            return clean_rows
 
         except Exception as e:
-            logger.error(f"❌ Failed to fetch answers for embedding: {e}", exc_info=True)
+            logger.error(f"❌ Failed fetching answers for embedding: {e}", exc_info=True)
             self.rollback()
             return []
 
     # ----------------------------------------------------------------------
-    # FETCH ANSWERS FOR MULTIPLE SUBMISSIONS
+    # FETCH MULTIPLE ANSWERS
     # ----------------------------------------------------------------------
     def get_all_answers_by_submission_ids(self, submission_ids: List[str]) -> List[Dict[str, Any]]:
-        """
-        Fetch all student answers (and their media) for multiple submissions.
-        """
         if not submission_ids:
-            logger.warning("⚠️ No submission IDs provided to fetch answers.")
+            logger.warning("⚠️ No submission IDs provided.")
             return []
 
         try:
@@ -327,12 +323,12 @@ SELECT
     a.id AS student_answer_id,
     a.question_number,
     a.answer_text,
-    a.updated_at,
+    a.updated_on,
     m.media_url,
     m.media_summary
 FROM {self.student_answer_table} AS a
 LEFT JOIN {self.student_answer_media_table} AS m
-    ON a.id = m.student_answer_id
+    ON a.id = m.student_answer_id AND m.model_id = a.model_id
 WHERE a.submission_id = ANY(%s)
 ORDER BY a.submission_id, a.question_number;
 """
@@ -340,7 +336,7 @@ ORDER BY a.submission_id, a.question_number;
             rows = self.cursor.fetchall()
 
             results_dict = {}
-            for submission_id, ans_id, qnum, text, updated_at, url, summary in rows:
+            for submission_id, ans_id, qnum, text, updated, url, summary in rows:
                 key = (submission_id, ans_id)
                 if key not in results_dict:
                     results_dict[key] = {
@@ -348,26 +344,30 @@ ORDER BY a.submission_id, a.question_number;
                         "question_number": qnum,
                         "student_answer_id": ans_id,
                         "answer_text": text,
-                        "updated_at": updated_at,
+                        "updated_on": updated,
                         "media_items": []
                     }
+
                 if url or summary:
+                    try:
+                        summary = json.loads(summary) if summary else None
+                    except:
+                        pass
+
                     results_dict[key]["media_items"].append({
                         "media_url": url,
                         "media_summary": summary
                     })
 
             results = list(results_dict.values())
-            logger.info(f"✅ Retrieved {len(results)} student answers across {len(submission_ids)} submissions")
+            logger.info(f"✅ Retrieved {len(results)} answers across {len(submission_ids)} submissions")
             return results
 
         except Exception as e:
-            logger.error(f"❌ Failed to fetch multiple student answers: {e}", exc_info=True)
+            logger.error(f"❌ Failed fetching multiple answers: {e}", exc_info=True)
             self.rollback()
             return []
 
-    # ----------------------------------------------------------------------
-    # ✅ FIXED: Add commit/rollback helper wrappers
     # ----------------------------------------------------------------------
     def commit(self):
         self.conn.commit()

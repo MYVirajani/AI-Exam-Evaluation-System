@@ -4852,7 +4852,7 @@ from typing import List  # Add this import to fix the error
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.scripts.embed_lecture_materials import main as embed_lecture_materials_main
-from src.scripts.run_extract_and_save import main as extract_and_save_main  
+from src.scripts.student_answer.extract_and_save import main as extract_and_save_main  
 from src.scripts.embed_from_db import main as embed_from_db_main
 from src.scripts.embed_model_answers import main as embed_model_answers_main
 from src.scripts.mark_all_papers import main as mark_all_papers_main

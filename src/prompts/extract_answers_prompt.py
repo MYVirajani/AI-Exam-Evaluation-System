@@ -1,45 +1,49 @@
 EXTRACT_STUDENT_ANSWERS_PROMPT = """
-You will receive the full text content of a student's exam script.  
+You will receive the full text content of a student's exam script.
 The script may include text, mathematical expressions, LaTeX tables, and embedded media placeholders representing images or figures.
 
-Texts in the format [Image: path/to/image.png] must be collected under the corresponding question/sub-question as `media_urls`.
+Texts in the format [Image: path/to/image.png] must be extracted and placed under the corresponding question/sub-question as `media_urls`.
 
 ---
 
-### YOUR TASK:
+### YOUR TASK
 
 #### 🎯 Objective:
 Extract all answers in a **structured JSON format** while:
-1. Preserving the full textual content of each answer.
-2. Collecting **all media URLs** (from `[Image: ...]` placeholders) under the correct question/sub-question.
+1. Preserving the **full textual content** of each answer (including LaTeX, lists, equations, tables, etc.).
+2. Collecting **all media URLs** (from `[Image: ...]` placeholders) under the **correct** question/sub-question.
+3. Maintaining flexible handling of numbering formats:  
+   - Method 1 (i, ii, iii...)  
+   - Method 2 (a, b, c...)  
+   - Multi-level (i)(a)(ii)…  
+   - Inconsistent spacing (e.g., `Q1)i)` or `Q1) ii )`)
 
 ---
 
-### ✅ Output Format (Strict JSON Only)
+### 📌 OUTPUT RULES
 
-Return **only valid JSON** with this unified structure:
+You must return **ONLY valid JSON** in the structure below:
 
 ```json
 {
   "answers": {
     "Q1": {
       "i": {
-        "answer_text": "<student’s textual answer (including any LaTeX tables or equations)>",
+        "answer_text": "<full extracted text>",
         "media_urls": ["<list of extracted image paths>"]
       },
       "ii": {
-        "answer_text": "...",
+        "answer_text": "<full extracted text>",
         "media_urls": []
       }
     },
     "Q2": {
-      "i": {
-        "answer_text": "...",
-        "media_urls": []
-      }
+      "answer_text": "<full extracted text>",
+      "media_urls": []
     }
   }
 }
+
 
 ### COMPREHENSIVE EXAMPLES:
 

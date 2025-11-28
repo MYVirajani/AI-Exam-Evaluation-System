@@ -1,4 +1,5 @@
 import os
+import re
 from typing import List, Optional
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -170,4 +171,17 @@ class GeminiEmbedder(AbstractEmbedder):
         return self.embedding_dimension
 
     def get_table_suffix(self) -> str:
-        return "gemini"
+        """
+        Returns the table suffix based on the embedding model name.
+        Example:
+           models/embedding-001 → embedding_001
+           text-embedding-004 → text_embedding_004
+        """
+        model = self.model_name.lower()
+
+        safe = re.sub(r'[^a-z0-9]+', '_', model)
+
+        # Remove leading/trailing underscores
+        safe = safe.strip('_')
+
+        return safe

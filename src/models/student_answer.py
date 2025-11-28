@@ -8,10 +8,6 @@ class StudentAnswer:
     sub_sub_question_id: Optional[str] = None
     sub_sub_sub_question_id: Optional[str] = None
     answer_text: str = ""
-    student_index: Optional[str] = None
-    module_code: Optional[str] = None
-    exam_year: Optional[int] = None
-    exam_month: Optional[str] = None
     assessment_id: Optional[str] = None
     submission_id: Optional[str] = None
     coordinates: Tuple[float, float, float, float] = (0, 0, 0, 0)
@@ -36,10 +32,6 @@ class StudentAnswer:
             "sub_sub_question": self.sub_sub_question_id,
             "sub_sub_sub_question": self.sub_sub_sub_question_id,
             "answer": self.answer_text,
-            "student_index": self.student_index,
-            "module_code": self.module_code,
-            "exam_year": self.exam_year,
-            "exam_month": self.exam_month,
             "assessment_id": self.assessment_id,
             "submission_id": self.submission_id,
             "coordinates": self.coordinates,

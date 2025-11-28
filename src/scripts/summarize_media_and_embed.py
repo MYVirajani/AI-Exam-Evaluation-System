@@ -10,7 +10,7 @@ from src.services.database_services.student_answer_service_with_media import Stu
 from src.services.database_services.model_answer_db_service import ModelAnswerDBService
 from src.services.database_services.model_answer_vector_service import ModelAnswerVectorService
 from src.services.database_services.student_answer_vector_service import StudentAnswerVectorService  
-from src.services.summary.image_summarizer import ImageSummarizer
+from src.services.summary.image_summarise_service import ImageSummarizer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------
 # STUDENT SUBMISSION MEDIA SUMMARIZATION
 # ----------------------------------------------------------------------
-def summarize_student_submission(submission_id: str, selected_model: str):
+def summarize_student_submission(submission_id: str, model_id: str):
     """
     Summarize student submission media using the specified model.
     """
-    db_service = StudentMediaDBService(ai_model=selected_model)
-    llm = ImageSummarizer(provider_key=selected_model)
+    db_service = StudentMediaDBService(model_id=model_id)
+    llm = ImageSummarizer(model_id=model_id)
 
-    media_records = db_service.get_media_by_submission(submission_id)
+    media_records = db_service.get_media_by_submission(submission_id, model_id=model_id)
     logger.info(f"📸 Found {len(media_records)} student media records for submission {submission_id}")
 
     for media in media_records:
@@ -36,7 +36,7 @@ def summarize_student_submission(submission_id: str, selected_model: str):
         summary = llm.summarize_image(image_url, mode="student", domain="Engineering")
 
         if summary:
-            db_service.update_media_summary(media_id, summary)
+            db_service.update_media_summary(media_id, summary, model_id=model_id)
         else:
             logger.warning(f"⚠️ Skipped {media_id} due to summarization error.")
 
@@ -108,14 +108,14 @@ def embed_model_answers(model_paper_id: str, assessment_id: str, selected_model:
 # ----------------------------------------------------------------------
 # ✅ NEW: STUDENT ANSWER EMBEDDING
 # ----------------------------------------------------------------------
-def embed_student_answers(submission_id: str, selected_model: str):
+def embed_student_answers(submission_id: str, model_id: str):
     """
     Embed summarized student answers (text + image summaries)
     and store embeddings for retrieval-based grading.
     """
 
-    db_service = StudentAnswerServiceWithMedia(ai_model=selected_model)
-    vector_service = StudentAnswerVectorService(ai_model=selected_model)
+    db_service = StudentAnswerServiceWithMedia(model_id=model_id)
+    vector_service = StudentAnswerVectorService(ai_model=model_id)
 
     logger.info(f"🚀 Starting embedding for student submission_id={submission_id}")
 
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     parser.add_argument("--submission_id", nargs="+", help="Student submission IDs (required if mode=student/embed_student).")
     parser.add_argument("--assessment_id", help="Assessment ID (required if mode=model or embed_model).")
     parser.add_argument("--model_paper_id", help="Model paper ID (optional for model mode, required for embed_model).")
-    parser.add_argument("--selected_model", required=True, help="Model key (e.g., openai, gemini, deepseek).")
+    parser.add_argument("--model_id", required=True, help="evaluation model identifier for summarization/embedding.")
 
     args = parser.parse_args()
 

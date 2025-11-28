@@ -1,3 +1,4 @@
+import re
 from .abstract_embedder import AbstractEmbedder
 import os
 from openai import OpenAI
@@ -30,7 +31,6 @@ class OpenAIEmbedder(AbstractEmbedder):
                 config = EvaluationModelService().get_model_config(model_id)
                 if config:
                     db_model_name = config.get("embedding_model")
-                    provider = config.get("provider")
                 else:
                     logger.warning(f"⚠️ Model ID '{model_id}' not found in DB. Using fallback model.")
             except Exception as e:
@@ -87,5 +87,19 @@ class OpenAIEmbedder(AbstractEmbedder):
         # If needed, load dimension based on model_name
         # text-embedding-3-small = 1536
         return 1536
+    
     def get_table_suffix(self) -> str:
-        return "openai"
+        """
+        Returns the table suffix based on the embedding model name.
+        Example:
+           models/embedding-001 → embedding_001
+           text-embedding-004 → text_embedding_004
+        """
+        model = self.model_name.lower()
+
+        safe = re.sub(r'[^a-z0-9]+', '_', model)
+
+        # Remove leading/trailing underscores
+        safe = safe.strip('_')
+
+        return safe

@@ -8,8 +8,9 @@ from dotenv import load_dotenv
 from openai import OpenAI as OpenAIClient
 import google.generativeai as genai
 
-from ...models.student_answer import StudentAnswer
-from ...prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
+from src.models.student_answer import StudentAnswer
+from src.prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
+from src.services.database_services.evaluation_model_db import EvaluationModelService
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -18,134 +19,125 @@ load_dotenv()
 class AnswerExtractor:
     def __init__(
         self,
-        provider: str,
+        model_id: str,
         ollama_base_url: str = "http://localhost:11434",
         request_timeout: int = 600,
     ):
-        """
-        Initialize AnswerExtractor for OpenAI, Gemini, or DeepSeek.
-        Automatically reads model name and temperature from .env
-        based on the selected provider.
-        """
-        self.selected_provider = provider.strip().lower()
+        self.model_id = model_id
         self.ollama_base_url = ollama_base_url
         self.request_timeout = request_timeout
 
-        # -----------------------------------------------------------------
-        # Load provider-specific configuration from .env
-        # -----------------------------------------------------------------
+        model_service = EvaluationModelService()
+        config = model_service.get_model_config(model_id)
+
+        if not config:
+            raise ValueError(f"❌ No configuration found for model_id={model_id}")
+
+        self.selected_provider = config["provider"].lower()
+        self.selected_model = config["chat_model"]
+        self.temperature = float(config.get("temperature", 0.3))
+
         if self.selected_provider == "openai":
             self.api_key = os.getenv("OPENAI_API_KEY")
-            self.selected_model = os.getenv("OPENAI_MODEL", "gpt-4o")
-            self.temperature = float(os.getenv("OPENAI_TEMPERATURE", 0.3))
             self.client = OpenAIClient(api_key=self.api_key)
 
         elif self.selected_provider == "gemini":
             self.api_key = os.getenv("GOOGLE_API_KEY")
-            self.selected_model = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
-            self.temperature = float(os.getenv("GEMINI_TEMPERATURE", 0.3))
             genai.configure(api_key=self.api_key)
             self.client = genai.GenerativeModel(model_name=self.selected_model)
 
         elif self.selected_provider == "deepseek":
-            self.api_key = None  # DeepSeek (Ollama) runs locally, no key
-            self.selected_model = os.getenv("DEEPSEEK_MODEL", "deepseek-coder")
-            self.temperature = float(os.getenv("DEEPSEEK_TEMPERATURE", 0.3))
-
             try:
                 response = requests.get(f"{self.ollama_base_url}/api/tags", timeout=5)
-                if response.status_code != 200:
-                    raise ConnectionError("Ollama server is not responding")
-                logger.info("✅ Connected to Ollama server successfully")
-            except requests.exceptions.ConnectionError:
-                raise ConnectionError(
-                    f"Cannot connect to Ollama server at {self.ollama_base_url}. "
-                    "Make sure Ollama is running."
-                )
-
+                response.raise_for_status()
+                logger.info("✅ Connected to Ollama server")
+            except Exception:
+                raise ConnectionError(f"Cannot connect to Ollama at {self.ollama_base_url}")
         else:
-            raise ValueError(
-                f"Unsupported provider: {provider}. Must be one of 'openai', 'gemini', or 'deepseek'."
-            )
+            raise ValueError(f"❌ Unsupported provider '{self.selected_provider}'")
 
         logger.info(
-            f"🔧 Initialized AnswerExtractor with provider={self.selected_provider}, "
-            f"model={self.selected_model}, temperature={self.temperature}"
+            f"🔧 AnswerExtractor initialized: provider={self.selected_provider}, "
+            f"model={self.selected_model}, temp={self.temperature}"
         )
 
     # ===================================================================
-    # ----------------------- LLM API HANDLERS --------------------------
+    # OLLAMA API
     # ===================================================================
 
-    def _call_ollama_api(self, messages: List[Dict[str, str]], stream: bool = False) -> str:
-        """Sends messages to a locally running Ollama instance."""
+    def _call_ollama_api(self, messages: List[Dict[str, str]], stream=False) -> str:
         payload = {
             "model": self.selected_model,
             "messages": messages,
             "stream": stream,
-            "options": {
-                "temperature": self.temperature,
-                "num_ctx": 8192,
-                "num_predict": 4000,
-                "top_k": 40,
-                "top_p": 0.9,
-            },
+            "options": {"temperature": self.temperature, "num_ctx": 8192},
         }
-
-        logger.info(f"🧠 Sending request to Ollama with timeout={self.request_timeout}s")
-
         try:
             response = requests.post(
                 f"{self.ollama_base_url}/api/chat",
-                headers={"Content-Type": "application/json"},
                 json=payload,
+                headers={"Content-Type": "application/json"},
                 timeout=self.request_timeout,
             )
             response.raise_for_status()
-            data = response.json()
-            return data.get("message", {}).get("content", "")
-
+            return response.json().get("message", {}).get("content", "")
         except Exception as e:
-            logger.error(f"❌ Ollama API request failed: {e}")
+            logger.error(f"❌ Ollama request failed: {e}")
             raise
 
     # ===================================================================
-    # -------------------- JSON CLEANING HELPERS ------------------------
+    # JSON CLEANERS
     # ===================================================================
 
-    def _fix_json_formatting(self, content: str) -> str:
-        """Fix common JSON formatting issues in LLM outputs."""
-        # Remove trailing commas before } or ]
+    def _clean_llm_output(self, content: str) -> str:
+        """Extracts only the JSON part and removes markdown."""
+        content = content.strip()
+
+        content = re.sub(r"```json|```", "", content, flags=re.IGNORECASE)
+        match = re.search(r"\{[\s\S]*\}", content)
+        return match.group(0) if match else content
+
+    def _escape_backslashes(self, text: str) -> str:
+        """
+        Fix invalid JSON escape sequences such as \h, \e, \b from LaTeX.
+        Ensures all LaTeX backslashes are JSON-safe.
+        """
+
+        # FIX 1 → Invalid sequences: \hline, \end, \begin
+        text = re.sub(r'\\(?=[A-Za-z])', r'\\\\', text)
+
+        # FIX 2 → Triple backslash (\\\hline) → (\\\\hline)
+        text = re.sub(r'\\\\\\(?=[A-Za-z])', r'\\\\\\\\', text)
+
+        # FIX 3 → Ensure we don't over-escape:
+        text = text.replace("\\\\\\\\", "\\\\")
+
+        return text
+
+    def _force_valid_json(self, content: str) -> str:
         content = re.sub(r",\s*}", "}", content)
         content = re.sub(r",\s*]", "]", content)
-        # 🔧 Fix invalid backslashes that break JSON parsing
-        content = content.replace("\\", "\\\\")
         return content.strip()
 
-    def _repair_and_load_json(self, content: str) -> Optional[dict]:
-        """Try to safely parse JSON with multiple repair attempts."""
+    def _load_json_strict(self, content: str) -> Optional[dict]:
         try:
             return json.loads(content)
-        except json.JSONDecodeError:
-            # Attempt repair by escaping invalid characters
-            try:
-                repaired = content.encode("unicode_escape").decode("utf-8")
-                return json.loads(repaired)
-            except Exception as e:
-                logger.error(f"⚠️ JSON repair failed: {e}")
-                return None
+        except Exception as e:
+            logger.error(f"❌ JSON LOAD ERROR: {e}\n---- RAW JSON ----\n{content}\n")
+            print(f"\n❌ JSON LOAD ERROR:\n{e}\nRAW:\n{content}\n")
+            return None
 
     # ===================================================================
-    # ------------------- LLM ANSWER EXTRACTION -------------------------
+    # MAIN EXTRACTION FUNCTION
     # ===================================================================
 
     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
-        """Use the selected LLM to extract structured answers and media URLs."""
-        logger.info(
-            f"🔍 Extracting answers using {self.selected_provider} - {self.selected_model}"
-        )
+        logger.info(f"🔍 Extracting with {self.selected_provider} → {self.selected_model}")
 
         try:
+            # -----------------------------
+            # OPENAI
+            # -----------------------------
             if self.selected_provider == "openai":
                 response = self.client.chat.completions.create(
                     model=self.selected_model,
@@ -158,134 +150,86 @@ class AnswerExtractor:
                 )
                 content = response.choices[0].message.content.strip()
 
+            # -----------------------------
+            # GEMINI
+            # -----------------------------
             elif self.selected_provider == "gemini":
                 response = self.client.generate_content(
-                    contents=[
-                        {
-                            "role": "user",
-                            "parts": [
-                                f"{EXTRACT_STUDENT_ANSWERS_PROMPT}\n\n{raw_text}"
-                            ],
-                        }
-                    ],
+                    contents=[{"role": "user", "parts": [f"{EXTRACT_STUDENT_ANSWERS_PROMPT}\n{raw_text}"]}],
                     generation_config={"temperature": self.temperature},
                 )
                 content = response.text.strip()
 
-            elif self.selected_provider == "deepseek":
+            # -----------------------------
+            # OLLAMA / DeepSeek
+            # -----------------------------
+            else:
                 messages = [
                     {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
                     {"role": "user", "content": raw_text},
                 ]
                 content = self._call_ollama_api(messages).strip()
 
-            else:
-                raise ValueError(f"Unsupported provider: {self.selected_provider}")
+            print("\n🟦 RAW LLM RESPONSE:\n", content, "\n")
+            logger.info(f"\n🟦 RAW LLM RESPONSE:\n{content}\n")
 
-            # Save raw output
-            os.makedirs("logs/llm_raw_outputs", exist_ok=True)
-            with open(
-                f"logs/llm_raw_outputs/raw_{self.selected_provider}.txt",
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write(content)
+            # -----------------------------
+            # CLEAN + SANITIZE
+            # -----------------------------
+            content = self._clean_llm_output(content)
+            content = self._escape_backslashes(content)
+            content = self._force_valid_json(content)
 
-            # Clean code fences if present
-            if content.startswith("```"):
-                content = content.strip("`").replace("json", "").strip()
-
-            # Fix common JSON issues
-            content = self._fix_json_formatting(content)
-
-            structured = self._repair_and_load_json(content)
+            structured = self._load_json_strict(content)
             if not structured:
-                raise json.JSONDecodeError("Unable to parse JSON", content, 0)
+                logger.error("❌ Final JSON failed. Returning empty list.")
+                return []
 
-            metadata = structured.get("metadata", {})
-            answers_json = structured.get("answers", {})
+            answers_dict = structured.get("answers", {})
 
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ JSON parsing failed: {e}")
-            return []
         except Exception as e:
-            logger.error(f"❌ Extraction failed: {e}")
+            logger.error(f"❌ Extraction error: {e}")
             return []
 
-        return self._flatten_structure(
-            answers_json
-        )
+        return self._flatten_structure(answers_dict)
 
     # ===================================================================
-    # ------------------- STRUCTURE FLATTENER ---------------------------
+    # FLATTEN JSON → StudentAnswer
     # ===================================================================
 
-    def _flatten_structure(
-        self,
-        nested: dict,
-    ) -> List[StudentAnswer]:
-        """Flatten nested LLM output into StudentAnswer objects."""
-        answers: List[StudentAnswer] = []
+    def _flatten_structure(self, nested: dict) -> List[StudentAnswer]:
+        answers = []
 
-        def recurse(keys: List[str], value):
+        def recurse(path, value):
             if isinstance(value, str):
                 answers.append(
                     StudentAnswer(
-                        question_id=keys[0] if len(keys) > 0 else None,
-                        sub_question_id=keys[1] if len(keys) > 1 else None,
-                        sub_sub_question_id=keys[2] if len(keys) > 2 else None,
-                        sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
+                        question_id=path[0] if len(path) > 0 else None,
+                        sub_question_id=path[1] if len(path) > 1 else None,
+                        sub_sub_question_id=path[2] if len(path) > 2 else None,
+                        sub_sub_sub_question_id=path[3] if len(path) > 3 else None,
                         answer_text=value.strip(),
-                        media_urls=[]
-                    )
-                )
-
-            elif isinstance(value, dict) and "answer_text" in value:
-                answers.append(
-                    StudentAnswer(
-                        question_id=keys[0] if len(keys) > 0 else None,
-                        sub_question_id=keys[1] if len(keys) > 1 else None,
-                        sub_sub_question_id=keys[2] if len(keys) > 2 else None,
-                        sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
-                        answer_text=value.get("answer_text", "").strip(),
-                        media_urls=value.get("media_urls", []) or [],
+                        media_urls=[],
                     )
                 )
 
             elif isinstance(value, dict):
-                for sub_key, sub_value in value.items():
-                    if sub_key == "media_urls" and isinstance(sub_value, list):
-                        if answers and answers[-1].full_question_id.startswith(
-                            "_".join(keys)
-                        ):
-                            answers[-1].media_urls.extend(sub_value)
-                    else:
-                        recurse(keys + [sub_key], sub_value)
+                if "answer_text" in value:
+                    answers.append(
+                        StudentAnswer(
+                            question_id=path[0] if len(path) > 0 else None,
+                            sub_question_id=path[1] if len(path) > 1 else None,
+                            sub_sub_question_id=path[2] if len(path) > 2 else None,
+                            sub_sub_sub_question_id=path[3] if len(path) > 3 else None,
+                            answer_text=value.get("answer_text", "").strip(),
+                            media_urls=value.get("media_urls", []),
+                        )
+                    )
+                else:
+                    for k, v in value.items():
+                        recurse(path + [k], v)
 
-        for main_q, subs in nested.items():
-            recurse([main_q], subs)
+        for key, value in nested.items():
+            recurse([key], value)
 
         return answers
-
-    # ===================================================================
-    # ------------------- CONNECTION / UTILITIES ------------------------
-    # ===================================================================
-
-    def test_connection(self) -> bool:
-        """Test connectivity to the selected LLM provider."""
-        try:
-            if self.selected_provider == "deepseek":
-                test_messages = [
-                    {"role": "user", "content": "Respond with 'Connection successful'"}
-                ]
-                response = self._call_ollama_api(test_messages)
-                return "successful" in response.lower()
-            return True
-        except Exception as e:
-            logger.error(f"Connection test failed for {self.selected_provider}: {e}")
-            return False
-
-    @property
-    def provider_suffix(self) -> str:
-        """Return normalized provider name for DB suffix."""
-        return self.selected_provider

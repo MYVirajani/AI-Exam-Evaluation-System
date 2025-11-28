@@ -127,7 +127,6 @@ model Lecture_Material {
   lecture_material_media lecture_material_media[]
 }
 
-
 model lecture_material_media {
   id                  String   @id @default(uuid())
   model_id            String?
@@ -251,7 +250,6 @@ model Question {
   model_answer_paper Model_Answer_Paper @relation(fields: [model_answer_paper_id], references: [id])
   assessment         Assessment?        @relation(fields: [assessment_id], references: [assessment_id])
   media              Question_Media[]
-  Student_Answer     Student_Answer[]
   grading_results    Grading_Results[]
 
   @@index([assessment_id])
@@ -320,7 +318,6 @@ model Student_Answer {
   id              String    @id @default(uuid())
   submission_id   String
   model_id        String
-  question_id     String
   question_number String
   answer_text     String
   created_on      DateTime  @default(now()) @db.Timestamptz(6)
@@ -333,7 +330,6 @@ model Student_Answer {
   submission       Submission             @relation(fields: [submission_id], references: [submission_id])
   evaluation_model Evaluation_Model       @relation(fields: [model_id], references: [id])
   media            Student_Answer_Media[]
-  Question         Question?              @relation(fields: [question_id], references: [id])
 
   @@index([submission_id])
   @@index([model_id])

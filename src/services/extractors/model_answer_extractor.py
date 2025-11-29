@@ -6,74 +6,78 @@ from dotenv import load_dotenv
 from openai import OpenAI as OpenAIClient
 import google.generativeai as genai
 
-from ...models.model_answer_with_media import ModelAnswer
-from ...prompts.extract_model_answers_prompt import EXTRACT_MODEL_ANSWERS_PROMPT
+from src.models.model_answer_with_media import ModelAnswer
+from src.prompts.extract_model_answers_prompt import EXTRACT_MODEL_ANSWERS_PROMPT
+from src.services.database_services.evaluation_model_db import EvaluationModelService
+
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 
 class ModelAnswerExtractor:
-    def __init__(self, provider: str):
+    def __init__(self, model_id):
         """
         Extracts structured model answers using LLMs.
-        Automatically loads model, API key, and temperature from .env
-        based on the provider name: openai, gemini, or deepseek.
+        Loads ALL configuration from Evaluation_Model table via get_model_config().
+        Only API keys are loaded from .env.
         """
 
-        # Normalize provider name (case-insensitive)
-        self.provider = provider.strip().lower()
+        # Load configuration from DB
+        model_service = EvaluationModelService()
+        model_config = model_service.get_model_config(model_id)
 
-        # 🔹 Load values dynamically from .env
+        if not model_config:
+            raise ValueError(f"No model config found for id={model_id}")
+
+        # Core fields
+        self.provider = model_config["provider"].lower()
+        self.temperature = float(model_config.get("temperature", 0.2))
+        self.chat_model = model_config.get("chat_model")  
+
+        # -----------------------------
+        # Provider-specific initialization
+        # -----------------------------
         if self.provider == "openai":
             self.api_key = os.getenv("OPENAI_API_KEY")
-            self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-            self.temperature = float(os.getenv("OPENAI_TEMPERATURE", 0.2))
+            self.model = self.chat_model
             self.client = OpenAIClient(api_key=self.api_key)
 
         elif self.provider == "gemini":
             self.api_key = os.getenv("GOOGLE_API_KEY")
-            self.model = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
-            self.temperature = float(os.getenv("GEMINI_TEMPERATURE", 0.2))
             genai.configure(api_key=self.api_key)
+            self.model = self.chat_model
             self.client = genai.GenerativeModel(model_name=self.model)
 
         elif self.provider == "deepseek":
-            # DeepSeek may use OpenAI-compatible endpoints
             self.api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY")
-            self.model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-            self.temperature = float(os.getenv("DEEPSEEK_TEMPERATURE", 0.2))
+            self.model = self.chat_model
             self.client = OpenAIClient(api_key=self.api_key)
 
         else:
             raise ValueError(
-                f"Unsupported provider: {provider}. Must be one of 'openai', 'gemini', or 'deepseek'."
+                f"Unsupported provider: {self.provider}. Must be openai, gemini, or deepseek."
             )
 
         logger.info(
-            f"✅ Using provider: {self.provider.capitalize()}, Model: {self.model}, Temp: {self.temperature}"
+            f"✅ Loaded Model Config → Provider: {self.provider}, Model: {self.model}, Temp: {self.temperature}"
         )
 
     # ----------------------------------------------------------
-    # 🔹 Extract structured answers from raw text
+    # Extract structured answers from raw text
     # ----------------------------------------------------------
     def extract(self, raw_text: str) -> List[ModelAnswer]:
-        """Extract a flat list of ModelAnswer objects from input text."""
         json_obj = self._call_llm(raw_text)
-        meta = json_obj.get("metadata", {})
         answers_h = json_obj.get("answers", {})
-
-        return self._flatten(
-            answers_h,
-        )
+        return self._flatten(answers_h)
 
     # ----------------------------------------------------------
-    # 🔹 Call LLM and parse JSON
+    # Call LLM and parse JSON
     # ----------------------------------------------------------
     def _call_llm(self, raw_text: str) -> dict:
         """Send text + extraction prompt to LLM and return parsed JSON."""
 
-        if self.provider == "openai" or self.provider == "deepseek":
+        if self.provider in ["openai", "deepseek"]:
             response = self.client.chat.completions.create(
                 model=self.model,
                 temperature=self.temperature,
@@ -95,7 +99,7 @@ class ModelAnswerExtractor:
             )
             content = response.text.strip()
 
-        # Clean up markdown-style ```json blocks
+        # Clean up ```json blocks
         if content.startswith("```"):
             content = content.strip("`").replace("json", "").strip()
 
@@ -110,21 +114,16 @@ class ModelAnswerExtractor:
             raise
 
     # ----------------------------------------------------------
-    # 🔹 Flatten hierarchical answer structure
+    # Flatten nested dict → List[ModelAnswer]
     # ----------------------------------------------------------
-    def _flatten(
-        self,
-        nested: dict,
-    ) -> List[ModelAnswer]:
-        """Flatten nested JSON into a list of ModelAnswer objects."""
+    def _flatten(self, nested: dict) -> List[ModelAnswer]:
         flat: List[ModelAnswer] = []
 
         def recurse(keys: list[str], node):
-            if isinstance(node, dict) and {"question", "answer", "guideline", "marks"}.issubset(node.keys()):
+            if isinstance(node, dict) and {"question", "answer", "guideline", "marks"}.issubset(node):
                 media_urls = []
                 media_summary = {}
 
-                # Handle structured media
                 if "media" in node and isinstance(node["media"], list):
                     for m in node["media"]:
                         url = m.get("url") or m.get("media_url")
@@ -133,8 +132,8 @@ class ModelAnswerExtractor:
                             if "summary" in m:
                                 media_summary[url] = m["summary"]
 
-                elif "media_urls" in node and isinstance(node["media_urls"], list):
-                    media_urls = node["media_urls"]
+                elif "media_urls" in node:
+                    media_urls = node.get("media_urls", [])
 
                 flat.append(ModelAnswer(
                     question_id=keys[0] if len(keys) > 0 else None,
@@ -145,6 +144,7 @@ class ModelAnswerExtractor:
                     answer_text=node.get("answer", "").strip(),
                     guideline_text=node.get("guideline", "").strip(),
                     max_marks=node.get("marks"),
+                    question_type=node.get("type"),
                     media_urls=media_urls,
                     media_summary=media_summary,
                 ))

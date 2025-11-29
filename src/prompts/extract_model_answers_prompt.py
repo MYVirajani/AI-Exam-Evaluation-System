@@ -42,6 +42,21 @@ Your job is to extract the question hierarchy and model answers in a clean JSON 
    - `"media_urls"`:
        - A list of all image paths extracted from `[Image: ...]` tags belonging to this question.
 
+   - `"type"`:
+       - Detect the question type based on the content or explicit label.
+       - Must be one of the following enum values only:
+         QuestionType {
+           MCQ,
+           SHORT,
+           ESSAY,
+           LIST,
+           GRAPH,
+           DIAGRAM,
+           TABLE
+           None
+         }
+       - If detection is unclear, infer from structure (e.g., options → MCQ; long narrative → ESSAY; list prompts → LIST; labelled diagram tasks → DIAGRAM; graph plotting/reading → GRAPH; table creation/reading → TABLE; direct definitions → SHORT).
+
 4. **Special Handling Rules**
    - Tables must be preserved exactly in readable multi-line text.
    - Equations must be included as plain text in the answer.
@@ -63,7 +78,8 @@ Return one valid JSON object, following this format:
           "answer": "Supervised learning is ...",
           "guideline": "Include mention of labeled data and prediction tasks.",
           "media_urls": ["path/to/image1.png"],
-          "marks": 5
+          "marks": 5,
+          "type": "SHORT"
         }
       },
       "ii": {
@@ -71,7 +87,8 @@ Return one valid JSON object, following this format:
         "answer": "Overfitting happens when ...",
         "guideline": "",
         "media_urls": [],
-        "marks": 3
+        "marks": 3,
+        "type": "ESSAY"
       }
     },
     "Q2": { ... }
@@ -84,7 +101,8 @@ Return one valid JSON object, following this format:
 * Output **only valid JSON** — no markdown, no explanations.
 * Maintain **exact question numbering** (e.g., Q1, Q2.a, Q3.i).
 * Every question node MUST include:
-  `"question"`, `"answer"`, `"guideline"`, `"marks"`, and `"media_urls"`.
+  `"question"`, `"answer"`, `"guideline"`, `"marks"`, `"media_urls"`, and `"type"`.
+* `"type"` must contain only one of the allowed enum values.
 * **All `[Image: ...]` tags must be removed from “question”, “answer”, and “guideline” after extraction.**
 * **Media URLs must NEVER appear inside the “question” text.**
 * `marks` must be integer or `null`.

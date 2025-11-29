@@ -8,32 +8,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 
 from src.services.extractors.model_answer_extractor import ModelAnswerExtractor
 from src.services.database_services.model_answer_db_service import ModelAnswerDBService
+from src.services.extractors.content_extractor_service import ContentExtractorService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Helper: Read DOCX content
-# ---------------------------------------------------------------------------
-def read_docx_text(file_path: str) -> str:
-    """Reads all text (paragraphs + tables) from a DOCX file."""
-    doc = Document(file_path)
-    full_text = []
 
-    # Extract paragraphs
-    for para in doc.paragraphs:
-        if para.text.strip():
-            full_text.append(para.text.strip())
-
-    # Extract table content
-    for table in doc.tables:
-        for row in table.rows:
-            row_text = [cell.text.strip() for cell in row.cells]
-            if any(row_text):
-                full_text.append("\t".join(row_text))
-
-    return "\n".join(full_text)
 
 
 # ---------------------------------------------------------------------------
@@ -55,17 +36,11 @@ def extract_and_save_model_answers(
         sys.exit(1)
 
     logger.info(f"📘 Reading DOCX file: {file_path}")
-    raw_text = read_docx_text(file_path)
+    raw_text = ContentExtractorService.extract_text(file_path)
 
-    # -----------------------------------------------------------------------
-    # Determine AI Provider (Model/Temp will be auto-loaded from .env)
-    # -----------------------------------------------------------------------
-    ai_provider = (ai_provider or os.getenv("AI_PROVIDER", "openai")).strip().lower()
-
-    logger.info(f"🚀 Initializing ModelAnswerExtractor (Provider: {ai_provider})...")
 
     try:
-        extractor = ModelAnswerExtractor(provider=ai_provider)
+        extractor = ModelAnswerExtractor(model_id=model_id)
     except ValueError as e:
         logger.error(f"❌ Invalid provider: {e}")
         sys.exit(1)
@@ -88,7 +63,7 @@ def extract_and_save_model_answers(
     model_name = extractor.model.lower().replace("-", "_").replace(".", "_")
 
     try:
-        db_service = ModelAnswerDBService(ai_model=ai_provider)
+        db_service = ModelAnswerDBService(model_id=model_id)
         db_service.save_model_answers(
             model_answers=model_answers,
             assessment_id=assessment_id,
@@ -120,6 +95,6 @@ if __name__ == "__main__":
     file_path = sys.argv[1]
     assessment_id = sys.argv[2]
     model_answer_paper_id = sys.argv[3]
-    ai_provider = sys.argv[4] if len(sys.argv) > 4 else None
+    model_id = sys.argv[4] if len(sys.argv) > 4 else None
 
-    extract_and_save_model_answers(file_path, assessment_id, model_answer_paper_id, ai_provider)
+    extract_and_save_model_answers(file_path, assessment_id, model_answer_paper_id, model_id)

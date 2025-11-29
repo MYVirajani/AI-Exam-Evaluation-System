@@ -167,11 +167,14 @@ enum assessmentType {
 }
 
 enum QuestionType {
+  Npne
   MCQ
   SHORT
   ESSAY
   LIST
-  IMAGE
+  GRAPH
+  DIAGRAM
+  TABLE
 }
 
 model Assessment {
@@ -259,7 +262,7 @@ model Question {
 
 model Question_Media {
   id            String   @id @default(uuid())
-  model_id      String // FK → Evaluation_Model.model_id
+  model_id      String 
   question_id   String
   media_url     String
   media_summary String?

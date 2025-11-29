@@ -5,6 +5,7 @@ from psycopg2.extras import execute_values
 from src.services.database_services.base_vector_db_service import BaseVectorDBService
 from src.services.embedding.openai_embedder import OpenAIEmbedder
 from src.services.embedding.gemini_embedder import GeminiEmbedder
+from src.utils.embedder_factory import get_embedder_for_model
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -20,22 +21,10 @@ class ModelAnswerVectorService(BaseVectorDBService):
     If an existing row has empty embeddings (NULL), the missing ones are embedded and updated.
     """
 
-    def __init__(self, ai_model: str):
-        embedder = self._select_embedder(ai_model)
-        super().__init__(embedder)
-        self.ai_model = ai_model
-        self._ensure_vector_table()
-
-    # ----------------------------------------------------------------------
-    def _select_embedder(self, ai_model: str):
-        model_lower = ai_model.lower()
-        if "gemini" in model_lower:
-            logger.info(f"🔹 Using GeminiEmbedder for model: {ai_model}")
-            return GeminiEmbedder()
-        else:
-            logger.info(f"🔹 Using OpenAIEmbedder for model: {ai_model}")
-            return OpenAIEmbedder()
-
+    def __init__(self, model_id):
+        self.model_id = model_id
+        embedder = get_embedder_for_model(model_id)
+        super().__init__(embedder=embedder)
     # ----------------------------------------------------------------------
     def _ensure_vector_table(self):
         self.table_name = f"model_answer_embeddings_{self.suffix}"

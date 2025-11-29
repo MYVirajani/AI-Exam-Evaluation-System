@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import List, Optional
+from typing import List
 from dotenv import load_dotenv
 from openai import OpenAI as OpenAIClient
 import google.generativeai as genai
@@ -9,7 +9,6 @@ import google.generativeai as genai
 from src.models.model_answer_with_media import ModelAnswer
 from src.prompts.extract_model_answers_prompt import EXTRACT_MODEL_ANSWERS_PROMPT
 from src.services.database_services.evaluation_model_db import EvaluationModelService
-
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -67,8 +66,15 @@ class ModelAnswerExtractor:
     # Extract structured answers from raw text
     # ----------------------------------------------------------
     def extract(self, raw_text: str) -> List[ModelAnswer]:
+        """
+        Extracts LLM-structured answers and flattens into ModelAnswer objects.
+        """
         json_obj = self._call_llm(raw_text)
         answers_h = json_obj.get("answers", {})
+        if not isinstance(answers_h, dict):
+            logger.error("LLM output missing 'answers' dict. Received: %r", answers_h)
+            return []
+
         return self._flatten(answers_h)
 
     # ----------------------------------------------------------
@@ -117,46 +123,66 @@ class ModelAnswerExtractor:
     # Flatten nested dict → List[ModelAnswer]
     # ----------------------------------------------------------
     def _flatten(self, nested: dict) -> List[ModelAnswer]:
+        """
+        Flatten deeply nested dict of questions/sub-questions/sub-sub-questions into ModelAnswer entries.
+        Handles both:
+          - media: [{url/media_url, summary}]
+          - media_urls: [list of URLs]
+        """
         flat: List[ModelAnswer] = []
 
         def recurse(keys: list[str], node):
+            # Case 1: This node is a complete answer block
             if isinstance(node, dict) and {"question", "answer", "guideline", "marks"}.issubset(node):
                 media_urls = []
                 media_summary = {}
 
+                # --- Case A: media = [ {url/summary}, ... ]
                 if "media" in node and isinstance(node["media"], list):
                     for m in node["media"]:
+                        if not isinstance(m, dict):
+                            continue
+
                         url = m.get("url") or m.get("media_url")
                         if url:
                             media_urls.append(url)
                             if "summary" in m:
                                 media_summary[url] = m["summary"]
 
+                # --- Case B: media_urls = [strings]
                 elif "media_urls" in node:
-                    media_urls = node.get("media_urls", [])
+                    raw_urls = node.get("media_urls", [])
+                    if isinstance(raw_urls, list):
+                        media_urls = [u for u in raw_urls if isinstance(u, str)]
 
-                flat.append(ModelAnswer(
-                    question_id=keys[0] if len(keys) > 0 else None,
-                    sub_question_id=keys[1] if len(keys) > 1 else None,
-                    sub_sub_question_id=keys[2] if len(keys) > 2 else None,
-                    sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
-                    question_text=node.get("question", "").strip(),
-                    answer_text=node.get("answer", "").strip(),
-                    guideline_text=node.get("guideline", "").strip(),
-                    max_marks=node.get("marks"),
-                    question_type=node.get("type"),
-                    media_urls=media_urls,
-                    media_summary=media_summary,
-                ))
+                # Build flattened answer
+                flat.append(
+                    ModelAnswer(
+                        question_id=keys[0] if len(keys) > 0 else None,
+                        sub_question_id=keys[1] if len(keys) > 1 else None,
+                        sub_sub_question_id=keys[2] if len(keys) > 2 else None,
+                        sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
+                        question_text=node.get("question", "").strip(),
+                        answer_text=node.get("answer", "").strip(),
+                        guideline_text=node.get("guideline", "").strip(),
+                        max_marks=node.get("marks"),
+                        question_type=node.get("type"),
+                        media_urls=media_urls,
+                        media_summary=media_summary,
+                    )
+                )
                 return
 
+            # Case 2: Keep traversing deeper levels
             elif isinstance(node, dict):
                 for k, v in node.items():
                     recurse(keys + [k], v)
 
             else:
+                # Unexpected non-dict structure
                 logger.warning("Unexpected node type under %s: %r", "_".join(keys), node)
 
+        # Start recursion from top-level (Q1, Q2, ...)
         for main_q, subtree in nested.items():
             recurse([main_q], subtree)
 

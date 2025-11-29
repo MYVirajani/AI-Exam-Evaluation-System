@@ -112,12 +112,12 @@ class ModelAnswerDBService(BaseRelationalDB):
 
             now = datetime.utcnow()
             q_values = []
-            id_map = {}
+            id_map = {}  # Map question_number → generated UUID
 
             for ans in model_answers:
-
+                qid = str(uuid.uuid4())
                 q_values.append((
-                    str(uuid.uuid4()), 
+                    qid,
                     self.model_id,
                     assessment_id,
                     model_answer_paper_id,
@@ -131,10 +131,13 @@ class ModelAnswerDBService(BaseRelationalDB):
                     now,
                     now
                 ))
+                # Populate the map so media can reference the correct question id
+                id_map[ans.question_number] = qid
 
+            # Insert questions
             execute_values(self.cursor, insert_q, q_values)
 
-            # Insert media
+            # Insert associated media
             media_values = self._prepare_media_values(model_answers, id_map)
             if media_values:
                 insert_media = f"""
@@ -170,11 +173,10 @@ class ModelAnswerDBService(BaseRelationalDB):
             if not qid:
                 continue
 
-            for url in ans.media_urls:
+            for url in ans.media_urls or []:
                 summary = None
                 if isinstance(ans.media_summary, dict):
                     summary = ans.media_summary.get(url)
-
                 values.append((
                     str(uuid.uuid4()),
                     self.model_id,
@@ -223,7 +225,7 @@ class ModelAnswerDBService(BaseRelationalDB):
                     "media_summary": r[4],
                     "guideline_text": r[5],
                     "question_number": r[6],
-                }
+                } for r in rows
             ]
 
         except Exception:

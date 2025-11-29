@@ -71,7 +71,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             raise
 
     # ---------------------------------------------------------
-    # SAVE MODEL ANSWERS
+    # SAVE MODEL ANSWERS (DELETE MEDIA FIRST)
     # ---------------------------------------------------------
     def save_model_answers(
         self,
@@ -85,13 +85,32 @@ class ModelAnswerDBService(BaseRelationalDB):
             return
 
         try:
-            # Clean previous rows
+            # --------------------------
+            # Delete existing media first
+            # --------------------------
+            self.cursor.execute(
+                f"""
+                DELETE FROM {self.question_media_table} qm
+                USING {self.question_table} q
+                WHERE qm.question_id = q.id
+                  AND q.assessment_id=%s
+                  AND q.model_answer_paper_id=%s
+                """,
+                (assessment_id, model_answer_paper_id)
+            )
+
+            # --------------------------
+            # Delete existing questions
+            # --------------------------
             self.cursor.execute(
                 f"""DELETE FROM {self.question_table}
                     WHERE assessment_id=%s AND model_answer_paper_id=%s""",
                 (assessment_id, model_answer_paper_id)
             )
 
+            # --------------------------
+            # Insert new questions
+            # --------------------------
             insert_q = f"""
                 INSERT INTO {self.question_table} (
                     id,
@@ -131,13 +150,13 @@ class ModelAnswerDBService(BaseRelationalDB):
                     now,
                     now
                 ))
-                # Populate the map so media can reference the correct question id
                 id_map[ans.question_number] = qid
 
-            # Insert questions
             execute_values(self.cursor, insert_q, q_values)
 
+            # --------------------------
             # Insert associated media
+            # --------------------------
             media_values = self._prepare_media_values(model_answers, id_map)
             if media_values:
                 insert_media = f"""
@@ -188,6 +207,47 @@ class ModelAnswerDBService(BaseRelationalDB):
                 ))
 
         return values
+
+    # ---------------------------------------------------------
+    # GET ALL MODEL ANSWERS WITH MEDIA
+    # ---------------------------------------------------------
+    def get_model_answer_with_media(self, assessment_id: str, model_paper_id: str):
+        try:
+            query = f"""
+                SELECT 
+                    q.id AS model_answer_id,
+                    q.question_number,
+                    q.question_text,
+                    q.answer_text,
+                    q.guideline_text,
+                    ARRAY_REMOVE(ARRAY_AGG(qm.media_summary), NULL) AS media_summaries
+                FROM {self.question_table} q
+                LEFT JOIN {self.question_media_table} qm ON q.id = qm.question_id
+                WHERE q.assessment_id = %s
+                  AND q.model_answer_paper_id = %s
+                GROUP BY q.id
+                ORDER BY q.question_number
+            """
+            self.cursor.execute(query, (assessment_id, model_paper_id))
+            rows = self.cursor.fetchall()
+
+            results = []
+            for r in rows:
+                results.append({
+                    "model_answer_id": r[0],
+                    "question_number": r[1],
+                    "question_text": r[2] or "",
+                    "answer_text": r[3] or "",
+                    "guideline_text": r[4] or "",
+                    "media_summaries": r[5] or []
+                })
+
+            return results
+
+        except Exception:
+            logger.error("Failed fetching model answers with media", exc_info=True)
+            self.conn.rollback()
+            return []
 
     # ---------------------------------------------------------
     # GET MEDIA

@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+from datetime import datetime
 
 from src.services.extractors.media_extractor_service import MediaExtractorService
 from src.services.database_services.model_answer_db_service import ModelAnswerDBService
@@ -8,8 +9,10 @@ from src.services.database_services.model_answer_paper_db_service import ModelAn
 from src.services.extractors.content_extractor_service import ContentExtractorService
 from src.services.extractors.model_answer_extractor import ModelAnswerExtractor
 from src.services.summary.image_summarise_service import ImageSummarizer
+from src.services.database_services.model_answer_vector_service import ModelAnswerVectorService
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class ModelAnswerProcessor:
@@ -133,43 +136,59 @@ class ModelAnswerProcessor:
 
         if not media_items:
             logger.info("ℹ️ No media items found → Skipping summarization.")
-            return
+            media_items = []
 
         # ---------------------------------------------------------
         # STEP 6 — Summarize each image and update DB
         # ---------------------------------------------------------
-        logger.info("\n===== STEP 6: SUMMARIZING MODEL ANSWER IMAGES =====")
+        if media_items:
+            logger.info("\n===== STEP 6: SUMMARIZING MODEL ANSWER IMAGES =====")
 
-        summarizer = ImageSummarizer(model_id=self.model_id)
+            summarizer = ImageSummarizer(model_id=self.model_id)
 
-        for item in media_items:
-            media_id = item["id"]
-            image_path = item["media_url"]
-            guideline_text = item.get("guideline_text")
+            for item in media_items:
+                media_id = item["id"]
+                image_path = item["media_url"]
+                guideline_text = item.get("guideline_text")
 
-            logger.info(f"\n🖼️ Processing Image: {image_path}")
-            logger.info(f"📌 Media ID: {media_id}, Question {item['question_number']}")
+                logger.info(f"\n🖼️ Processing Image: {image_path}")
+                logger.info(f"📌 Media ID: {media_id}, Question {item['question_number']}")
 
-            summary = summarizer.summarize_image(
-                image_path=image_path,
-                mode="model",
-                domain="Engineering",
-                guideline_text=guideline_text
-            )
+                summary = summarizer.summarize_image(
+                    image_path=image_path,
+                    mode="model",
+                    domain="Engineering",
+                    guideline_text=guideline_text
+                )
 
-            if summary:
-                logger.info("✅ Summary generated. Updating database...")
-                success = media_service.update_media_summary(media_id, summary)
+                if summary:
+                    logger.info("✅ Summary generated. Updating database...")
+                    success = media_service.update_media_summary(media_id, summary)
 
-                if success:
-                    logger.info("💾 DB Update Success.")
+                    if success:
+                        logger.info("💾 DB Update Success.")
+                    else:
+                        logger.error("❌ Failed to update DB for media summary.")
+
                 else:
-                    logger.error("❌ Failed to update DB for media summary.")
+                    logger.error("❌ Summary generation failed. Skipping DB update.")
 
-            else:
-                logger.error("❌ Summary generation failed. Skipping DB update.")
+        # ---------------------------------------------------------
+        # STEP 7 — EMBED MODEL ANSWERS (questions + answers + guidelines + media)
+        # ---------------------------------------------------------
+        logger.info("\n===== STEP 7: EMBEDDING MODEL ANSWERS =====")
 
-        logger.info("\n🎉 SUCCESS: Model answer processing (text + media + summarization) complete.\n")
+        embed_service = ModelAnswerVectorService(model_id=model_id)
+        db_service = ModelAnswerDBService(model_id=model_id)
+        try:
+            embed_service.embed_and_store_model_answers(
+                model_paper_id=model_answer_paper_id,
+                assessment_id=assessment_id,
+                db_service=db_service
+            )
+            logger.info("✅ Completed model answer embeddings for all questions.")
+        finally:
+            embed_service.close()
 
 
 # ---------------------------------------------------------------

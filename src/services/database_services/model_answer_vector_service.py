@@ -17,17 +17,18 @@ class ModelAnswerVectorService(BaseVectorDBService):
       - Question text
       - Model answer text (+ media summaries)
       - Guideline text
-
-    If an existing row has empty embeddings (NULL), the missing ones are embedded and updated.
     """
 
     def __init__(self, model_id):
         self.model_id = model_id
         embedder = get_embedder_for_model(model_id)
+        self.suffix = embedder.get_table_suffix()
+        self.table_name = f"model_answer_embeddings_{self.suffix}"
         super().__init__(embedder=embedder)
+        self._ensure_vector_table()  # Ensure table exists on init
+
     # ----------------------------------------------------------------------
     def _ensure_vector_table(self):
-        self.table_name = f"model_answer_embeddings_{self.suffix}"
         dim = self.embedder.get_embedding_dimension()
 
         create_table_query = f"""
@@ -49,15 +50,20 @@ class ModelAnswerVectorService(BaseVectorDBService):
             created_on TIMESTAMP DEFAULT NOW()
         );
         """
+        try:
+            self.cursor.execute(create_table_query)
+            self.conn.commit()
+            logger.info(f"✅ Ensured table exists: {self.table_name}")
+        except Exception:
+            logger.error(f"❌ Failed to create table: {self.table_name}", exc_info=True)
+            self.conn.rollback()
+            raise
 
-        self.cursor.execute(create_table_query)
-        self.conn.commit()
-        logger.info(f"✅ Ensured table exists: {self.table_name}")
-
-    # ----------------------------------------------------------------------
-    # Main logic
     # ----------------------------------------------------------------------
     def embed_and_store_model_answers(self, model_paper_id: str, assessment_id: str, db_service):
+        # Ensure table exists before using
+        self._ensure_vector_table()
+
         logger.info(f"📥 Fetching model answers with media using db_service.get_model_answer_with_media()...")
 
         rows = db_service.get_model_answer_with_media(
@@ -73,7 +79,7 @@ class ModelAnswerVectorService(BaseVectorDBService):
 
         model_name = self.embedder.get_model_name()
 
-        # Fetch full existing rows (not just IDs)
+        # Fetch existing embeddings if present
         existing_query = f"""
             SELECT model_answer_id, question_embedding, answer_embedding, guideline_embedding
             FROM {self.table_name}
@@ -106,8 +112,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
 
             # Case 1: NEW RECORD → insert full embedding set
             if model_answer_id not in existing_map:
-                logger.info(f"🆕 New model_answer_id={model_answer_id} → generating all embeddings")
-
                 q_emb = self.embedder.embed([question_text])[0] if question_text else None
                 a_emb = self.embedder.embed([full_answer_text])[0] if full_answer_text else None
                 g_emb = self.embedder.embed([guideline_text])[0] if guideline_text else None
@@ -126,30 +130,22 @@ class ModelAnswerVectorService(BaseVectorDBService):
 
             updated_fields = {}
             if q_emb is None and question_text:
-                logger.info(f"✨ Updating missing QUESTION embedding for {model_answer_id}")
                 updated_fields["question_embedding"] = self.embedder.embed([question_text])[0]
 
             if a_emb is None and full_answer_text:
-                logger.info(f"✨ Updating missing ANSWER embedding for {model_answer_id}")
                 updated_fields["answer_embedding"] = self.embedder.embed([full_answer_text])[0]
 
             if g_emb is None and guideline_text:
-                logger.info(f"✨ Updating missing GUIDELINE embedding for {model_answer_id}")
                 updated_fields["guideline_embedding"] = self.embedder.embed([guideline_text])[0]
 
             if updated_fields:
-                # Build dynamic SQL for partial update
                 set_clause = ", ".join([f"{col} = %s" for col in updated_fields.keys()])
                 update_values = list(updated_fields.values())
                 update_values.append(model_answer_id)
-
                 updates.append((set_clause, update_values))
-            else:
-                logger.info(f"⏭️ Complete row exists for model_answer_id={model_answer_id}, nothing to update")
 
         # Perform all INSERTS
         if inserts:
-            logger.info(f"📝 Inserting {len(inserts)} new rows...")
             insert_query = f"""
             INSERT INTO {self.table_name} (
                 assessment_id, model_paper_id, model_answer_id, question_number,
@@ -169,7 +165,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
             self.cursor.execute(update_query, values)
 
         self.commit()
-
         logger.info(f"✅ Completed: {len(inserts)} inserted, {len(updates)} updated.")
 
     # ----------------------------------------------------------------------

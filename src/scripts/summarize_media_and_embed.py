@@ -84,10 +84,10 @@ def summarize_model_answers(assessment_id: str, model_paper_id: str = None, sele
 # ----------------------------------------------------------------------
 # MODEL ANSWER EMBEDDING (AFTER SUMMARIZATION)
 # ----------------------------------------------------------------------
-def embed_model_answers(model_paper_id: str, assessment_id: str, selected_model: str):
+def embed_model_answers(model_paper_id: str, assessment_id: str, model_id: str):
     """Embed model answers and store embeddings."""
-    db_service = ModelAnswerDBService(ai_model=selected_model)
-    vector_service = ModelAnswerVectorService(ai_model=selected_model)
+    db_service = ModelAnswerDBService(model_id=model_id)
+    vector_service = ModelAnswerVectorService(model_id=model_id)
 
     logger.info(f"🚀 Starting embedding for model_paper_id={model_paper_id}, assessment_id={assessment_id}")
 

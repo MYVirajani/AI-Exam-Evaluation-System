@@ -32,7 +32,7 @@ class ModelAnswerProcessor:
         model_answer_paper_id: str,
         assessment_id: str,
         model_id: str,
-        extract_media: bool = True   # 🔥 media extraction enabled by default
+        extract_media: bool = True  
     ):
 
         logger.info(f"\n🔍 Fetching model answer paper: {model_answer_paper_id}")

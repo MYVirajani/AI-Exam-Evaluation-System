@@ -164,7 +164,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             raise
 
     # ==================================================================================
-    # UPDATE ANSWER
+    # UPDATE ANSWER TEXT
     # ==================================================================================
     def update_answer(self, answer_id: str, new_text: str) -> bool:
 
@@ -179,6 +179,49 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             self.commit()
             return self.cursor.rowcount > 0
         except:
+            self.rollback()
+            return False
+
+    # ==================================================================================
+    # UPDATE SCORE + FEEDBACK (NEW FUNCTION)
+    # ==================================================================================
+    def update_score_and_feedback(self, submission_id: str, question_number: str, score: float, feedback: str) -> bool:
+        """
+        Update score and feedback for a student's answer using:
+            - submission_id
+            - model_id
+            - question_number
+        """
+
+        query = f"""
+        UPDATE {self.student_answer_table}
+        SET 
+            score = %s,
+            feedback = %s,
+            graded_at = NOW(),
+            updated_on = NOW()
+        WHERE submission_id=%s
+        AND model_id=%s
+        AND question_number=%s;
+        """
+
+        try:
+            self.cursor.execute(
+                query,
+                (score, feedback, submission_id, self.model_id, question_number)
+            )
+            self.commit()
+
+            updated = self.cursor.rowcount > 0
+            if updated:
+                logger.info(f"✅ Updated score & feedback for submission={submission_id}, question={question_number}")
+            else:
+                logger.warning(f"⚠️ No matching record found for submission={submission_id}, question={question_number}")
+
+            return updated
+
+        except Exception as e:
+            logger.error(f"❌ Failed updating score & feedback: {e}", exc_info=True)
             self.rollback()
             return False
 
@@ -219,7 +262,6 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                     }
 
                 if url:
-                    # decode JSON summary if stored as JSON string
                     try:
                         summary = json.loads(summary) if summary else None
                     except:
@@ -242,16 +284,6 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
     # FIXED: FETCH ANSWERS FOR EMBEDDING
     # ----------------------------------------------------------------------
     def fetch_answers_for_embedding(self, submission_id: str) -> List[tuple]:
-        """
-        Returns list of tuples in format:
-            (
-                student_answer_id,
-                submission_id,
-                question_number,
-                answer_text,
-                [media_summaries]
-            )
-        """
 
         query = f"""
         SELECT 
@@ -289,7 +321,6 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                     media_summaries
                 ) = row
 
-                # decode summaries
                 decoded = []
                 if media_summaries:
                     for item in media_summaries:

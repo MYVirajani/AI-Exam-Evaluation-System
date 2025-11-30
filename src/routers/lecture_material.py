@@ -1,52 +1,37 @@
-from fastapi import APIRouter, BackgroundTasks
-from fastapi.responses import JSONResponse
-from typing import Optional
-import logging
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
-# Import the pipeline function
-from src.scripts import process_lecture_matrials
+from src.scripts.lecture_materials.pipeline import process_lecture_materials
 
-router = APIRouter(prefix="/educator", tags=["Lecture Material Embedding"])
+router = APIRouter(prefix="/lecture-material", tags=["Lecture Material Processing"])
 
-logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------
-# API Endpoint to run media extraction for a lesson
-# ---------------------------------------------------------
-@router.post("/lecture-material-embedding")
-async def lecture_material_embedding_endpoint(
-    lesson_id: str,
-    model_id: Optional[str],
-    background_tasks: BackgroundTasks = None
-):
+class LectureMaterialProcessRequest(BaseModel):
+    lesson_id: str
+    model_id: str = "eaa81306-f9e3-4c96-901d-3b7a80a3f4ac"
+
+
+@router.post("/process-extract-embed")
+def process_lecture_material_endpoint(request: LectureMaterialProcessRequest):
     """
-    Trigger media extraction, summarisation, tag replacement,
-    DB saving, and embedding generation for a specific lesson.
+    Endpoint: Trigger lecture material processing pipeline.
     """
-
-    logger.info(f"📢 Received request: lesson_id={lesson_id}, model_id={model_id}")
 
     try:
-        # Run the heavy task in the background
-        background_tasks.add_task(process_lecture_matrials, lesson_id, model_id)
-
-        return JSONResponse(
-            content={
-                "status": "started",
-                "message": "Lecture Material Embedding pipeline has started in background.",
-                "lesson_id": lesson_id,
-                "model_id": model_id
-            },
-            status_code=202
+        process_lecture_materials(
+            lesson_id=request.lesson_id,
+            model_id=request.model_id
         )
 
-    except Exception as e:
-        logger.error(f"❌ Failed to queue task: {str(e)}")
+        return {
+            "status": "success",
+            "lesson_id": request.lesson_id,
+            "model_id": request.model_id,
+            "message": "Lecture material processing completed"
+        }
 
-        return JSONResponse(
-            content={
-                "status": "error",
-                "message": str(e)
-            },
-            status_code=500
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lecture material processing failed: {str(e)}"
         )

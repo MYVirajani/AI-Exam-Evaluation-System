@@ -3,7 +3,7 @@ import json
 import os
 import sys
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from psycopg2.extras import execute_values
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 
 # ======================================================================================
-# CLASS: StudentAnswerServiceWithMedia 
+# CLASS: StudentAnswerServiceWithMedia
 # ======================================================================================
 class StudentAnswerServiceWithMedia(BaseRelationalDB):
 
@@ -183,7 +183,7 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             return False
 
     # ==================================================================================
-    # UPDATE SCORE + FEEDBACK (NEW FUNCTION)
+    # UPDATE SCORE + FEEDBACK
     # ==================================================================================
     def update_score_and_feedback(
         self,
@@ -193,16 +193,8 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
         feedback: str = None,
         student_answer_id: str = None,
     ) -> bool:
-        """
-        Update score & feedback using either:
-          OPTION A → student_answer_id (highest priority)
-          OPTION B → (submission_id + model_id + question_number)
-        """
 
         if student_answer_id:
-            # ----------------------------------------------
-            # OPTION A — Update by student_answer_id
-            # ----------------------------------------------
             query = f"""
             UPDATE {self.student_answer_table}
             SET score=%s,
@@ -211,14 +203,10 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                 updated_on=NOW()
             WHERE id=%s AND model_id=%s;
             """
-
             params = (score, feedback, student_answer_id, self.model_id)
             lookup_msg = f"student_answer_id={student_answer_id}"
 
         else:
-            # ----------------------------------------------
-            # OPTION B — Update by submission_id + question_number
-            # ----------------------------------------------
             query = f"""
             UPDATE {self.student_answer_table}
             SET score=%s,
@@ -226,10 +214,9 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                 graded_at=NOW(),
                 updated_on=NOW()
             WHERE submission_id=%s
-            AND model_id=%s
-            AND question_number=%s;
+              AND model_id=%s
+              AND question_number=%s;
             """
-
             params = (score, feedback, submission_id, self.model_id, question_number)
             lookup_msg = f"submission_id={submission_id}, question={question_number}"
 
@@ -252,32 +239,47 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             return False
 
     # ==================================================================================
-    # GET ALL ANSWERS (FIXED)
+    # GET ALL ANSWERS (FIXED INDENTATION)
     # ==================================================================================
-    def get_all_answers(self, submission_id: str) -> List[Dict[str, Any]]:
+    def get_all_answers(
+        self,
+        submission_id: str,
+        question_numbers: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
 
         query = f"""
-        SELECT 
-            a.id,
-            a.question_number,
-            a.answer_text,
-            a.updated_on,
-            m.media_url,
-            m.media_summary,
-            m.updated_on
-        FROM {self.student_answer_table} a
-        LEFT JOIN {self.student_answer_media_table} m
-            ON a.id = m.student_answer_id AND m.model_id = %s
-        WHERE a.submission_id=%s AND a.model_id=%s
-        ORDER BY a.question_number;
+            SELECT 
+                a.id,
+                a.question_number,
+                a.answer_text,
+                a.updated_on,
+                m.media_url,
+                m.media_summary,
+                m.updated_on
+            FROM {self.student_answer_table} a
+            LEFT JOIN {self.student_answer_media_table} m
+                ON a.id = m.student_answer_id AND m.model_id = %s
+            WHERE a.submission_id = %s
+              AND a.model_id = %s
         """
 
+        params = [self.model_id, submission_id, self.model_id]
+
+        if question_numbers and len(question_numbers) > 0:
+            placeholders = ", ".join(["%s"] * len(question_numbers))
+            query += f" AND a.question_number IN ({placeholders})"
+            params.extend(question_numbers)
+
+        query += " ORDER BY a.question_number"
+
         try:
-            self.cursor.execute(query, (self.model_id, submission_id, self.model_id))
+            self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
             data = {}
+
             for ans_id, qnum, text, updated, url, summary, m_updated in rows:
+
                 if ans_id not in data:
                     data[ans_id] = {
                         "student_answer_id": ans_id,
@@ -306,9 +308,9 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             self.rollback()
             return []
 
-    # ----------------------------------------------------------------------
-    # FIXED: FETCH ANSWERS FOR EMBEDDING
-    # ----------------------------------------------------------------------
+    # ==================================================================================
+    # FETCH FOR EMBEDDING
+    # ==================================================================================
     def fetch_answers_for_embedding(self, submission_id: str) -> List[tuple]:
 
         query = f"""
@@ -365,9 +367,9 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             self.rollback()
             return []
 
-    # ----------------------------------------------------------------------
-    # FETCH MULTIPLE ANSWERS
-    # ----------------------------------------------------------------------
+    # ==================================================================================
+    # FETCH ANSWERS FOR MULTIPLE SUBMISSIONS
+    # ==================================================================================
     def get_all_answers_by_submission_ids(self, submission_ids: List[str]) -> List[Dict[str, Any]]:
         if not submission_ids:
             logger.warning("⚠️ No submission IDs provided.")
@@ -416,16 +418,14 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
                         "media_summary": summary
                     })
 
-            results = list(results_dict.values())
-            logger.info(f"✅ Retrieved {len(results)} answers across {len(submission_ids)} submissions")
-            return results
+            return list(results_dict.values())
 
         except Exception as e:
             logger.error(f"❌ Failed fetching multiple answers: {e}", exc_info=True)
             self.rollback()
             return []
 
-    # ----------------------------------------------------------------------
+    # ==================================================================================
     def commit(self):
         self.conn.commit()
 

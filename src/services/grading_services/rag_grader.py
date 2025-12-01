@@ -117,7 +117,7 @@ class RAGGrader:
     # =======================================================================
     def grade_all_submissions(self, submission_ids: List[str], model_paper_id: str,
                               assessment_id: str, lecturer_id: str, module_id: str,
-                              top_k: int = 5):
+                              top_k: int = 5,question_numbers: Optional[List[str]] = None):
         """
         Grade all submissions and return a list of GradingResultRecord objects (in-memory).
         Commits results at the end. Rolls back on errors.
@@ -126,7 +126,7 @@ class RAGGrader:
 
         for submission_id in submission_ids:
             try:
-                student_answers = self.student_db_service.get_all_answers(submission_id)
+                student_answers = self.student_db_service.get_all_answers(submission_id, question_numbers)
                 if not student_answers:
                     log.warning(f"No answers found for submission {submission_id}")
                     continue
@@ -539,6 +539,8 @@ if __name__ == "__main__":
     parser.add_argument("--assessment-id", required=True, help="Assessment id")
     parser.add_argument("--lecturer-id", required=True, help="Lecturer id")
     parser.add_argument("--module-id", required=True, help="Module id")
+    parser.add_argument("--top-k", type=int, default=5, help="Top K lecture chunks to retrieve for context"),
+    parser.add_argument("--question-numbers", type=str, default=None, help="Comma-separated question numbers to grade (all if omitted)")    
     args = parser.parse_args()
 
     submission_ids = [s.strip() for s in args.submission_ids.split(",") if s.strip()]
@@ -550,6 +552,7 @@ if __name__ == "__main__":
         lecturer_id=args.lecturer_id,
         module_id=args.module_id,
         top_k=5
+        ,question_numbers=[qn.strip() for qn in args.question_numbers.split(",")] if args.question_numbers else None
     )
 
     print(f"Graded {len(results)} answer records.")

@@ -9,6 +9,7 @@ Notes:
 - Provider SDK call lines may need small edits depending on exact SDK versions. See comments marked `# ADAPT`.
 """
 
+from asyncio.log import logger
 import os
 import json
 import base64
@@ -165,11 +166,11 @@ class RAGGrader:
                         record = GradingResultRecord(
                             submission_id=submission_id,
                             question_number=question_number,
-                            question_id=model_emb.get("model_answer_id") if isinstance(model_emb, dict) else None,
+                            question_id=question_id,
                             student_answer_id=student_answer_id,
                             model_id=self.model_id,
                             score=0.0,
-                            max_marks=0.0,
+                            max_marks=max_marks,
                             feedback="Student hasn't provided the answer.",
                             answer_source="No answer",
                             grading_method=GradingMethod.RAG.value,
@@ -178,6 +179,15 @@ class RAGGrader:
                         )
                         self.result_db.save_result(record=record)
                         graded_records.append(record)
+                        updated=self.student_db_service.update_score_and_feedback(
+                            student_answer_id=student_answer_id,
+                            score=0.0,
+                            feedback="Student hasn't provided the answer."
+                        )
+                        if updated:
+                            logger.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
+                        else:
+                            logger.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")    
                         continue
 
                     # Build answer description
@@ -205,11 +215,11 @@ class RAGGrader:
                         record = GradingResultRecord(
                             submission_id=submission_id,
                             question_number=question_number,
-                            question_id=model_emb.get("model_answer_id") if isinstance(model_emb, dict) else None,
+                            question_id=question_id,
                             student_answer_id=student_answer_id,
                             model_id=self.model_id,
                             score=0.0,
-                            max_marks=0.0,
+                            max_marks=max_marks,
                             feedback="Missing embeddings; skipping automatic grading.",
                             answer_source="no-embedding",
                             grading_method=GradingMethod.RAG.value,
@@ -218,6 +228,15 @@ class RAGGrader:
                         )
                         self.result_db.save_result(record)
                         graded_records.append(record)
+                        updated=self.student_db_service.update_score_and_feedback(
+                            student_answer_id=student_answer_id,
+                            score=0.0,
+                            feedback="Missing embeddings; skipping automatic grading."
+                        )
+                        if updated:
+                            logger.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
+                        else:
+                            logger.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")    
                         continue
 
                     sim_score = self._compute_cosine_similarity(
@@ -245,6 +264,7 @@ class RAGGrader:
                         log.warning(f"No model answer found for question {question_number}, paper {model_paper_id}")
                         continue
 
+                    question_id = model_data.get("model_answer_id", None)
                     question_text = model_data.get("question_text", "")
                     guideline_text = model_data.get("guideline_text", "")
                     max_marks = float(model_data.get("max_marks", 0.0) or 0.0)
@@ -275,18 +295,18 @@ class RAGGrader:
 
                     # call LLM depending on provider
                     if self.llm_model == "openai":
-                        score, feedback, source = self._call_openai(prompt, max_marks)
+                        score, feedback, source = self._call_openai(prompt)
                     elif self.llm_model == "gemini":
-                        score, feedback, source = self._call_gemini(prompt, max_marks)
+                        score, feedback, source = self._call_gemini(prompt)
                     else:
-                        score, feedback, source = self._call_claude(prompt, max_marks)
+                        score, feedback, source = self._call_claude(prompt)
 
                     # Save Result
                     try:
                         record = GradingResultRecord(
                             submission_id=submission_id,
                             question_number=question_number,
-                            question_id=model_emb.get("model_answer_id") if isinstance(model_emb, dict) else None,
+                            question_id=question_id,
                             student_answer_id=student_answer_id,
                             model_id=self.model_id,
                             score=float(score),
@@ -299,6 +319,15 @@ class RAGGrader:
                         )
                         self.result_db.save_result(record)
                         graded_records.append(record)
+                        updated=self.student_db_service.update_score_and_feedback(
+                            student_answer_id=student_answer_id,
+                            score=float(score),
+                            feedback=feedback
+                        )
+                        if updated:
+                            logger.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
+                        else:
+                            logger.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")    
                     except Exception as e:
                         log.error(f"Error saving grading result for {submission_id}/{question_number}: {e}", exc_info=True)
                         self.result_db.rollback()
@@ -323,7 +352,7 @@ class RAGGrader:
         return graded_records
 
     # =======================================================================
-    def _call_openai(self, prompt: str, max_marks: float):
+    def _call_openai(self, prompt: str):
         """Call OpenAI client. Adapt the call if your installed SDK differs."""
         try:
             # Many OpenAI SDK versions accept a messages list. Here we use a single prompt in messages.
@@ -360,7 +389,7 @@ class RAGGrader:
             return 0.0, "OpenAI grading failed.", "text"
 
     # =======================================================================
-    def _call_gemini(self, prompt: str, max_marks: float):
+    def _call_gemini(self, prompt: str):
         """Call Gemini (Google) client. ADAPT depending on SDK."""
         try:
             if not self.client:
@@ -385,7 +414,7 @@ class RAGGrader:
             return 0.0, "Gemini grading failed.", "text"
 
     # =======================================================================
-    def _call_claude(self, prompt: str, max_marks: float):
+    def _call_claude(self, prompt: str):
         """Call Anthropic/Claude-style client. ADAPT if needed."""
         try:
             if not self.client:

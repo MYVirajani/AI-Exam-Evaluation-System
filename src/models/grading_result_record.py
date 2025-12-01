@@ -9,9 +9,11 @@ class GradingMethod(Enum):
 
 @dataclass
 class GradingResultRecord:
-    
+    model_id: str
     submission_id: str
     question_number: str
+    question_id: Optional[str]
+    student_answer_id: str
     score: float          
     max_marks: float
     feedback: str      

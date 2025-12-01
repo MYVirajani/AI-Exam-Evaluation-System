@@ -185,43 +185,69 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
     # ==================================================================================
     # UPDATE SCORE + FEEDBACK (NEW FUNCTION)
     # ==================================================================================
-    def update_score_and_feedback(self, submission_id: str, question_number: str, score: float, feedback: str) -> bool:
+    def update_score_and_feedback(
+        self,
+        submission_id: str = None,
+        question_number: str = None,
+        score: float = None,
+        feedback: str = None,
+        student_answer_id: str = None,
+    ) -> bool:
         """
-        Update score and feedback for a student's answer using:
-            - submission_id
-            - model_id
-            - question_number
+        Update score & feedback using either:
+          OPTION A → student_answer_id (highest priority)
+          OPTION B → (submission_id + model_id + question_number)
         """
 
-        query = f"""
-        UPDATE {self.student_answer_table}
-        SET 
-            score = %s,
-            feedback = %s,
-            graded_at = NOW(),
-            updated_on = NOW()
-        WHERE submission_id=%s
-        AND model_id=%s
-        AND question_number=%s;
-        """
+        if student_answer_id:
+            # ----------------------------------------------
+            # OPTION A — Update by student_answer_id
+            # ----------------------------------------------
+            query = f"""
+            UPDATE {self.student_answer_table}
+            SET score=%s,
+                feedback=%s,
+                graded_at=NOW(),
+                updated_on=NOW()
+            WHERE id=%s AND model_id=%s;
+            """
+
+            params = (score, feedback, student_answer_id, self.model_id)
+            lookup_msg = f"student_answer_id={student_answer_id}"
+
+        else:
+            # ----------------------------------------------
+            # OPTION B — Update by submission_id + question_number
+            # ----------------------------------------------
+            query = f"""
+            UPDATE {self.student_answer_table}
+            SET score=%s,
+                feedback=%s,
+                graded_at=NOW(),
+                updated_on=NOW()
+            WHERE submission_id=%s
+            AND model_id=%s
+            AND question_number=%s;
+            """
+
+            params = (score, feedback, submission_id, self.model_id, question_number)
+            lookup_msg = f"submission_id={submission_id}, question={question_number}"
 
         try:
-            self.cursor.execute(
-                query,
-                (score, feedback, submission_id, self.model_id, question_number)
-            )
+            self.cursor.execute(query, params)
             self.commit()
 
             updated = self.cursor.rowcount > 0
+
             if updated:
-                logger.info(f"✅ Updated score & feedback for submission={submission_id}, question={question_number}")
+                logger.info(f"✅ Updated score & feedback ({lookup_msg})")
             else:
-                logger.warning(f"⚠️ No matching record found for submission={submission_id}, question={question_number}")
+                logger.warning(f"⚠️ No matching record found ({lookup_msg})")
 
             return updated
 
         except Exception as e:
-            logger.error(f"❌ Failed updating score & feedback: {e}", exc_info=True)
+            logger.error(f"❌ Failed updating score & feedback ({lookup_msg}): {e}", exc_info=True)
             self.rollback()
             return False
 
@@ -349,20 +375,20 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
 
         try:
             query = f"""
-SELECT 
-    a.submission_id,
-    a.id AS student_answer_id,
-    a.question_number,
-    a.answer_text,
-    a.updated_on,
-    m.media_url,
-    m.media_summary
-FROM {self.student_answer_table} AS a
-LEFT JOIN {self.student_answer_media_table} AS m
-    ON a.id = m.student_answer_id AND m.model_id = a.model_id
-WHERE a.submission_id = ANY(%s)
-ORDER BY a.submission_id, a.question_number;
-"""
+            SELECT 
+                a.submission_id,
+                a.id AS student_answer_id,
+                a.question_number,
+                a.answer_text,
+                a.updated_on,
+                m.media_url,
+                m.media_summary
+            FROM {self.student_answer_table} AS a
+            LEFT JOIN {self.student_answer_media_table} AS m
+                ON a.id = m.student_answer_id AND m.model_id = a.model_id
+            WHERE a.submission_id = ANY(%s)
+            ORDER BY a.submission_id, a.question_number;
+            """
             self.cursor.execute(query, (submission_ids,))
             rows = self.cursor.fetchall()
 

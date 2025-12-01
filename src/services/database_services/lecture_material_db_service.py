@@ -297,3 +297,40 @@ class LectureMaterialDBService(BaseRelationalDB):
         except Exception as e:
             logger.error(f"Error fetching full material data: {e}")
             raise
+
+    # ----------------------------------------------------
+    # UPDATED FUNCTION: FETCH MATERIAL IDs BY LIST OF LESSON IDs
+    # ----------------------------------------------------
+    def get_lecture_material_ids_by_lessons(self, lesson_ids: list, created_by: str = None):
+        """
+        Return lecture_material IDs for a list of lesson_ids.
+        If created_by is provided → filter by created_by.
+        """
+
+        try:
+            if created_by:
+                sql = """
+                    SELECT id
+                    FROM "Lecture_Material"
+                    WHERE lesson_id = ANY(%s)
+                      AND created_by = %s
+                    ORDER BY created_on DESC;
+                """
+                params = (lesson_ids, created_by)
+            else:
+                sql = """
+                    SELECT id
+                    FROM "Lecture_Material"
+                    WHERE lesson_id = ANY(%s)
+                    ORDER BY created_on DESC;
+                """
+                params = (lesson_ids,)
+
+            self.cursor.execute(sql, params)
+            rows = self.cursor.fetchall()
+
+            return [row[0] for row in rows]
+
+        except Exception as e:
+            logger.error(f"Error fetching lecture material IDs by lesson list: {e}")
+            raise

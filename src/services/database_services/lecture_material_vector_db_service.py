@@ -30,36 +30,28 @@ def chunk_text(text: str, max_len: int = 1500):
     return chunks
 
 
-
 class LectureMaterialVectorDBService(BaseVectorDBService):
 
     def __init__(self, model_id: str):
         self.model_id = model_id
 
-        # ------------------------------------------------------------
-        # FETCH MODEL CONFIG USING model_id PASSED AS ARGUMENT
-        # ------------------------------------------------------------
+        # Load model config
         model_service = EvaluationModelService()
         model_config = model_service.get_model_config(model_id)
 
         if not model_config:
             raise ValueError(f"Invalid model_id: {model_id}. Cannot load model config.")
-            # "openai" | "gemini" | "groq"
-        embedding_model = model_config["embedding_model"] # real model name (e.g., "text-embedding-3-large")
 
-        logger.info(f"📌  embedding_model={embedding_model}")
+        embedding_model = model_config["embedding_model"]
+        logger.info(f"📌 embedding_model={embedding_model}")
 
-        # ------------------------------------------------------------
-        # FIX: Instantiate embedder with BOTH provider + embedding_model
-        # ------------------------------------------------------------
+        # Instantiate embedder
         embedder = get_embedder_for_model(model_id=model_id)
         self.embedder = embedder
 
         super().__init__(embedder)
 
-        # ------------------------------------------------------------
-        # FIX: TABLE NAME MUST DEPEND ON EMBEDDING MODEL (NOT PROVIDER)
-        # ------------------------------------------------------------
+        # Table name based on embedding model
         safe_model_suffix = (
             embedding_model.lower()
             .replace("-", "_")
@@ -68,11 +60,8 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
         )
 
         self.table_name = f"lecture_material_embedding_{safe_model_suffix}"
-
         self.ensure_table_exists()
 
-    # ------------------------------------------------------------
-    # Create table
     # ------------------------------------------------------------
     def ensure_table_exists(self):
         table_identifier = sql.Identifier(self.table_name)
@@ -178,9 +167,19 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
             logger.error(f"❌ Error during similarity search: {e}", exc_info=True)
             return []
 
-    # ------------------------------------------------------------
-    def get_similar_chunks_by_embedding(self, query_embedding, top_k: int = 5):
+
+    def get_similar_chunks_by_embedding(self, query_embedding, lecture_material_ids, top_k: int = 5):
+        """
+        Retrieve similar lecture material chunks filtered by a list of lecture_material_ids.
+        """
         try:
+            if not lecture_material_ids:
+                logger.warning("⚠️ lecture_material_ids list is empty. Returning no results.")
+                return []
+
+            # Build dynamic IN clause placeholders
+            id_placeholders = sql.SQL(", ").join(sql.Placeholder() for _ in lecture_material_ids)
+
             query = sql.SQL("""
                 SELECT 
                     id,
@@ -190,11 +189,17 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
                     1 - (embedding <=> %s::vector) AS similarity,
                     model_id
                 FROM {table_name}
+                WHERE lecture_material_id IN ({ids})
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s;
-            """).format(table_name=sql.Identifier(self.table_name))
+            """).format(
+                table_name=sql.Identifier(self.table_name),
+                ids=id_placeholders
+            )
 
-            self.cursor.execute(query, (query_embedding, query_embedding, top_k))
+            params = [query_embedding] + lecture_material_ids + [query_embedding, top_k]
+
+            self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
             chunks = [
@@ -215,6 +220,5 @@ class LectureMaterialVectorDBService(BaseVectorDBService):
             )
 
         except Exception as e:
-            logger.error(f"❌ Error during similarity search: {e}", exc_info=True)
+            logger.error(f"❌ Error in get_similar_chunks_by_embedding: {e}", exc_info=True)
             return []
-

@@ -1,266 +1,233 @@
 import logging
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Any, Union
 from dataclasses import asdict, is_dataclass
-from .base_relational_db import BaseRelationalDB
 from enum import Enum
+
+from .base_relational_db import BaseRelationalDB
 
 logger = logging.getLogger(__name__)
 
 
 class GradingResultDB(BaseRelationalDB):
     """
-    Database service class for managing grading results.
-    Each AI model has its own grading_result_<ai_model> table.
-    Supports optional suffix tables such as:
-      - grading_result_openai_rag
-      - grading_result_gemini_2_0_flash_rag
+    Database service class for the Prisma model Grading_Results.
     """
 
-    # ---------------------------------------------------------
-    # INIT
-    # ---------------------------------------------------------
-    def __init__(self, ai_model: str = "openai"):
+    def __init__(self):
         super().__init__()
-        # Normalize model string for safe SQL naming
-        self.ai_model = ai_model.lower().replace("-", "_").replace(".", "_").replace(":", "_")
-        self.table_name = f"grading_result_{self.ai_model}"
-        self._ensure_table_exists(self.table_name)
+        self.table_name = '"Grading_Results"'
+        self._ensure_table_exists()
+
+    def rollback(self):
+        """Rollback wrapper."""
+        try:
+            self.conn.rollback()
+        except Exception as e:
+            logger.error(f"[DB] ❌ Rollback failed: {e}", exc_info=True)
 
     # ---------------------------------------------------------
-    # TABLE CREATION (AUTO)
+    # CREATE TABLE with correct UNIQUE key and FK mappings
     # ---------------------------------------------------------
-    def _ensure_table_exists(self, table_name: str):
-        """Create grading result table if it doesn't exist."""
+    def _ensure_table_exists(self):
         try:
-            create_table_query = f"""
-            CREATE TABLE IF NOT EXISTS {table_name} (
-                id SERIAL PRIMARY KEY,
-                submission_id VARCHAR(255) NOT NULL,
-                question_number VARCHAR(255) NOT NULL,
-                score FLOAT,
-                max_marks FLOAT,
-                feedback TEXT,
-                grading_method VARCHAR(100),
-                answer_source TEXT,
-                similarity_score FLOAT,
+            query = f"""
+            CREATE TABLE IF NOT EXISTS {self.table_name} (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                model_id VARCHAR NOT NULL,
+                submission_id VARCHAR NOT NULL,
+                student_answer_id VARCHAR NOT NULL,
+                question_number VARCHAR NOT NULL,
+                question_id VARCHAR,
+                score DECIMAL(5,2),
+                max_marks DECIMAL(5,2),
+                feedback TEXT NOT NULL,
+                grading_method VARCHAR,
+                similarity_score DECIMAL(5,4),
                 context_used TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT unique_submission_question_{table_name}
-                    UNIQUE (submission_id, question_number)
+                created_on TIMESTAMPTZ(6) DEFAULT NOW(),
+                updated_on TIMESTAMPTZ(6) DEFAULT NOW(),
+
+                CONSTRAINT fk_grading_model
+                    FOREIGN KEY (model_id) REFERENCES "Evaluation_Model"(id),
+
+                CONSTRAINT fk_grading_submission
+                    FOREIGN KEY (submission_id) REFERENCES "Submission"(submission_id),
+
+                CONSTRAINT fk_grading_answer
+                    FOREIGN KEY (student_answer_id) REFERENCES "Student_Answer"(id),
+
+                CONSTRAINT fk_grading_question
+                    FOREIGN KEY (question_id) REFERENCES "Question"(id),
+
+                CONSTRAINT unique_grading UNIQUE (submission_id, question_number, model_id)
             );
             """
-            self.cursor.execute(create_table_query)
+
+            self.cursor.execute(query)
             self.conn.commit()
-            logger.info(f"[DB] ✅ Verified/created table: {table_name}")
+            logger.info("[DB] ✅ Grading_Results table verified/created.")
+
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to create table {table_name}: {e}", exc_info=True)
+            logger.error(f"[DB] ❌ Failed to create Grading_Results: {e}", exc_info=True)
             self.conn.rollback()
-            raise
 
     # ---------------------------------------------------------
-    # INSERT OR UPDATE SINGLE RESULT
+    # INSERT or UPDATE with correct ON CONFLICT
     # ---------------------------------------------------------
-    def save_result_record(self, record: Union[Dict[str, Any], Any], suffix: Optional[str] = None) -> bool:
-        """
-        Save a single grading result.
-        Automatically creates suffix-based table if needed (e.g., <table>_rag).
-        """
-        table_name = f"{self.table_name}_{suffix}" if suffix else self.table_name
-        self._ensure_table_exists(table_name)
+    def save_result(self, record: Union[Dict[str, Any], Any]) -> bool:
 
-        try:
-            # Convert dataclass or object to dict
-            if is_dataclass(record):
-                record = asdict(record)
-            elif not isinstance(record, dict):
-                record = {
-                    "submission_id": getattr(record, "submission_id", None),
-                    "question_number": getattr(record, "question_number", None),
-                    "score": getattr(record, "score", None),
-                    "max_marks": getattr(record, "max_marks", None),
-                    "feedback": getattr(record, "feedback", None),
-                    "grading_method": getattr(record, "grading_method", None),
-                    "answer_source": getattr(record, "answer_source", None),
-                    "similarity_score": getattr(record, "similarity_score", None),
-                    "context_used": getattr(record, "context_used", None),
-                }
+        if is_dataclass(record):
+            record = asdict(record)
+        elif not isinstance(record, dict):
+            record = record.__dict__
 
-            # Convert any Enum fields to strings
-            for key, value in record.items():
-                if isinstance(value, Enum):
-                    record[key] = value.value
+        # Convert enum fields to values
+        for key, value in record.items():
+            if isinstance(value, Enum):
+                record[key] = value.value
 
-            # Validate essential fields
-            if not record.get("submission_id") or not record.get("question_number"):
-                logger.warning("[DB] ⚠️ Missing submission_id or question_number, skipping record.")
+        required_fields = [
+            "model_id",
+            "submission_id",
+            "student_answer_id",
+            "question_number"
+        ]
+
+        for f in required_fields:
+            if not record.get(f):
+                logger.error(f"[DB] ❌ Missing required field: {f}")
                 return False
 
+        try:
             query = f"""
-                INSERT INTO {table_name} (
-                    submission_id,
-                    question_number,
-                    score,
-                    max_marks,
-                    feedback,
-                    grading_method,
-                    answer_source,
-                    similarity_score,
-                    context_used
-                )
-                VALUES (
-                    %(submission_id)s,
-                    %(question_number)s,
-                    %(score)s,
-                    %(max_marks)s,
-                    %(feedback)s,
-                    %(grading_method)s,
-                    %(answer_source)s,
-                    %(similarity_score)s,
-                    %(context_used)s
-                )
-                ON CONFLICT (submission_id, question_number)
-                DO UPDATE SET
-                    score = EXCLUDED.score,
-                    max_marks = EXCLUDED.max_marks,
-                    feedback = EXCLUDED.feedback,
-                    grading_method = EXCLUDED.grading_method,
-                    answer_source = EXCLUDED.answer_source,
-                    similarity_score = EXCLUDED.similarity_score,
-                    context_used = EXCLUDED.context_used,
-                    updated_at = CURRENT_TIMESTAMP;
+            INSERT INTO {self.table_name} (
+                model_id,
+                submission_id,
+                student_answer_id,
+                question_number,
+                question_id,
+                score,
+                max_marks,
+                feedback,
+                grading_method,
+                similarity_score,
+                context_used
+            )
+            VALUES (
+                %(model_id)s,
+                %(submission_id)s,
+                %(student_answer_id)s,
+                %(question_number)s,
+                %(question_id)s,
+                %(score)s,
+                %(max_marks)s,
+                %(feedback)s,
+                %(grading_method)s,
+                %(similarity_score)s,
+                %(context_used)s
+            )
+            ON CONFLICT (submission_id, question_number, model_id)
+            DO UPDATE SET
+                score = EXCLUDED.score,
+                max_marks = EXCLUDED.max_marks,
+                feedback = EXCLUDED.feedback,
+                grading_method = EXCLUDED.grading_method,
+                similarity_score = EXCLUDED.similarity_score,
+                context_used = EXCLUDED.context_used,
+                question_id = EXCLUDED.question_id,
+                updated_on = NOW();
             """
 
             self.cursor.execute(query, record)
             self.commit()
 
             logger.info(
-                f"[DB] ✅ Saved result in {table_name} "
-                f"for submission_id={record['submission_id']}, question_number={record['question_number']}"
+                f"[DB] ✅ Saved grading result: submission={record['submission_id']} "
+                f"question={record['question_number']}"
             )
             return True
 
         except Exception as e:
-            logger.error(
-                f"[DB] ❌ Failed to save result in {table_name} for "
-                f"submission_id={record.get('submission_id', 'unknown')}, "
-                f"question_number={record.get('question_number', 'unknown')}: {e}",
-                exc_info=True
-            )
+            logger.error(f"[DB] ❌ Failed to save grading result: {e}", exc_info=True)
             self.rollback()
             return False
 
     # ---------------------------------------------------------
-    # BULK SAVE RESULTS
+    # SAVE MULTIPLE
     # ---------------------------------------------------------
-    def save_multiple_results(self, records: List[Union[Dict[str, Any], Any]], suffix: Optional[str] = None) -> int:
-        """Save multiple grading results efficiently."""
-        if not records:
-            logger.warning(f"[DB] ⚠️ No grading records to save in {self.table_name}.")
-            return 0
-
-        success_count = 0
-        for record in records:
-            if self.save_result_record(record, suffix=suffix):
-                success_count += 1
-
-        logger.info(
-            f"[DB] ✅ Saved {success_count}/{len(records)} records in {self.table_name}{'_' + suffix if suffix else ''}."
-        )
-        return success_count
+    def save_multiple(self, records: List[Dict[str, Any]]) -> int:
+        count = 0
+        for r in records:
+            if self.save_result(r):
+                count += 1
+        return count
 
     # ---------------------------------------------------------
-    # FETCH RESULTS
+    # FETCH BY SUBMISSION
     # ---------------------------------------------------------
-    def get_results_by_submission(self, submission_id: str, suffix: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Fetch all grading results for a specific submission ID."""
-        if not submission_id:
-            logger.warning("[DB] ⚠️ Missing submission_id for fetch.")
-            return []
-
-        table_name = f"{self.table_name}_{suffix}" if suffix else self.table_name
-        self._ensure_table_exists(table_name)
-
+    def get_results_by_submission(self, submission_id: str) -> List[Dict[str, Any]]:
         try:
-            self.cursor.execute(f"""
-                SELECT 
-                    submission_id,
-                    question_number,
-                    score,
-                    max_marks,
-                    feedback,
-                    grading_method,
-                    answer_source,
-                    similarity_score,
-                    context_used,
-                    updated_at
-                FROM {table_name}
-                WHERE submission_id = %s
-                ORDER BY question_number;
-            """, (submission_id,))
+            query = f"""
+            SELECT 
+                id,
+                model_id,
+                submission_id,
+                student_answer_id,
+                question_number,
+                question_id,
+                score,
+                max_marks,
+                feedback,
+                grading_method,
+                similarity_score,
+                context_used,
+                created_on,
+                updated_on
+            FROM {self.table_name}
+            WHERE submission_id = %s
+            ORDER BY question_number ASC;
+            """
 
+            self.cursor.execute(query, (submission_id,))
             rows = self.cursor.fetchall()
-            results = [
+
+            return [
                 {
-                    "submission_id": r[0],
-                    "question_number": r[1],
-                    "score": float(r[2]) if r[2] is not None else None,
-                    "max_marks": float(r[3]) if r[3] is not None else None,
-                    "feedback": r[4],
-                    "grading_method": r[5],
-                    "answer_source": r[6],
-                    "similarity_score": float(r[7]) if r[7] is not None else None,
-                    "context_used": r[8],
-                    "updated_at": r[9],
+                    "id": r[0],
+                    "model_id": r[1],
+                    "submission_id": r[2],
+                    "student_answer_id": r[3],
+                    "question_number": r[4],
+                    "question_id": r[5],
+                    "score": float(r[6]) if r[6] else None,
+                    "max_marks": float(r[7]) if r[7] else None,
+                    "feedback": r[8],
+                    "grading_method": r[9],
+                    "similarity_score": float(r[10]) if r[10] else None,
+                    "context_used": r[11],
+                    "created_on": r[12],
+                    "updated_on": r[13],
                 }
                 for r in rows
             ]
 
-            logger.info(f"[DB] ✅ Retrieved {len(results)} grading results for submission_id={submission_id}")
-            return results
-
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to fetch results from {table_name} for submission_id={submission_id}: {e}", exc_info=True)
-            self.rollback()
+            logger.error(f"[DB] ❌ Fetch failed: {e}", exc_info=True)
             return []
 
     # ---------------------------------------------------------
-    # DELETE RESULTS
+    # DELETE BY SUBMISSION
     # ---------------------------------------------------------
-    def delete_results_by_submission(self, submission_id: str, suffix: Optional[str] = None) -> bool:
-        """Delete all grading results for a submission."""
-        if not submission_id:
-            logger.warning("[DB] ⚠️ Missing submission_id for deletion.")
-            return False
-
-        table_name = f"{self.table_name}_{suffix}" if suffix else self.table_name
-        self._ensure_table_exists(table_name)
-
+    def delete_by_submission(self, submission_id: str) -> bool:
         try:
-            self.cursor.execute(f"DELETE FROM {table_name} WHERE submission_id = %s;", (submission_id,))
-            affected = self.cursor.rowcount
+            self.cursor.execute(
+                f"DELETE FROM {self.table_name} WHERE submission_id = %s;",
+                (submission_id,)
+            )
             self.commit()
-            logger.info(f"[DB] 🗑️ Deleted {affected} results from {table_name} for submission_id={submission_id}")
             return True
+
         except Exception as e:
-            logger.error(f"[DB] ❌ Failed to delete results from {table_name} for submission_id={submission_id}: {e}", exc_info=True)
+            logger.error(f"[DB] ❌ Delete failed: {e}", exc_info=True)
             self.rollback()
             return False
-
-    # ---------------------------------------------------------
-    # DB WRAPPERS
-    # ---------------------------------------------------------
-    def commit(self):
-        """Safely commit."""
-        try:
-            self.conn.commit()
-        except Exception as e:
-            logger.error(f"[DB] ❌ Commit failed: {e}", exc_info=True)
-            self.conn.rollback()
-
-    def rollback(self):
-        """Safely rollback."""
-        try:
-            self.conn.rollback()
-        except Exception as e:
-            logger.error(f"[DB] ❌ Rollback failed: {e}", exc_info=True)

@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
         # 🚀 Run grading
         log.info(f"🎯 Starting grading for submissions: {args.submission_ids}")
-        results = grader.grade_all_submissions(
+        results = grader.grade_submissions_answers(
             submission_ids=args.submission_ids,
             model_answer_paper_id=args.model_answer_paper_id,
             assessment_id=args.assessment_id,

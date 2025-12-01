@@ -18,7 +18,7 @@ if __name__ == "__main__":
     module_id = "81afc94a-453a-4f78-aff5-f56f0c6c20ff"
     question_numbers = []
 
-    graded = grader.grade_all_submissions(
+    graded = grader.grade_submissions_answers(
         submission_ids=submission_ids,
         model_paper_id=model_paper_id,
         assessment_id=assessment_id,

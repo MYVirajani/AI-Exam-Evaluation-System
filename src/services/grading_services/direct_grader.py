@@ -64,7 +64,7 @@ class DirectGrader:
     # -------------------------------------------------------------------------
     # 🔹 Main grading loop
     # -------------------------------------------------------------------------
-    def grade_all_submissions(self, submission_ids: List[str], model_answer_paper_id: str, assessment_id: str):
+    def grade_submissions(self, submission_ids: List[str], model_answer_paper_id: str, assessment_id: str):
         """Grades all student answers for given submissions."""
         if not submission_ids:
             log.warning("⚠️ No submission IDs provided.")

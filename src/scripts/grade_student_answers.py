@@ -88,7 +88,7 @@ def main():
         sys.exit(1)
 
     # ---- Run grading ----
-    graded_results = grader.grade_all_submissions(
+    graded_results = grader.grade_submissions(
         submission_ids=submission_ids,
         model_answer_paper_id=model_answer_paper_id,
         assessment_id=assessment_id

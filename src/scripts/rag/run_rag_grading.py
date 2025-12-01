@@ -100,7 +100,7 @@ def main():
     grader = RAGGrader(model_name=MODEL_NAME)
 
     # Run grading
-    results = grader.grade_all_submissions(
+    results = grader.grade_submissions_answers(
         submission_ids=SUBMISSION_IDS,
         model_paper_id=MODEL_PAPER_ID,
         assessment_id=ASSESSMENT_ID,

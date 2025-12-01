@@ -115,7 +115,7 @@ class RAGGrader:
         self.llm_model = self.provider
 
     # =======================================================================
-    def grade_all_submissions(self, submission_ids: List[str], model_paper_id: str,
+    def grade_submissions_answers(self, submission_ids: List[str], model_paper_id: str,
                               assessment_id: str, lecturer_id: str, module_id: str,
                               top_k: int = 5,question_numbers: Optional[List[str]] = None):
         """
@@ -545,7 +545,7 @@ if __name__ == "__main__":
 
     submission_ids = [s.strip() for s in args.submission_ids.split(",") if s.strip()]
     grader = RAGGrader(model_id=args.model_id)
-    results = grader.grade_all_submissions(
+    results = grader.grade_submissions_answers(
         submission_ids=submission_ids,
         model_paper_id=args.model_paper_id,
         assessment_id=args.assessment_id,

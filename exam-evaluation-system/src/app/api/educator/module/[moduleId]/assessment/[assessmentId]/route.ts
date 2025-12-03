@@ -1,4 +1,4 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server'; 
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -43,7 +43,7 @@ export async function GET(
       where: { module_id: moduleId },
     });
 
-    // Fetch assessment data + related
+    // Fetch assessment + question paper + model answer paper + submissions
     const assessment = await prisma.assessment.findFirst({
       where: {
         assessment_id: assessmentId,
@@ -53,14 +53,36 @@ export async function GET(
       include: {
         module: true,
         educator: true,
-        question_paper: true,
-        model_answer_paper: true,
+
+        // Question Paper (file_url)
+        question_paper: {
+          select: {
+            question_paper_id: true,
+            file_url: true,
+            created_on: true,
+            updated_on: true,
+          },
+        },
+
+        // Model Answer Paper (file_url + extracted media)
+        model_answer_paper: {
+          select: {
+            id: true,
+            file_url: true,
+            media_extracted_file_url: true,
+            created_on: true,
+            updated_on: true,
+          },
+        },
+
         marking_scheme: true,
         questions: {
           orderBy: { question_number: 'asc' },
         },
+
         submissions: {
           include: {
+            // Submission document/handwritten files
             student: {
               include: {
                 user: {
@@ -84,12 +106,12 @@ export async function GET(
       );
     }
 
-    // Extract submission_ids
+    // Collect submission IDs
     const submissionIds = assessment.submissions.map(
       (s) => s.submission_id
     );
 
-    // Fetch grading results from Assessment_Grade
+    // Fetch AI grading results
     const gradeResults = await prisma.assessment_Grade.findMany({
       where: {
         submission_id: { in: submissionIds },
@@ -100,19 +122,15 @@ export async function GET(
       },
     });
 
-    // Enhance submissions with AI grades
+    // Enhance submissions with AI grades + full submission data
     const enhancedSubmissions = assessment.submissions.map((submission) => {
       const grades = gradeResults.filter(
         (gr) => gr.submission_id === submission.submission_id
       );
 
-      // If multiple grades -> pick highest score OR latest based on your logic
       let latestAIGrade = null;
-
       if (grades.length > 0) {
-        // For now: pick the first one
         const grade = grades[0];
-
         latestAIGrade = {
           model_id: grade.model_id,
           model_name: grade.evaluation_model?.model_name,
@@ -123,11 +141,19 @@ export async function GET(
 
       return {
         ...submission,
+
+        // document submission fields
+        file_url: submission.file_url,
+        media_extracted_file_url: submission.media_extracted_file_url,
+
+        // handwritten submission fields
+        handwritten_file_url: submission.handwritten_file_url,
+        is_handwritten: submission.is_handwritten,
+
         latest_ai_grade: latestAIGrade,
       };
     });
 
-    // Build final object
     const enhancedAssessment = {
       ...assessment,
       submissions: enhancedSubmissions,

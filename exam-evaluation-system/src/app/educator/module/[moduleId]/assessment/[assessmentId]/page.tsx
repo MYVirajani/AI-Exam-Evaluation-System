@@ -66,6 +66,12 @@ interface AssessmentDataFromApi {
   };
   enrollmentCount: number;
 }
+interface EvaluationModel {
+  evaluation_model_id: string;
+  model_name: string;
+  provider: string;
+  description?: string;
+}
 
 type Assessment = AssessmentDataFromApi["assessment"] & {
   module: AssessmentDataFromApi["module"];
@@ -87,7 +93,9 @@ export default function AssessmentPage() {
   });
   const modelAnswerInputRef = useRef<HTMLInputElement>(null);
   const questionPaperInputRef = useRef<HTMLInputElement>(null);
-  const [selectedModel, setSelectedModel] = useState("ChatGPT");
+  const [evaluationModels, setEvaluationModels] = useState<EvaluationModel[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [loadingModels, setLoadingModels] = useState(true);
   const [isUploadingModelAnswer, setIsUploadingModelAnswer] = useState(false);
   const [isUploadingQuestionPaper, setIsUploadingQuestionPaper] =
     useState(false);
@@ -100,7 +108,6 @@ export default function AssessmentPage() {
   const [sortField, setSortField] = useState("registration_number");
   const [sortDirection, setSortDirection] = useState("asc");
   const [filterStatus, setFilterStatus] = useState("all");
-  const models = ["ChatGPT", "Deepseek", "Gemini", "Llama"];
 
   const breadcrumbs = assessment
     ? getAssessmentBreadcrumbs(
@@ -439,16 +446,47 @@ export default function AssessmentPage() {
     ref.current?.click();
   };
 
+  useEffect(() => {
+    const fetchEvaluationModels = async () => {
+      if (!educatorId) return;
+      
+      try {
+        setLoadingModels(true);
+        const response = await fetch(`/api/educator/${educatorId}/evaluation-model`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch evaluation models");
+        }
+        
+        const data = await response.json();
+        
+        if (data.evaluation_models && data.evaluation_models.length > 0) {
+          setEvaluationModels(data.evaluation_models);
+          // Set the first model as default
+          setSelectedModelId(data.evaluation_models[0].evaluation_model_id);
+        } else {
+          toast.error("No evaluation models available. Please subscribe to a plan.");
+        }
+      } catch (error) {
+        console.error("Error fetching evaluation models:", error);
+        toast.error("Failed to load evaluation models");
+      } finally {
+        setLoadingModels(false);
+      }
+    };
+
+    fetchEvaluationModels();
+  }, [educatorId]);
+
+  // Update startEvaluation to use selectedModelId
   const startEvaluation = async () => {
     setIsEvaluating(true);
     setEvaluationStatus("Starting evaluation...");
 
-    // Filter selected submissions to only those in this assessment
     const validSelectedSubmissions = selectedSubmissions.filter((subId) =>
       assessment.submissions.some((sub) => sub.submission_id === subId)
     );
 
-    // Get year/month from assessment creation date
     const createdDate = new Date(assessment.created_on);
     const year = createdDate.getFullYear();
     const month = createdDate.toLocaleString("default", { month: "long" });
@@ -460,7 +498,7 @@ export default function AssessmentPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          selectedModel,
+          selectedModelId, // Changed from selectedModel
           moduleId,
           assessmentId,
           selectedSubmissions: validSelectedSubmissions,
@@ -478,20 +516,19 @@ export default function AssessmentPage() {
       }
 
       if (data.success) {
+        const selectedModelName = evaluationModels.find(
+          m => m.evaluation_model_id === selectedModelId
+        )?.model_name || "AI";
+        
         setEvaluationStatus(`✅ Evaluation completed successfully!`);
-        console.log("Evaluation results:", data.results);
         toast.success(
-          `Evaluation completed successfully with ${selectedModel}!`
+          `Evaluation completed successfully with ${selectedModelName}!`
         );
 
-        // Refetch assessment to update grades
         await refetchAssessment();
       } else {
         setEvaluationStatus(`⚠️ Evaluation completed with some issues`);
-        console.warn("Evaluation issues:", data.results);
-        toast.error(
-          `Evaluation completed with some issues using ${selectedModel}`
-        );
+        toast.error("Evaluation completed with some issues");
       }
     } catch (error) {
       console.error("Error starting evaluation:", error);
@@ -1147,98 +1184,80 @@ export default function AssessmentPage() {
         )}
 
         {/* Evaluation Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            AI Evaluation
-          </h2>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700">
-                Select AI Model:
-              </label>
+         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          AI Evaluation
+        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700">
+              Select AI Model:
+            </label>
+            {loadingModels ? (
+              <div className="text-sm text-gray-500">Loading models...</div>
+            ) : evaluationModels.length > 0 ? (
               <Dropdown
-                options={models}
-                selectedOption={selectedModel}
-                onSelect={setSelectedModel}
+                options={evaluationModels.map(model => model.model_name)}
+                selectedOption={
+                  evaluationModels.find(m => m.evaluation_model_id === selectedModelId)?.model_name || ""
+                }
+                onSelect={(modelName) => {
+                  const model = evaluationModels.find(m => m.model_name === modelName);
+                  if (model) {
+                    setSelectedModelId(model.evaluation_model_id);
+                  }
+                }}
               />
-            </div>
-            <Button
-              disabled={
-                !isEvaluationReady() ||
-                isEvaluating ||
-                selectedSubmissions.length === 0
-              }
-              onClick={handleStartEvaluation}
-              className="px-6 py-2.5"
-            >
-              <BotIcon className="w-5 h-5 mr-2" />
-              {isEvaluating
-                ? "Evaluating..."
-                : `Start Evaluation (${selectedSubmissions.length} selected)`}
-            </Button>
-          </div>
-
-          {!isEvaluationReady() && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">
-                <span className="font-medium">
-                  Requirements for evaluation:
-                </span>
-              </p>
-              <ul className="text-sm text-amber-700 mt-2 space-y-1">
-                {!assessment?.question_paper?.file_url &&
-                  !uploadedFiles.questionPaper && (
-                    <li>• Question paper needs to be uploaded</li>
-                  )}
-                {!assessment?.model_answer_paper?.file_url &&
-                  !uploadedFiles.modelAnswer && (
-                    <li>• Model answer needs to be uploaded</li>
-                  )}
-                {(!assessment?.submissions ||
-                  assessment.submissions.length === 0) && (
-                  <li>• No student submissions available</li>
-                )}
-                {selectedSubmissions.length === 0 && (
-                  <li>• Select at least one submission for evaluation</li>
-                )}
-              </ul>
-            </div>
-          )}
-
-          {isEvaluationReady() && selectedSubmissions.length === 0 && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800">
-                <span className="font-medium">Select submissions:</span> Please
-                select at least one submission from the table above to start
-                evaluation.
-              </p>
-            </div>
-          )}
-
-          {isEvaluationReady() &&
-            selectedSubmissions.length > 0 &&
-            !isEvaluating && (
-              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm text-green-800">
-                  <span className="font-medium">Ready for evaluation!</span> All
-                  required files are uploaded and {selectedSubmissions.length}{" "}
-                  student submissions are selected for evaluation with{" "}
-                  {selectedModel}.
-                  {selectedSubmissions.some((id) => {
-                    const sub = assessment.submissions.find(
-                      (s) => s.submission_id === id
-                    );
-                    return sub && getBestGrade(sub) !== null;
-                  }) && (
-                    <span className="block mt-1 text-green-700">
-                      Note: Some selected submissions are already graded and
-                      will be re-evaluated.
-                    </span>
-                  )}
-                </p>
+            ) : (
+              <div className="text-sm text-red-600">
+                No models available. Please subscribe to a plan.
               </div>
             )}
+          </div>
+          <Button
+            disabled={
+              !isEvaluationReady() ||
+              isEvaluating ||
+              selectedSubmissions.length === 0 ||
+              !selectedModelId ||
+              evaluationModels.length === 0
+            }
+            onClick={handleStartEvaluation}
+            className="px-6 py-2.5"
+          >
+            <BotIcon className="w-5 h-5 mr-2" />
+            {isEvaluating
+              ? "Evaluating..."
+              : `Start Evaluation (${selectedSubmissions.length} selected)`}
+          </Button>
         </div>
+
+        {/* ... rest of evaluation section ... */}
+        
+        {isEvaluationReady() &&
+          selectedSubmissions.length > 0 &&
+          !isEvaluating && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-800">
+                <span className="font-medium">Ready for evaluation!</span> All
+                required files are uploaded and {selectedSubmissions.length}{" "}
+                student submissions are selected for evaluation with{" "}
+                {evaluationModels.find(m => m.evaluation_model_id === selectedModelId)?.model_name || "selected model"}.
+                {selectedSubmissions.some((id) => {
+                  const sub = assessment.submissions.find(
+                    (s) => s.submission_id === id
+                  );
+                  return sub && getBestGrade(sub) !== null;
+                }) && (
+                  <span className="block mt-1 text-green-700">
+                    Note: Some selected submissions are already graded and
+                    will be re-evaluated.
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+      </div>
       </div>
     </div>
   );

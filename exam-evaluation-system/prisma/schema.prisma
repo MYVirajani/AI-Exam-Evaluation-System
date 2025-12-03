@@ -124,10 +124,10 @@ model Lecture_Material {
   lesson   Lesson    @relation(fields: [lesson_id], references: [lesson_id])
   educator Educator? @relation(fields: [created_by], references: [user_id])
 
-  lecture_material_media lecture_material_media[]
+  lecture_material_media Lecture_Material_Media[]
 }
 
-model lecture_material_media {
+model Lecture_Material_Media {
   id                  String   @id @default(uuid())
   model_id            String?
   lecture_material_id String
@@ -167,7 +167,7 @@ enum assessmentType {
 }
 
 enum QuestionType {
-  Npne
+  None
   MCQ
   SHORT
   ESSAY
@@ -308,10 +308,11 @@ model Submission {
   is_handwritten       Boolean @default(false)
   handwritten_file_url String?
 
-  student         Student           @relation(fields: [student_id], references: [user_id])
-  assessment      Assessment        @relation(fields: [assessment_id], references: [assessment_id])
-  answers         Student_Answer[]
-  grading_results Grading_Results[]
+  student          Student            @relation(fields: [student_id], references: [user_id])
+  assessment       Assessment         @relation(fields: [assessment_id], references: [assessment_id])
+  answers          Student_Answer[]
+  grading_results  Grading_Results[]
+  assessment_grade Assessment_Grade[]
 
   @@index([assessment_id])
   @@index([student_id])
@@ -390,9 +391,10 @@ model Evaluation_Model {
   student_answer_media Student_Answer_Media[]
 
   pricing_plans          Pricing_Plan[]
-  lecture_material_media lecture_material_media[]
+  lecture_material_media Lecture_Material_Media[]
   Assessment_Grading     Assessment_Grading[]
   grading_results        Grading_Results[]
+  assessment_grade       Assessment_Grade[]
 }
 
 model Pricing_Plan {
@@ -442,11 +444,11 @@ model Grading_Results {
   model_id          String
   submission_id     String
   student_answer_id String
-  question_number   String
   question_id       String?
+  question_number   String?
   score             Decimal? @db.Decimal(5, 2)
   max_marks         Decimal? @db.Decimal(5, 2)
-  feedback          String
+  feedback          String?
   grading_method    String?
   similarity_score  Decimal? @db.Decimal(5, 4)
   context_used      String?
@@ -455,14 +457,22 @@ model Grading_Results {
 
   evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
   submission       Submission       @relation(fields: [submission_id], references: [submission_id])
-  answer           Student_Answer   @relation(fields: [student_answer_id], references: [id])
+  student_answer   Student_Answer   @relation(fields: [student_answer_id], references: [id])
   Question         Question?        @relation(fields: [question_id], references: [id])
 
-  @@unique([submission_id, question_number, model_id])
+  @@unique([model_id, submission_id, student_answer_id])
   @@index([model_id])
   @@index([submission_id])
   @@index([student_answer_id])
 }
 
+model Assessment_Grade {
+  id            String   @id @default(uuid())
+  model_id      String
+  submission_id String
+  score         Decimal? @db.Decimal(5, 2)
+  max_marks     Decimal? @db.Decimal(5, 2)
 
-
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
+  submission       Submission       @relation(fields: [submission_id], references: [submission_id])
+}

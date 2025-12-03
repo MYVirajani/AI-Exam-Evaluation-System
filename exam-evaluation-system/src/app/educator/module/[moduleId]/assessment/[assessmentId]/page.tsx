@@ -11,6 +11,7 @@ import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs"
 import toast from "react-hot-toast";
 import { FILE_CONFIG } from "@/lib/fileConfig";
 import Link from "next/link";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface User {
   first_name: string;
@@ -505,12 +506,13 @@ export default function AssessmentPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-sm">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading assessment...</p>
-        </div>
-      </div>
+      <LoadingAnimation 
+        variant="wave" 
+        size="lg" 
+        text="Loading assessment..." 
+        fullScreen={true}
+        color="blue"
+      />
     );
   }
 

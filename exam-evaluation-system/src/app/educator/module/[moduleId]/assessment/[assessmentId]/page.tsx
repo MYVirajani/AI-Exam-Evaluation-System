@@ -93,7 +93,9 @@ export default function AssessmentPage() {
   });
   const modelAnswerInputRef = useRef<HTMLInputElement>(null);
   const questionPaperInputRef = useRef<HTMLInputElement>(null);
-  const [evaluationModels, setEvaluationModels] = useState<EvaluationModel[]>([]);
+  const [evaluationModels, setEvaluationModels] = useState<EvaluationModel[]>(
+    []
+  );
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [loadingModels, setLoadingModels] = useState(true);
   const [isUploadingModelAnswer, setIsUploadingModelAnswer] = useState(false);
@@ -449,23 +451,27 @@ export default function AssessmentPage() {
   useEffect(() => {
     const fetchEvaluationModels = async () => {
       if (!educatorId) return;
-      
+
       try {
         setLoadingModels(true);
-        const response = await fetch(`/api/educator/${educatorId}/evaluation-model`);
-        
+        const response = await fetch(
+          `/api/educator/${educatorId}/evaluation-model`
+        );
+
         if (!response.ok) {
           throw new Error("Failed to fetch evaluation models");
         }
-        
+
         const data = await response.json();
-        
+
         if (data.evaluation_models && data.evaluation_models.length > 0) {
           setEvaluationModels(data.evaluation_models);
           // Set the first model as default
           setSelectedModelId(data.evaluation_models[0].evaluation_model_id);
         } else {
-          toast.error("No evaluation models available. Please subscribe to a plan.");
+          toast.error(
+            "No evaluation models available. Please subscribe to a plan."
+          );
         }
       } catch (error) {
         console.error("Error fetching evaluation models:", error);
@@ -516,10 +522,11 @@ export default function AssessmentPage() {
       }
 
       if (data.success) {
-        const selectedModelName = evaluationModels.find(
-          m => m.evaluation_model_id === selectedModelId
-        )?.model_name || "AI";
-        
+        const selectedModelName =
+          evaluationModels.find(
+            (m) => m.evaluation_model_id === selectedModelId
+          )?.model_name || "AI";
+
         setEvaluationStatus(`✅ Evaluation completed successfully!`);
         toast.success(
           `Evaluation completed successfully with ${selectedModelName}!`
@@ -716,18 +723,16 @@ export default function AssessmentPage() {
               className="hidden"
               accept={FILE_CONFIG.QUESTION_PAPER.types.join(",")}
             />
-             {!assessment?.question_paper?.file_url && (
+            {!assessment?.question_paper?.file_url && (
               <FileUploadSection
-              title="Upload Question Paper"
-              icon={<FileIcon />}
-              type="QUESTION_PAPER"
-              uploadedFile={uploadedFiles.questionPaper}
-              onTriggerUpload={() => triggerFileInput(questionPaperInputRef)}
-            />
+                title="Upload Question Paper"
+                icon={<FileIcon />}
+                type="QUESTION_PAPER"
+                uploadedFile={uploadedFiles.questionPaper}
+                onTriggerUpload={() => triggerFileInput(questionPaperInputRef)}
+              />
+            )}
 
-             )}
-
-            
             {uploadedFiles.questionPaper && (
               <div className="mt-4 flex justify-end">
                 <Button
@@ -848,34 +853,43 @@ export default function AssessmentPage() {
                 </div>
               </div>
 
-              {/* Filter */}
-              <select
-                value={filterStatus}
-                onChange={(e) => {
-                  setFilterStatus(e.target.value);
+              <Dropdown
+                options={["All Submissions", "Already Graded", "Not Graded"]}
+                selectedOption={
+                  filterStatus === "all"
+                    ? "All Submissions"
+                    : filterStatus === "graded"
+                    ? "Already Graded"
+                    : "Not Graded"
+                }
+                onSelect={(option) => {
+                  const value =
+                    option === "All Submissions"
+                      ? "all"
+                      : option === "Already Graded"
+                      ? "graded"
+                      : "ungraded";
+                  setFilterStatus(value);
                   setCurrentPage(1);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-              >
-                <option value="all">All Submissions</option>
-                <option value="graded">Already Graded</option>
-                <option value="ungraded">Not Graded</option>
-              </select>
-
-              {/* Items per page */}
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
+                className="w-48"
+              />
+              {/* Items Per Page Dropdown */}
+              <Dropdown
+                options={[
+                  "10 per page",
+                  "20 per page",
+                  "50 per page",
+                  "100 per page",
+                ]}
+                selectedOption={`${itemsPerPage} per page`}
+                onSelect={(option) => {
+                  const value = parseInt(option.split(" ")[0]);
+                  setItemsPerPage(value);
                   setCurrentPage(1);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-              >
-                <option value={10}>10 per page</option>
-                <option value={20}>20 per page</option>
-                <option value={50}>50 per page</option>
-                <option value={100}>100 per page</option>
-              </select>
+                className="w-40"
+              />
             </div>
 
             {/* Quick Actions */}
@@ -1184,80 +1198,87 @@ export default function AssessmentPage() {
         )}
 
         {/* Evaluation Section */}
-         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          AI Evaluation
-        </h2>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">
-              Select AI Model:
-            </label>
-            {loadingModels ? (
-              <div className="text-sm text-gray-500">Loading models...</div>
-            ) : evaluationModels.length > 0 ? (
-              <Dropdown
-                options={evaluationModels.map(model => model.model_name)}
-                selectedOption={
-                  evaluationModels.find(m => m.evaluation_model_id === selectedModelId)?.model_name || ""
-                }
-                onSelect={(modelName) => {
-                  const model = evaluationModels.find(m => m.model_name === modelName);
-                  if (model) {
-                    setSelectedModelId(model.evaluation_model_id);
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            AI Evaluation
+          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700">
+                Select AI Model:
+              </label>
+              {loadingModels ? (
+                <div className="text-sm text-gray-500">Loading models...</div>
+              ) : evaluationModels.length > 0 ? (
+                <Dropdown
+                  options={evaluationModels.map((model) => model.model_name)}
+                  selectedOption={
+                    evaluationModels.find(
+                      (m) => m.evaluation_model_id === selectedModelId
+                    )?.model_name || ""
                   }
-                }}
-              />
-            ) : (
-              <div className="text-sm text-red-600">
-                No models available. Please subscribe to a plan.
+                  onSelect={(modelName) => {
+                    const model = evaluationModels.find(
+                      (m) => m.model_name === modelName
+                    );
+                    if (model) {
+                      setSelectedModelId(model.evaluation_model_id);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="text-sm text-red-600">
+                  No models available. Please subscribe to a plan.
+                </div>
+              )}
+            </div>
+            <Button
+              disabled={
+                !isEvaluationReady() ||
+                isEvaluating ||
+                selectedSubmissions.length === 0 ||
+                !selectedModelId ||
+                evaluationModels.length === 0
+              }
+              onClick={handleStartEvaluation}
+              className="px-6 py-2.5"
+            >
+              <BotIcon className="w-5 h-5 mr-2" />
+              {isEvaluating
+                ? "Evaluating..."
+                : `Start Evaluation (${selectedSubmissions.length} selected)`}
+            </Button>
+          </div>
+
+          {/* ... rest of evaluation section ... */}
+
+          {isEvaluationReady() &&
+            selectedSubmissions.length > 0 &&
+            !isEvaluating && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-800">
+                  <span className="font-medium">Ready for evaluation!</span> All
+                  required files are uploaded and {selectedSubmissions.length}{" "}
+                  student submissions are selected for evaluation with{" "}
+                  {evaluationModels.find(
+                    (m) => m.evaluation_model_id === selectedModelId
+                  )?.model_name || "selected model"}
+                  .
+                  {selectedSubmissions.some((id) => {
+                    const sub = assessment.submissions.find(
+                      (s) => s.submission_id === id
+                    );
+                    return sub && getBestGrade(sub) !== null;
+                  }) && (
+                    <span className="block mt-1 text-green-700">
+                      Note: Some selected submissions are already graded and
+                      will be re-evaluated.
+                    </span>
+                  )}
+                </p>
               </div>
             )}
-          </div>
-          <Button
-            disabled={
-              !isEvaluationReady() ||
-              isEvaluating ||
-              selectedSubmissions.length === 0 ||
-              !selectedModelId ||
-              evaluationModels.length === 0
-            }
-            onClick={handleStartEvaluation}
-            className="px-6 py-2.5"
-          >
-            <BotIcon className="w-5 h-5 mr-2" />
-            {isEvaluating
-              ? "Evaluating..."
-              : `Start Evaluation (${selectedSubmissions.length} selected)`}
-          </Button>
         </div>
-
-        {/* ... rest of evaluation section ... */}
-        
-        {isEvaluationReady() &&
-          selectedSubmissions.length > 0 &&
-          !isEvaluating && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">
-                <span className="font-medium">Ready for evaluation!</span> All
-                required files are uploaded and {selectedSubmissions.length}{" "}
-                student submissions are selected for evaluation with{" "}
-                {evaluationModels.find(m => m.evaluation_model_id === selectedModelId)?.model_name || "selected model"}.
-                {selectedSubmissions.some((id) => {
-                  const sub = assessment.submissions.find(
-                    (s) => s.submission_id === id
-                  );
-                  return sub && getBestGrade(sub) !== null;
-                }) && (
-                  <span className="block mt-1 text-green-700">
-                    Note: Some selected submissions are already graded and
-                    will be re-evaluated.
-                  </span>
-                )}
-              </p>
-            </div>
-          )}
-      </div>
       </div>
     </div>
   );

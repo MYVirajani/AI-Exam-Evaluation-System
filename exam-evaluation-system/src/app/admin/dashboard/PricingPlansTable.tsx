@@ -13,7 +13,6 @@ import {
 } from "@tanstack/react-table";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import Button from "@/components/Button";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import AddPricingPlanModal from "./AddPricingPlanModal";
 import LoadingAnimation from "@/components/LoadingAnimation";
@@ -34,13 +33,14 @@ import {
 } from "lucide-react";
 
 interface EvaluationModel {
-  model_id: string;
+  id: string;
   model_name: string;
   description?: string;
+  created_on?: string;
 }
 
 interface PricingPlan {
-  pricing_plan_id: string;
+  id: string;
   name: string;
   billing_period: string;
   price: number;
@@ -49,6 +49,9 @@ interface PricingPlan {
   model_id: string;
   evaluation_model: EvaluationModel;
   subscriptionCount: number;
+  stripe_product_id?: string;
+  stripe_price_id?: string;
+  created_on?: string;
 }
 
 // Unified labels for all billing period options
@@ -84,9 +87,18 @@ export default function PricingPlansTable() {
   const fetchPlans = async () => {
     try {
       const res = await fetch("/api/admin/pricing-plans");
+      if (!res.ok) throw new Error("Failed to fetch plans");
       const data = await res.json();
-      setPlans(data.plans || []);
-    } catch {
+      
+      // Transform the data to match our interface
+      const transformedPlans = (data.plans || []).map((plan: any) => ({
+        ...plan,
+        subscriptionCount: plan.subscriptionCount ?? 0,
+      }));
+      
+      setPlans(transformedPlans);
+    } catch (error) {
+      console.error("Error fetching plans:", error);
       toast.error("Failed to load pricing plans");
     }
   };
@@ -101,13 +113,15 @@ export default function PricingPlansTable() {
   const handleSave = (plan: PricingPlan, isEdit: boolean) => {
     if (isEdit) {
       setPlans((prev) =>
-        prev.map((p) => (p.pricing_plan_id === plan.pricing_plan_id ? plan : p))
+        prev.map((p) => (p.id === plan.id ? plan : p))
       );
       toast.success("Plan updated successfully");
     } else {
       setPlans((prev) => [plan, ...prev]);
       toast.success("Plan added successfully");
     }
+    setShowModal(false);
+    setEditingPlan(null);
   };
 
   const confirmDelete = (id: string) => {
@@ -121,10 +135,11 @@ export default function PricingPlansTable() {
       const res = await fetch(`/api/admin/pricing-plans/${deleteId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error();
-      setPlans((prev) => prev.filter((p) => p.pricing_plan_id !== deleteId));
+      if (!res.ok) throw new Error("Failed to delete plan");
+      setPlans((prev) => prev.filter((p) => p.id !== deleteId));
       toast.success("Deleted successfully");
-    } catch {
+    } catch (error) {
+      console.error("Error deleting plan:", error);
       toast.error("Failed to delete plan");
     } finally {
       setShowConfirm(false);
@@ -138,10 +153,11 @@ export default function PricingPlansTable() {
       const res = await fetch("/api/admin/pricing-plans/sync", {
         method: "POST",
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Failed to sync");
       toast.success("Plans synced from Stripe!");
-      fetchPlans();
-    } catch {
+      await fetchPlans();
+    } catch (error) {
+      console.error("Error syncing plans:", error);
       toast.error("Failed to sync from Stripe");
     } finally {
       setIsSyncing(false);
@@ -245,7 +261,7 @@ export default function PricingPlansTable() {
         <div className="text-gray-900 font-semibold">
           <div className="flex items-center">
             <DollarSign className="w-4 h-4 mr-1 text-green-600" />
-            {getValue() as number}
+            {Number(getValue()).toFixed(2)}
           </div>
         </div>
       ),
@@ -324,7 +340,7 @@ export default function PricingPlansTable() {
             Edit
           </button>
           <button
-            onClick={() => confirmDelete(row.original.pricing_plan_id)}
+            onClick={() => confirmDelete(row.original.id)}
             disabled={row.original.subscriptionCount > 0}
             className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-md transition-colors ${
               row.original.subscriptionCount > 0
@@ -643,7 +659,10 @@ export default function PricingPlansTable() {
 
       <AddPricingPlanModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => {
+          setShowModal(false);
+          setEditingPlan(null);
+        }}
         onSave={handleSave}
         initialData={editingPlan}
       />

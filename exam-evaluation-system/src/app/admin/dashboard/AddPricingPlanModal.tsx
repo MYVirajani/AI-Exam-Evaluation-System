@@ -1,11 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import Button from "@/components/Button";
 import { X, Plus, Trash2, DollarSign, Tag, FileText, Calendar, Layers } from "lucide-react";
-import Dropdown from "@/components/Dropdown"; 
+import Dropdown from "@/components/Dropdown";
 
 interface PricingPlan {
-  pricing_plan_id?: string;
+  id?: string;
   name: string;
   billing_period: string;
   price: number;
@@ -15,7 +14,7 @@ interface PricingPlan {
 }
 
 interface EvaluationModel {
-  model_id: string;
+  id: string;
   model_name: string;
   description: string;
 }
@@ -27,25 +26,9 @@ interface PricingPlanModalProps {
   initialData?: PricingPlan | null;
 }
 
-const BILLING_PERIOD_OPTIONS = [
-  "Daily",
-  "Weekly",
-  "Monthly",
-  "Yearly",
-  "Every 3 months",
-  "Every 6 months",
-  "Custom",
-];
-
-const BILLING_PERIOD_VALUES = [
-  "day",
-  "week",
-  "month",
-  "year",
-  "3_months",
-  "6_months",
-  "custom",
-];
+// Match the API validation: only "month" and "year" are supported
+const BILLING_PERIOD_OPTIONS = ["Monthly", "Yearly"];
+const BILLING_PERIOD_VALUES = ["month", "year"];
 
 export default function AddPricingPlanModal({
   isOpen,
@@ -75,34 +58,37 @@ export default function AddPricingPlanModal({
           if (!res.ok) throw new Error("Failed to fetch models");
           const data = await res.json();
           setModels(data);
+          
+          // After models are loaded, set the selected model name if editing
+          if (initialData && initialData.model_id) {
+            const selectedModel = data.find((model: EvaluationModel) => model.id === initialData.model_id);
+            if (selectedModel) {
+              setSelectedModelName(selectedModel.model_name);
+            }
+          }
         } catch (err) {
           console.error("Error loading models:", err);
         }
       };
       fetchModels();
 
-      // Pre-fill fields if editing
       if (initialData) {
-        setName(initialData.name);
-        // Convert billing period value to display label
+        setName(initialData.name || "");
         const billingIndex = BILLING_PERIOD_VALUES.indexOf(initialData.billing_period);
         setBillingPeriod(billingIndex !== -1 ? BILLING_PERIOD_OPTIONS[billingIndex] : "Monthly");
-        setPrice(initialData.price);
-        setDescription(initialData.description);
-        setFeatures(initialData.features || []);
-        setSelectedModelId(initialData.model_id);
-        
-        // Find the model name for the selected model ID
-        const selectedModel = models.find(model => model.model_id === initialData.model_id);
-        if (selectedModel) {
-          setSelectedModelName(selectedModel.model_name);
-        }
+        setPrice(Number(initialData.price) || 0);
+        setDescription(initialData.description || "");
+        setFeatures(Array.isArray(initialData.features) ? [...initialData.features] : []);
+        setSelectedModelId(initialData.model_id || "");
       } else {
         resetForm();
       }
       setErrors({});
+    } else {
+      // Reset form when modal closes
+      resetForm();
     }
-  }, [isOpen, initialData, models]);
+  }, [isOpen, initialData]);
 
   const resetForm = () => {
     setName("");
@@ -121,8 +107,8 @@ export default function AddPricingPlanModal({
 
     if (!name.trim()) newErrors.name = "Plan name is required";
     if (!selectedModelId) newErrors.model = "Please select an evaluation model";
-    if (price < 0) newErrors.price = "Price cannot be negative";
-    if (price === 0) newErrors.price = "Price must be greater than 0";
+    if (price <= 0) newErrors.price = "Price must be greater than 0";
+    if (!Array.isArray(features)) newErrors.features = "Features must be an array";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -151,10 +137,14 @@ export default function AddPricingPlanModal({
   const handleModelSelect = (modelName: string) => {
     const selectedModel = models.find(model => model.model_name === modelName);
     if (selectedModel) {
-      setSelectedModelId(selectedModel.model_id);
+      setSelectedModelId(selectedModel.id);
       setSelectedModelName(modelName);
       if (errors.model) setErrors(prev => ({ ...prev, model: "" }));
     }
+  };
+
+  const handleBillingPeriodSelect = (period: string) => {
+    setBillingPeriod(period);
   };
 
   const handleSubmit = async () => {
@@ -162,13 +152,12 @@ export default function AddPricingPlanModal({
 
     setLoading(true);
     try {
-      // Convert billing period display label back to value
       const billingIndex = BILLING_PERIOD_OPTIONS.indexOf(billingPeriod);
       const billingPeriodValue = billingIndex !== -1 ? BILLING_PERIOD_VALUES[billingIndex] : "month";
       
       const method = isEdit ? "PATCH" : "POST";
       const url = isEdit
-        ? `/api/admin/pricing-plans/${initialData?.pricing_plan_id}`
+        ? `/api/admin/pricing-plans/${initialData?.id}`
         : "/api/admin/pricing-plans";
 
       const res = await fetch(url, {
@@ -178,12 +167,17 @@ export default function AddPricingPlanModal({
           name,
           billing_period: billingPeriodValue,
           price,
-          description,
+          description: description || undefined,
           features,
           model_id: selectedModelId,
         }),
       });
-      if (!res.ok) throw new Error("Failed to save pricing plan");
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to save pricing plan");
+      }
+      
       const data = await res.json();
       onSave(data.plan, isEdit);
       onClose();
@@ -206,7 +200,6 @@ export default function AddPricingPlanModal({
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl flex-shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -229,9 +222,7 @@ export default function AddPricingPlanModal({
           </button>
         </div>
 
-        {/* Content - Scrollable */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Plan Name */}
           <div className="space-y-2">
             <label className="flex items-center text-sm font-medium text-gray-700">
               <Tag className="w-4 h-4 mr-2 text-gray-500" />
@@ -257,7 +248,6 @@ export default function AddPricingPlanModal({
             )}
           </div>
 
-          {/* Price and Billing Period */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="flex items-center text-sm font-medium text-gray-700">
@@ -274,7 +264,7 @@ export default function AddPricingPlanModal({
                     errors.price ? "border-red-300 bg-red-50" : "border-gray-300 bg-white"
                   } ${isEdit ? "bg-gray-100 text-gray-700 cursor-not-allowed" : ""}`}
                   placeholder="0.00"
-                  value={price}
+                  value={price || ""}
                   onChange={(e) => {
                     setPrice(Number(e.target.value));
                     if (errors.price) setErrors(prev => ({ ...prev, price: "" }));
@@ -296,18 +286,17 @@ export default function AddPricingPlanModal({
             <div className="space-y-2">
               <label className="flex items-center text-sm font-medium text-gray-700">
                 <Calendar className="w-4 h-4 mr-2 text-gray-500" />
-                Billing Period
+                Billing Period *
               </label>
               <Dropdown
                 options={BILLING_PERIOD_OPTIONS}
                 selectedOption={billingPeriod}
-                onSelect={setBillingPeriod}
+                onSelect={handleBillingPeriodSelect}
                 className="w-full"
               />
             </div>
           </div>
 
-          {/* Evaluation Model */}
           <div className="space-y-2">
             <label className="flex items-center text-sm font-medium text-gray-700">
               <Layers className="w-4 h-4 mr-2 text-gray-500" />
@@ -317,7 +306,7 @@ export default function AddPricingPlanModal({
               options={models.map(model => model.model_name)}
               selectedOption={selectedModelName}
               onSelect={handleModelSelect}
-              className={`w-full ${errors.model ? "border-red-300 bg-red-50" : ""}`}
+              className={`w-full ${errors.model ? "border-red-300" : ""}`}
             />
             {errors.model && (
               <p className="text-sm text-red-600 flex items-center">
@@ -327,7 +316,6 @@ export default function AddPricingPlanModal({
             )}
           </div>
 
-          {/* Description */}
           <div className="space-y-2">
             <label className="flex items-center text-sm font-medium text-gray-700">
               <FileText className="w-4 h-4 mr-2 text-gray-500" />
@@ -343,14 +331,12 @@ export default function AddPricingPlanModal({
             />
           </div>
 
-          {/* Features */}
           <div className="space-y-3">
             <label className="flex items-center text-sm font-medium text-gray-700">
               <Plus className="w-4 h-4 mr-2 text-gray-500" />
               Features
             </label>
             
-            {/* Add Feature Input */}
             <div className="flex gap-3">
               <input
                 type="text"
@@ -371,7 +357,6 @@ export default function AddPricingPlanModal({
               </button>
             </div>
 
-            {/* Features List */}
             {features.length > 0 && (
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {features.map((feature, idx) => (
@@ -403,28 +388,25 @@ export default function AddPricingPlanModal({
           </div>
         </div>
 
-        {/* Footer - Always Visible */}
         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl flex-shrink-0">
-          <Button 
-            variant="secondary" 
+          <button 
             onClick={handleClose}
             disabled={loading}
-            className="px-6 py-2"
+            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-700 font-medium"
           >
             Cancel
-          </Button>
-          <Button 
-            variant="primary" 
-            loading={loading} 
+          </button>
+          <button 
             onClick={handleSubmit}
-            className="px-6 py-2"
+            disabled={loading}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors font-medium"
           >
             {loading ? (
               isEdit ? "Saving Changes..." : "Creating Plan..."
             ) : (
               isEdit ? "Save Changes" : "Create Plan"
             )}
-          </Button>
+          </button>
         </div>
       </div>
     </div>

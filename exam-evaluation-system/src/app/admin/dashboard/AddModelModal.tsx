@@ -175,7 +175,16 @@ export default function AddModelModal({
       className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-gray-200 overflow-hidden transform transition-all max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-gray-200 overflow-hidden transform transition-all max-h-[90vh] overflow-y-auto scrollbar-hide">
+        <style jsx>{`
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        `}</style>
         <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

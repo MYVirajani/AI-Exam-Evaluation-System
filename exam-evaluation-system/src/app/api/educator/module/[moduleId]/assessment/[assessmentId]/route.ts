@@ -1,5 +1,3 @@
-// src/app/api/educator/module/[moduleId]/assessment/[assessmentId]/route.ts
-
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -45,7 +43,7 @@ export async function GET(
       where: { module_id: moduleId },
     });
 
-    // Fetch main assessment data
+    // Fetch assessment data + related
     const assessment = await prisma.assessment.findFirst({
       where: {
         assessment_id: assessmentId,
@@ -86,39 +84,40 @@ export async function GET(
       );
     }
 
-    // Get submission_ids for grading results
-    const submissionIds = assessment.submissions.map((s) => s.submission_id);
+    // Extract submission_ids
+    const submissionIds = assessment.submissions.map(
+      (s) => s.submission_id
+    );
 
-    // Pre-fetch all grading results for these submissions
-    const gradingResults = await prisma.grading_Results.findMany({
+    // Fetch grading results from Assessment_Grade
+    const gradeResults = await prisma.assessment_Grade.findMany({
       where: {
         submission_id: { in: submissionIds },
       },
       include: {
         evaluation_model: true,
-      },
-      orderBy: {
-        graded_at: "desc",
+        submission: true,
       },
     });
 
-    // Enhance each submission with its latest grading result
+    // Enhance submissions with AI grades
     const enhancedSubmissions = assessment.submissions.map((submission) => {
-      const results = gradingResults.filter(
+      const grades = gradeResults.filter(
         (gr) => gr.submission_id === submission.submission_id
       );
 
+      // If multiple grades -> pick highest score OR latest based on your logic
       let latestAIGrade = null;
 
-      if (results.length > 0) {
-        const latest = results[0]; // Because we ordered by graded_at desc
+      if (grades.length > 0) {
+        // For now: pick the first one
+        const grade = grades[0];
 
         latestAIGrade = {
-          model_id: latest.model_id,
-          model_name: latest.evaluation_model?.model_name,
-          // total_score: latest.total_score,
-          // max_score: latest.max_score,
-          graded_at: latest.graded_at.toISOString(),
+          model_id: grade.model_id,
+          model_name: grade.evaluation_model?.model_name,
+          score: grade.score,
+          max_marks: grade.max_marks,
         };
       }
 
@@ -128,7 +127,7 @@ export async function GET(
       };
     });
 
-    // Build final assessment object with enhanced submissions
+    // Build final object
     const enhancedAssessment = {
       ...assessment,
       submissions: enhancedSubmissions,

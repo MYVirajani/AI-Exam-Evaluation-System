@@ -32,7 +32,6 @@ interface Submission {
     marks_awarded: number;
     max_marks: number;
   } | null;
-  // Add latest grade from results tables
   latest_ai_grade?: {
     marks_awarded: number;
     max_marks: number;
@@ -51,9 +50,13 @@ interface AssessmentDataFromApi {
     created_on: string;
     model_answer_paper?: {
       file_url: string;
+      created_on: string;
+      updated_on: string;
     } | null;
     question_paper?: {
       file_url: string;
+      created_on: string;
+      updated_on: string;
     } | null;
     submissions: Submission[];
   };
@@ -92,23 +95,18 @@ export default function AssessmentPage() {
   const [selectedModel, setSelectedModel] = useState("ChatGPT");
   const [isUploadingModelAnswer, setIsUploadingModelAnswer] = useState(false);
   const [isUploadingQuestionPaper, setIsUploadingQuestionPaper] = useState(false);
-  
-  // State for evaluation
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationStatus, setEvaluationStatus] = useState<string>('');
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
-
-  // New state for enhanced submissions selection
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('registration_number');
   const [sortDirection, setSortDirection] = useState('asc');
-  const [filterStatus, setFilterStatus] = useState('all'); // all, graded, ungraded
+  const [filterStatus, setFilterStatus] = useState('all'); 
 
   const models = ["ChatGPT", "Deepseek", "Gemini", "Llama"];
-  
-  // Generate breadcrumbs
+
   const breadcrumbs = assessment 
     ? getAssessmentBreadcrumbs(
         assessment.module.module_code, 

@@ -25,6 +25,12 @@ import {
   Plus,
   Layers,
 } from "lucide-react";
+import {
+  getProviderLabel,
+  getChatModelLabel,
+  getEmbeddingModelLabel,
+  type ProviderValue
+} from "@/config/models.config";
 
 type PricingPlan = {
   pricing_plan_id: string;
@@ -34,6 +40,10 @@ type PricingPlan = {
 type ExamEvaluationModel = {
   model_id: string;
   model_name: string;
+  provider: string;
+  chat_model: string | null;
+  temperature: number;
+  embedding_model: string;
   description: string | null;
   pricing_plans: PricingPlan[];
 };
@@ -48,6 +58,7 @@ export default function ExamEvaluationModelsTable() {
   const [showModal, setShowModal] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Table state
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -80,6 +91,7 @@ export default function ExamEvaluationModelsTable() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/admin/evaluation-models/${deleteId}`, {
         method: "DELETE",
@@ -91,12 +103,20 @@ export default function ExamEvaluationModelsTable() {
       console.error("Delete failed", err);
       toast.error("Failed to delete model");
     } finally {
+      setIsDeleting(false);
       setShowConfirm(false);
       setDeleteId(null);
     }
   };
 
-  const handleSave = async (model: { name: string; description: string }) => {
+  const handleSave = async (model: {
+    model_name: string;
+    provider: string;
+    chat_model?: string;
+    temperature?: number;
+    embedding_model: string;
+    description?: string;
+  }) => {
     try {
       if (editingModel) {
         // Update existing model
@@ -105,10 +125,7 @@ export default function ExamEvaluationModelsTable() {
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model_name: model.name,
-              description: model.description,
-            }),
+            body: JSON.stringify(model),
           }
         );
         const updated = await res.json();
@@ -123,11 +140,14 @@ export default function ExamEvaluationModelsTable() {
         const res = await fetch("/api/admin/evaluation-models", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model_name: model.name,
-            description: model.description,
-          }),
+          body: JSON.stringify(model),
         });
+        
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "Failed to create model");
+        }
+        
         const newModel = await res.json();
         setModels([...models, newModel]);
         toast.success("Model added successfully");
@@ -135,7 +155,8 @@ export default function ExamEvaluationModelsTable() {
     } catch (err) {
       console.error("Save failed", err);
       toast.error(
-        editingModel ? "Failed to update model" : "Failed to add model"
+        err instanceof Error ? err.message : 
+        (editingModel ? "Failed to update model" : "Failed to add model")
       );
     } finally {
       setShowModal(false);
@@ -148,7 +169,6 @@ export default function ExamEvaluationModelsTable() {
     try {
       setIsExporting(true);
 
-      // Get current filtered and sorted data
       const currentData = table
         .getCoreRowModel()
         .rows.map((row) => row.original);
@@ -158,9 +178,12 @@ export default function ExamEvaluationModelsTable() {
         return;
       }
 
-      // Create CSV content
       const headers = [
         "Model Name",
+        "Provider",
+        "Chat Model",
+        "Temperature",
+        "Embedding Model",
         "Description",
         "Pricing Plans Count",
         "Pricing Plans",
@@ -171,6 +194,10 @@ export default function ExamEvaluationModelsTable() {
         ...currentData.map((model) =>
           [
             `"${model.model_name || ""}"`,
+            `"${getProviderLabel(model.provider as ProviderValue) || ""}"`,
+            `"${model.chat_model ? getChatModelLabel(model.chat_model) : ""}"`,
+            model.temperature,
+            `"${getEmbeddingModelLabel(model.embedding_model) || ""}"`,
             `"${model.description || ""}"`,
             model.pricing_plans?.length || 0,
             `"${model.pricing_plans?.map((p) => p.name).join("; ") || ""}"`,
@@ -178,7 +205,6 @@ export default function ExamEvaluationModelsTable() {
         ),
       ].join("\n");
 
-      // Create and download file
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
@@ -214,6 +240,47 @@ export default function ExamEvaluationModelsTable() {
       ),
     },
     {
+      header: "Provider",
+      accessorKey: "provider",
+      cell: ({ getValue }) => {
+        const value = getValue() as ProviderValue;
+        return (
+          <div className="text-sm text-gray-700">{getProviderLabel(value)}</div>
+        );
+      },
+    },
+    {
+      header: "Chat Model",
+      accessorKey: "chat_model",
+      cell: ({ getValue }) => {
+        const value = getValue() as string | null;
+        return (
+          <div className="text-sm text-gray-700">
+            {value ? getChatModelLabel(value) : <span className="text-gray-500 italic">Not specified</span>}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Temperature",
+      accessorKey: "temperature",
+      cell: ({ getValue }) => (
+        <div className="text-sm text-gray-700">{getValue() as number}</div>
+      ),
+    },
+    {
+      header: "Embedding Model",
+      accessorKey: "embedding_model",
+      cell: ({ getValue }) => {
+        const value = getValue() as string;
+        return (
+          <div className="text-sm text-gray-700 max-w-xs truncate" title={getEmbeddingModelLabel(value)}>
+            {getEmbeddingModelLabel(value)}
+          </div>
+        );
+      },
+    },
+    {
       header: "Description",
       accessorKey: "description",
       cell: ({ getValue }) => (
@@ -242,7 +309,7 @@ export default function ExamEvaluationModelsTable() {
                   {plans.length} plan{plans.length !== 1 ? "s" : ""}
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {plans.map((plan, index) => (
+                  {plans.map((plan) => (
                     <span
                       key={plan.pricing_plan_id}
                       className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
@@ -316,7 +383,6 @@ export default function ExamEvaluationModelsTable() {
     },
   });
 
-  // Show loading animation while data is being fetched
   if (isLoading) {
     return (
       <LoadingAnimation
@@ -342,7 +408,6 @@ export default function ExamEvaluationModelsTable() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header with Search and Actions */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -386,7 +451,6 @@ export default function ExamEvaluationModelsTable() {
         </div>
       </div>
 
-      {/* Table Container */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -440,7 +504,6 @@ export default function ExamEvaluationModelsTable() {
           </table>
         </div>
 
-        {/* Empty State */}
         {table.getRowModel().rows.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -470,7 +533,6 @@ export default function ExamEvaluationModelsTable() {
         )}
       </div>
 
-      {/* Summary Info */}
       <div className="flex items-center justify-between text-sm text-gray-700 bg-gray-50 px-4 py-3 rounded-lg">
         <div>
           Showing {table.getRowModel().rows.length} of {models.length}{" "}
@@ -490,8 +552,12 @@ export default function ExamEvaluationModelsTable() {
         initialData={
           editingModel
             ? {
-                name: editingModel.model_name,
-                description: editingModel.description || "",
+                model_name: editingModel.model_name,
+                provider: editingModel.provider,
+                chat_model: editingModel.chat_model || undefined,
+                temperature: editingModel.temperature,
+                embedding_model: editingModel.embedding_model,
+                description: editingModel.description || undefined,
               }
             : undefined
         }
@@ -505,6 +571,8 @@ export default function ExamEvaluationModelsTable() {
         onCancel={() => setShowConfirm(false)}
         confirmText="Delete"
         cancelText="Cancel"
+        variant="destructive"
+        loading={isDeleting}
       />
     </div>
   );

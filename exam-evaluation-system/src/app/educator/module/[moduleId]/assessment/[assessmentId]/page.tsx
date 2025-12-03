@@ -7,7 +7,7 @@ import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import { FileUploadSection } from "@/components/Upload/FileUploadSection";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs"
+import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
 import toast from "react-hot-toast";
 import { FILE_CONFIG } from "@/lib/fileConfig";
 import Link from "next/link";
@@ -75,75 +75,70 @@ type Assessment = AssessmentDataFromApi["assessment"] & {
 export default function AssessmentPage() {
   const searchParams = useSearchParams();
   const params = useParams();
-
   const moduleId = params.moduleId as string;
   const assessmentId = params.assessmentId as string;
   const educatorId = searchParams.get("educatorId");
-
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [uploadedFiles, setUploadedFiles] = useState({
     questionPaper: null as File | null,
     modelAnswer: null as File | null,
   });
-
   const modelAnswerInputRef = useRef<HTMLInputElement>(null);
   const questionPaperInputRef = useRef<HTMLInputElement>(null);
-
   const [selectedModel, setSelectedModel] = useState("ChatGPT");
   const [isUploadingModelAnswer, setIsUploadingModelAnswer] = useState(false);
-  const [isUploadingQuestionPaper, setIsUploadingQuestionPaper] = useState(false);
+  const [isUploadingQuestionPaper, setIsUploadingQuestionPaper] =
+    useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [evaluationStatus, setEvaluationStatus] = useState<string>('');
+  const [evaluationStatus, setEvaluationStatus] = useState<string>("");
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState('registration_number');
-  const [sortDirection, setSortDirection] = useState('asc');
-  const [filterStatus, setFilterStatus] = useState('all'); 
-
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState("registration_number");
+  const [sortDirection, setSortDirection] = useState("asc");
+  const [filterStatus, setFilterStatus] = useState("all");
   const models = ["ChatGPT", "Deepseek", "Gemini", "Llama"];
 
-  const breadcrumbs = assessment 
+  const breadcrumbs = assessment
     ? getAssessmentBreadcrumbs(
-        assessment.module.module_code, 
-        moduleId, 
-        assessment.title, 
-        assessmentId, 
-        'educator'
+        assessment.module.module_code,
+        moduleId,
+        assessment.title,
+        assessmentId,
+        "educator"
       )
     : [
-        { label: 'Dashboard', href: '/educator/dashboard' }, 
-        { label: 'Module', href: `/educator/module/${moduleId}` }, 
-        { label: 'Assessment', current: true }
+        { label: "Dashboard", href: "/educator/dashboard" },
+        { label: "Module", href: `/educator/module/${moduleId}` },
+        { label: "Assessment", current: true },
       ];
 
   // Enhanced helper function to get student display name
   const getStudentDisplayName = (student: any) => {
     if (!student?.user) {
-      return `Student ${student?.registration_number || 'Unknown'}`;
+      return `Student ${student?.registration_number || "Unknown"}`;
     }
-    
-    const { first_name = '', last_name = '', email = '' } = student.user;
+
+    const { first_name = "", last_name = "", email = "" } = student.user;
     const fullName = `${first_name} ${last_name}`.trim();
-    
+
     if (fullName) {
       return fullName;
     }
-    
+
     if (email) {
-      return email.split('@')[0]; // Use email username as fallback
+      return email.split("@")[0]; // Use email username as fallback
     }
-    
+
     return `Student ${student.registration_number}`;
   };
 
   // Helper function to get student email
   const getStudentEmail = (student: any) => {
-    return student?.user?.email || 'No email available';
+    return student?.user?.email || "No email available";
   };
 
   // Helper function to get the best grade (latest AI grade or assessment grade)
@@ -155,65 +150,69 @@ export default function AssessmentPage() {
         max_marks: submission.latest_ai_grade.max_marks,
         source: `AI (${submission.latest_ai_grade.model_used})`,
         graded_at: submission.latest_ai_grade.graded_at,
-        isAI: true
+        isAI: true,
       };
     }
-    
+
     // Fallback to assessment grade
     if (submission.assessment_grade) {
       return {
         marks_awarded: submission.assessment_grade.marks_awarded,
         max_marks: submission.assessment_grade.max_marks,
-        source: 'Manual',
+        source: "Manual",
         graded_at: null,
-        isAI: false
+        isAI: false,
       };
     }
-    
+
     return null;
   };
 
   // Filter and sort submissions
   const filteredAndSortedSubmissions = useMemo(() => {
     if (!assessment?.submissions) return [];
-    
-    let filtered = assessment.submissions.filter(sub => {
+
+    let filtered = assessment.submissions.filter((sub) => {
       const studentName = getStudentDisplayName(sub.student);
       const studentEmail = getStudentEmail(sub.student);
-      
-      const matchesSearch = searchTerm === '' || 
-        sub.student.registration_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+
+      const matchesSearch =
+        searchTerm === "" ||
+        sub.student.registration_number
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
         studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         studentEmail.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const bestGrade = getBestGrade(sub);
       const isGraded = bestGrade !== null;
-      
-      const matchesFilter = filterStatus === 'all' || 
-        (filterStatus === 'graded' && isGraded) ||
-        (filterStatus === 'ungraded' && !isGraded);
-      
+
+      const matchesFilter =
+        filterStatus === "all" ||
+        (filterStatus === "graded" && isGraded) ||
+        (filterStatus === "ungraded" && !isGraded);
+
       return matchesSearch && matchesFilter;
     });
 
     // Sort submissions
     filtered.sort((a, b) => {
       let aValue, bValue;
-      
+
       switch (sortField) {
-        case 'registration_number':
+        case "registration_number":
           aValue = a.student.registration_number;
           bValue = b.student.registration_number;
           break;
-        case 'name':
+        case "name":
           aValue = getStudentDisplayName(a.student);
           bValue = getStudentDisplayName(b.student);
           break;
-        case 'submitted_at':
+        case "submitted_at":
           aValue = new Date(a.submission_start_at);
           bValue = new Date(b.submission_start_at);
           break;
-        case 'grade':
+        case "grade":
           const gradeA = getBestGrade(a);
           const gradeB = getBestGrade(b);
           aValue = gradeA?.marks_awarded || 0;
@@ -224,52 +223,75 @@ export default function AssessmentPage() {
           bValue = b.student.registration_number;
       }
 
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
 
     return filtered;
-  }, [assessment?.submissions, searchTerm, sortField, sortDirection, filterStatus]);
+  }, [
+    assessment?.submissions,
+    searchTerm,
+    sortField,
+    sortDirection,
+    filterStatus,
+  ]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredAndSortedSubmissions.length / itemsPerPage);
+  const totalPages = Math.ceil(
+    filteredAndSortedSubmissions.length / itemsPerPage
+  );
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedSubmissions = filteredAndSortedSubmissions.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedSubmissions = filteredAndSortedSubmissions.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   // Selection handlers
   const handleSelectAll = () => {
     if (selectedSubmissions.length === filteredAndSortedSubmissions.length) {
       setSelectedSubmissions([]);
     } else {
-      setSelectedSubmissions(filteredAndSortedSubmissions.map(s => s.submission_id));
+      setSelectedSubmissions(
+        filteredAndSortedSubmissions.map((s) => s.submission_id)
+      );
     }
   };
 
   const handleSelectPage = () => {
-    const pageSubmissionIds = paginatedSubmissions.map(s => s.submission_id);
-    const allPageSelected = pageSubmissionIds.every(id => selectedSubmissions.includes(id));
-    
+    const pageSubmissionIds = paginatedSubmissions.map((s) => s.submission_id);
+    const allPageSelected = pageSubmissionIds.every((id) =>
+      selectedSubmissions.includes(id)
+    );
+
     if (allPageSelected) {
-      setSelectedSubmissions(prev => prev.filter(id => !pageSubmissionIds.includes(id)));
+      setSelectedSubmissions((prev) =>
+        prev.filter((id) => !pageSubmissionIds.includes(id))
+      );
     } else {
-      setSelectedSubmissions(prev => [...new Set([...prev, ...pageSubmissionIds])]);
+      setSelectedSubmissions((prev) => [
+        ...new Set([...prev, ...pageSubmissionIds]),
+      ]);
     }
   };
 
   const handleSort = (field: string) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
     setCurrentPage(1);
   };
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <span className="text-gray-400">⇅</span>;
-    return sortDirection === 'asc' ? <span className="text-blue-600">↑</span> : <span className="text-blue-600">↓</span>;
+    return sortDirection === "asc" ? (
+      <span className="text-blue-600">↑</span>
+    ) : (
+      <span className="text-blue-600">↓</span>
+    );
   };
 
   useEffect(() => {
@@ -300,7 +322,9 @@ export default function AssessmentPage() {
 
         setAssessment(enrichedAssessment);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch assessment");
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch assessment"
+        );
       } finally {
         setLoading(false);
       }
@@ -327,7 +351,8 @@ export default function AssessmentPage() {
       `/api/educator/module/${moduleId}/assessment/${assessmentId}?educatorId=${educatorId}`
     );
     if (updatedAssessmentRes.ok) {
-      const updatedData: AssessmentDataFromApi = await updatedAssessmentRes.json();
+      const updatedData: AssessmentDataFromApi =
+        await updatedAssessmentRes.json();
       setAssessment({
         ...updatedData.assessment,
         module: updatedData.module,
@@ -362,7 +387,12 @@ export default function AssessmentPage() {
       setUploadedFiles((prev) => ({ ...prev, modelAnswer: null }));
     } catch (error) {
       console.error("Error uploading model answer:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to upload model answer", { id: toastId });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload model answer",
+        { id: toastId }
+      );
     } finally {
       setIsUploadingModelAnswer(false);
     }
@@ -394,7 +424,12 @@ export default function AssessmentPage() {
       setUploadedFiles((prev) => ({ ...prev, questionPaper: null }));
     } catch (error) {
       console.error("Error uploading question paper:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to upload question paper", { id: toastId });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload question paper",
+        { id: toastId }
+      );
     } finally {
       setIsUploadingQuestionPaper(false);
     }
@@ -406,23 +441,23 @@ export default function AssessmentPage() {
 
   const startEvaluation = async () => {
     setIsEvaluating(true);
-    setEvaluationStatus('Starting evaluation...');
+    setEvaluationStatus("Starting evaluation...");
 
     // Filter selected submissions to only those in this assessment
-    const validSelectedSubmissions = selectedSubmissions.filter(subId =>
-      assessment.submissions.some(sub => sub.submission_id === subId)
+    const validSelectedSubmissions = selectedSubmissions.filter((subId) =>
+      assessment.submissions.some((sub) => sub.submission_id === subId)
     );
 
     // Get year/month from assessment creation date
     const createdDate = new Date(assessment.created_on);
     const year = createdDate.getFullYear();
-    const month = createdDate.toLocaleString('default', { month: 'long' });
+    const month = createdDate.toLocaleString("default", { month: "long" });
 
     try {
-      const response = await fetch('/api/educator/start-evaluation', {
-        method: 'POST',
+      const response = await fetch("/api/educator/start-evaluation", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           selectedModel,
@@ -439,26 +474,30 @@ export default function AssessmentPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to start evaluation');
+        throw new Error(data.error || "Failed to start evaluation");
       }
 
       if (data.success) {
         setEvaluationStatus(`✅ Evaluation completed successfully!`);
-        console.log('Evaluation results:', data.results);
-        toast.success(`Evaluation completed successfully with ${selectedModel}!`);
-        
+        console.log("Evaluation results:", data.results);
+        toast.success(
+          `Evaluation completed successfully with ${selectedModel}!`
+        );
+
         // Refetch assessment to update grades
         await refetchAssessment();
       } else {
         setEvaluationStatus(`⚠️ Evaluation completed with some issues`);
-        console.warn('Evaluation issues:', data.results);
-        toast.warning(`Evaluation completed with some issues using ${selectedModel}`);
+        console.warn("Evaluation issues:", data.results);
+        toast.error(
+          `Evaluation completed with some issues using ${selectedModel}`
+        );
       }
-
     } catch (error) {
-      console.error('Error starting evaluation:', error);
-      setEvaluationStatus('❌ Evaluation failed');
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Error starting evaluation:", error);
+      setEvaluationStatus("❌ Evaluation failed");
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to start evaluation: ${errorMessage}`);
     } finally {
       setIsEvaluating(false);
@@ -470,7 +509,10 @@ export default function AssessmentPage() {
       toast.error("Please upload a question paper first");
       return;
     }
-    if (!assessment?.model_answer_paper?.file_url && !uploadedFiles.modelAnswer) {
+    if (
+      !assessment?.model_answer_paper?.file_url &&
+      !uploadedFiles.modelAnswer
+    ) {
       toast.error("Please upload a model answer first");
       return;
     }
@@ -480,8 +522,8 @@ export default function AssessmentPage() {
     }
 
     // Only allow submissions from current assessment
-    const validSelectedSubmissions = selectedSubmissions.filter(id =>
-      assessment.submissions.some(s => s.submission_id === id)
+    const validSelectedSubmissions = selectedSubmissions.filter((id) =>
+      assessment.submissions.some((s) => s.submission_id === id)
     );
 
     if (validSelectedSubmissions.length === 0) {
@@ -504,10 +546,10 @@ export default function AssessmentPage() {
 
   if (loading) {
     return (
-      <LoadingAnimation 
-        variant="wave" 
-        size="lg" 
-        text="Loading assessment..." 
+      <LoadingAnimation
+        variant="wave"
+        size="lg"
+        text="Loading assessment..."
         fullScreen={true}
         color="blue"
       />
@@ -540,12 +582,9 @@ export default function AssessmentPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-8">
-         {/* Breadcrumbs */}
+        {/* Breadcrumbs */}
         <div className="mb-6">
-          <Breadcrumbs 
-            items={breadcrumbs} 
-            className=""
-          />
+          <Breadcrumbs items={breadcrumbs} className="" />
         </div>
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -555,47 +594,71 @@ export default function AssessmentPage() {
             </h1>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="text-sm text-gray-600">
-                <span className="font-medium">{assessment.module.module_code}</span>
+                <span className="font-medium">
+                  {assessment.module.module_code}
+                </span>
                 <span className="mx-2">•</span>
                 <span>{assessment.module.module_name}</span>
               </div>
               <div className="text-sm text-gray-600">
                 <span className="font-medium">Submissions: </span>
-                <span className="text-blue-600">{assessment.submissions?.length ?? 0}</span>
+                <span className="text-blue-600">
+                  {assessment.submissions?.length ?? 0}
+                </span>
                 <span className="mx-1">/</span>
                 <span>{assessment.enrollmentCount ?? 0} enrolled</span>
               </div>
             </div>
           </div>
           {assessment.description && (
-            <p className="text-gray-700 leading-relaxed">{assessment.description}</p>
+            <p className="text-gray-700 leading-relaxed">
+              {assessment.description}
+            </p>
           )}
         </div>
 
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
-  <div className="flex items-center justify-between">
-    <div>
-      <h3 className="font-medium text-gray-900 mb-1">Assessment Results</h3>
-      <p className="text-sm text-gray-600">View detailed grading results and analytics</p>
-    </div>
-    <Link
-      href={`/educator/dashboard/results-dashboard?assessmentId=${assessmentId}&title=${encodeURIComponent(assessment.title)}&module=${encodeURIComponent(assessment.module.module_name)}`}
-      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-    >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-      View Dashboard
-    </Link>
-  </div>
-</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-gray-900 mb-1">
+                Assessment Results
+              </h3>
+              <p className="text-sm text-gray-600">
+                View detailed grading results and analytics
+              </p>
+            </div>
+            <Link
+              href={`/educator/dashboard/results-dashboard?assessmentId=${assessmentId}&title=${encodeURIComponent(
+                assessment.title
+              )}&module=${encodeURIComponent(assessment.module.module_name)}`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              View Dashboard
+            </Link>
+          </div>
+        </div>
 
         {/* File Upload Sections */}
         <div className="space-y-6">
           {/* Question Paper */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Question Paper</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Question Paper
+              </h2>
               {assessment.question_paper?.file_url && (
                 <a
                   href={assessment.question_paper.file_url}
@@ -616,8 +679,8 @@ export default function AssessmentPage() {
               className="hidden"
               accept={FILE_CONFIG.QUESTION_PAPER.types.join(",")}
             />
-
-            <FileUploadSection
+             {!assessment?.question_paper?.file_url && (
+              <FileUploadSection
               title="Upload Question Paper"
               icon={<FileIcon />}
               type="QUESTION_PAPER"
@@ -625,10 +688,19 @@ export default function AssessmentPage() {
               onTriggerUpload={() => triggerFileInput(questionPaperInputRef)}
             />
 
+             )}
+
+            
             {uploadedFiles.questionPaper && (
               <div className="mt-4 flex justify-end">
-                <Button onClick={uploadQuestionPaper} disabled={isUploadingQuestionPaper} className="px-6">
-                  {isUploadingQuestionPaper ? "Uploading..." : "Upload Question Paper"}
+                <Button
+                  onClick={uploadQuestionPaper}
+                  disabled={isUploadingQuestionPaper}
+                  className="px-6"
+                >
+                  {isUploadingQuestionPaper
+                    ? "Uploading..."
+                    : "Upload Question Paper"}
                 </Button>
               </div>
             )}
@@ -637,7 +709,9 @@ export default function AssessmentPage() {
           {/* Model Answer */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Model Answer</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Model Answer
+              </h2>
               {assessment.model_answer_paper?.file_url && (
                 <a
                   href={assessment.model_answer_paper.file_url}
@@ -658,44 +732,62 @@ export default function AssessmentPage() {
               className="hidden"
               accept={FILE_CONFIG.MODEL_PAPER.types.join(",")}
             />
-
-            <FileUploadSection
-              title="Upload Model Answer"
-              icon={<FileIcon />}
-              type="MODEL_PAPER"
-              uploadedFile={uploadedFiles.modelAnswer}
-              onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
-            />
+            {!assessment?.model_answer_paper?.file_url && (
+              <FileUploadSection
+                title="Upload Model Answer"
+                icon={<FileIcon />}
+                type="MODEL_PAPER"
+                uploadedFile={uploadedFiles.modelAnswer}
+                onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
+              />
+            )}
 
             {uploadedFiles.modelAnswer && (
               <div className="mt-4 flex justify-end">
-                <Button onClick={uploadModelAnswer} disabled={isUploadingModelAnswer} className="px-6">
-                  {isUploadingModelAnswer ? "Uploading..." : "Upload Model Answer"}
+                <Button
+                  onClick={uploadModelAnswer}
+                  disabled={isUploadingModelAnswer}
+                  className="px-6"
+                >
+                  {isUploadingModelAnswer
+                    ? "Uploading..."
+                    : "Upload Model Answer"}
                 </Button>
               </div>
             )}
           </div>
         </div>
 
-        
-
         {/* Enhanced Submissions Selection */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
           <div className="p-6 border-b border-gray-200">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Select Submissions for Evaluation</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Select Submissions for Evaluation
+              </h2>
               <div className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
-                {selectedSubmissions.length} of {filteredAndSortedSubmissions.length} selected
+                {selectedSubmissions.length} of{" "}
+                {filteredAndSortedSubmissions.length} selected
               </div>
             </div>
-            
+
             {/* Controls */}
             <div className="flex flex-col lg:flex-row gap-4 mb-4">
               {/* Search - Fixed text visibility */}
               <div className="flex-1 max-w-sm">
                 <div className="relative">
-                  <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  <svg
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
                   </svg>
                   <input
                     type="text"
@@ -706,11 +798,11 @@ export default function AssessmentPage() {
                       setCurrentPage(1);
                     }}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                    style={{ color: '#111827' }} // Ensure dark text
+                    style={{ color: "#111827" }} // Ensure dark text
                   />
                   {searchTerm && (
                     <button
-                      onClick={() => setSearchTerm('')}
+                      onClick={() => setSearchTerm("")}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
                       ✕
@@ -718,7 +810,7 @@ export default function AssessmentPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* Filter */}
               <select
                 value={filterStatus}
@@ -732,7 +824,7 @@ export default function AssessmentPage() {
                 <option value="graded">Already Graded</option>
                 <option value="ungraded">Not Graded</option>
               </select>
-              
+
               {/* Items per page */}
               <select
                 value={itemsPerPage}
@@ -748,22 +840,29 @@ export default function AssessmentPage() {
                 <option value={100}>100 per page</option>
               </select>
             </div>
-            
+
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2 mb-4">
               <button
                 onClick={handleSelectAll}
                 className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
               >
-                {selectedSubmissions.length === filteredAndSortedSubmissions.length ? 'Deselect All' : 'Select All Filtered'}
+                {selectedSubmissions.length ===
+                filteredAndSortedSubmissions.length
+                  ? "Deselect All"
+                  : "Select All Filtered"}
                 ({filteredAndSortedSubmissions.length})
               </button>
               <button
                 onClick={handleSelectPage}
                 className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
               >
-                {paginatedSubmissions.every(s => selectedSubmissions.includes(s.submission_id)) ? 'Deselect' : 'Select'} Current Page
-                ({paginatedSubmissions.length})
+                {paginatedSubmissions.every((s) =>
+                  selectedSubmissions.includes(s.submission_id)
+                )
+                  ? "Deselect"
+                  : "Select"}{" "}
+                Current Page ({paginatedSubmissions.length})
               </button>
               {selectedSubmissions.length > 0 && (
                 <button
@@ -775,7 +874,7 @@ export default function AssessmentPage() {
               )}
             </div>
           </div>
-          
+
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -784,41 +883,46 @@ export default function AssessmentPage() {
                   <th className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={paginatedSubmissions.length > 0 && paginatedSubmissions.every(s => selectedSubmissions.includes(s.submission_id))}
+                      checked={
+                        paginatedSubmissions.length > 0 &&
+                        paginatedSubmissions.every((s) =>
+                          selectedSubmissions.includes(s.submission_id)
+                        )
+                      }
                       onChange={handleSelectPage}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('registration_number')}
+                    onClick={() => handleSort("registration_number")}
                   >
                     <div className="flex items-center gap-1">
                       Student Index
                       <SortIcon field="registration_number" />
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('name')}
+                    onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center gap-1">
                       Student Name
                       <SortIcon field="name" />
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('submitted_at')}
+                    onClick={() => handleSort("submitted_at")}
                   >
                     <div className="flex items-center gap-1">
                       Submitted At
                       <SortIcon field="submitted_at" />
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('grade')}
+                    onClick={() => handleSort("grade")}
                   >
                     <div className="flex items-center gap-1">
                       Current Grade
@@ -834,21 +938,30 @@ export default function AssessmentPage() {
                 {paginatedSubmissions.map((sub) => {
                   const bestGrade = getBestGrade(sub);
                   return (
-                    <tr 
-                      key={sub.submission_id} 
+                    <tr
+                      key={sub.submission_id}
                       className={`hover:bg-gray-50 transition-colors ${
-                        selectedSubmissions.includes(sub.submission_id) ? 'bg-blue-50 border-blue-200' : ''
+                        selectedSubmissions.includes(sub.submission_id)
+                          ? "bg-blue-50 border-blue-200"
+                          : ""
                       }`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
-                          checked={selectedSubmissions.includes(sub.submission_id)}
+                          checked={selectedSubmissions.includes(
+                            sub.submission_id
+                          )}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedSubmissions(prev => [...prev, sub.submission_id]);
+                              setSelectedSubmissions((prev) => [
+                                ...prev,
+                                sub.submission_id,
+                              ]);
                             } else {
-                              setSelectedSubmissions(prev => prev.filter(id => id !== sub.submission_id));
+                              setSelectedSubmissions((prev) =>
+                                prev.filter((id) => id !== sub.submission_id)
+                              );
                             }
                           }}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
@@ -863,14 +976,20 @@ export default function AssessmentPage() {
                         <div className="text-sm text-gray-900">
                           {getStudentDisplayName(sub.student)}
                         </div>
-                        <div className="text-sm text-gray-500">{getStudentEmail(sub.student)}</div>
+                        <div className="text-sm text-gray-500">
+                          {getStudentEmail(sub.student)}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {new Date(sub.submission_start_at).toLocaleDateString()}
+                          {new Date(
+                            sub.submission_start_at
+                          ).toLocaleDateString()}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {new Date(sub.submission_start_at).toLocaleTimeString()}
+                          {new Date(
+                            sub.submission_start_at
+                          ).toLocaleTimeString()}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -891,22 +1010,28 @@ export default function AssessmentPage() {
                             </div>
                             {bestGrade.graded_at && (
                               <div className="text-xs text-gray-400 mt-1">
-                                {new Date(bestGrade.graded_at).toLocaleDateString()}
+                                {new Date(
+                                  bestGrade.graded_at
+                                ).toLocaleDateString()}
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400">Not graded</span>
+                          <span className="text-sm text-gray-400">
+                            Not graded
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col gap-1">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            bestGrade 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {bestGrade ? 'Graded' : 'Pending'}
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              bestGrade
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {bestGrade ? "Graded" : "Pending"}
                           </span>
                           {bestGrade && (
                             <span className="text-xs text-gray-500">
@@ -920,17 +1045,20 @@ export default function AssessmentPage() {
                 })}
                 {paginatedSubmissions.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-8 text-center text-gray-500"
+                    >
                       <div className="text-sm">
-                        {searchTerm || filterStatus !== 'all' 
-                          ? 'No submissions match your filters.' 
-                          : 'No submissions available.'}
+                        {searchTerm || filterStatus !== "all"
+                          ? "No submissions match your filters."
+                          : "No submissions available."}
                       </div>
-                      {(searchTerm || filterStatus !== 'all') && (
+                      {(searchTerm || filterStatus !== "all") && (
                         <button
                           onClick={() => {
-                            setSearchTerm('');
-                            setFilterStatus('all');
+                            setSearchTerm("");
+                            setFilterStatus("all");
                             setCurrentPage(1);
                           }}
                           className="mt-2 text-sm text-blue-600 hover:text-blue-700"
@@ -944,23 +1072,29 @@ export default function AssessmentPage() {
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
               <div className="text-sm text-gray-700">
-                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredAndSortedSubmissions.length)} of{' '}
-                {filteredAndSortedSubmissions.length} submissions
+                Showing {startIndex + 1} to{" "}
+                {Math.min(
+                  startIndex + itemsPerPage,
+                  filteredAndSortedSubmissions.length
+                )}{" "}
+                of {filteredAndSortedSubmissions.length} submissions
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
                   disabled={currentPage === 1}
                   className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
-                
+
                 {/* Page numbers */}
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
@@ -974,15 +1108,15 @@ export default function AssessmentPage() {
                     } else {
                       pageNum = currentPage - 3 + i;
                     }
-                    
+
                     return (
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
                         className={`px-3 py-2 text-sm font-medium rounded-md ${
                           currentPage === pageNum
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
                         }`}
                       >
                         {pageNum}
@@ -990,9 +1124,11 @@ export default function AssessmentPage() {
                     );
                   })}
                 </div>
-                
+
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
                   disabled={currentPage === totalPages}
                   className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1012,32 +1148,59 @@ export default function AssessmentPage() {
 
         {/* Evaluation Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">AI Evaluation</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            AI Evaluation
+          </h2>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700">Select AI Model:</label>
-              <Dropdown options={models} selectedOption={selectedModel} onSelect={setSelectedModel} />
+              <label className="text-sm font-medium text-gray-700">
+                Select AI Model:
+              </label>
+              <Dropdown
+                options={models}
+                selectedOption={selectedModel}
+                onSelect={setSelectedModel}
+              />
             </div>
             <Button
-              disabled={!isEvaluationReady() || isEvaluating || selectedSubmissions.length === 0}
+              disabled={
+                !isEvaluationReady() ||
+                isEvaluating ||
+                selectedSubmissions.length === 0
+              }
               onClick={handleStartEvaluation}
               className="px-6 py-2.5"
             >
               <BotIcon className="w-5 h-5 mr-2" />
-              {isEvaluating ? 'Evaluating...' : `Start Evaluation (${selectedSubmissions.length} selected)`}
+              {isEvaluating
+                ? "Evaluating..."
+                : `Start Evaluation (${selectedSubmissions.length} selected)`}
             </Button>
           </div>
 
           {!isEvaluationReady() && (
             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
               <p className="text-sm text-amber-800">
-                <span className="font-medium">Requirements for evaluation:</span>
+                <span className="font-medium">
+                  Requirements for evaluation:
+                </span>
               </p>
               <ul className="text-sm text-amber-700 mt-2 space-y-1">
-                {(!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) && <li>• Question paper needs to be uploaded</li>}
-                {(!assessment?.model_answer_paper?.file_url && !uploadedFiles.modelAnswer) && <li>• Model answer needs to be uploaded</li>}
-                {(!assessment?.submissions || assessment.submissions.length === 0) && <li>• No student submissions available</li>}
-                {selectedSubmissions.length === 0 && <li>• Select at least one submission for evaluation</li>}
+                {!assessment?.question_paper?.file_url &&
+                  !uploadedFiles.questionPaper && (
+                    <li>• Question paper needs to be uploaded</li>
+                  )}
+                {!assessment?.model_answer_paper?.file_url &&
+                  !uploadedFiles.modelAnswer && (
+                    <li>• Model answer needs to be uploaded</li>
+                  )}
+                {(!assessment?.submissions ||
+                  assessment.submissions.length === 0) && (
+                  <li>• No student submissions available</li>
+                )}
+                {selectedSubmissions.length === 0 && (
+                  <li>• Select at least one submission for evaluation</li>
+                )}
               </ul>
             </div>
           )}
@@ -1045,26 +1208,36 @@ export default function AssessmentPage() {
           {isEvaluationReady() && selectedSubmissions.length === 0 && (
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-800">
-                <span className="font-medium">Select submissions:</span> Please select at least one submission from the table above to start evaluation.
+                <span className="font-medium">Select submissions:</span> Please
+                select at least one submission from the table above to start
+                evaluation.
               </p>
             </div>
           )}
 
-          {isEvaluationReady() && selectedSubmissions.length > 0 && !isEvaluating && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">
-                <span className="font-medium">Ready for evaluation!</span> All required files are uploaded and {selectedSubmissions.length} student submissions are selected for evaluation with {selectedModel}.
-                {selectedSubmissions.some(id => {
-                  const sub = assessment.submissions.find(s => s.submission_id === id);
-                  return sub && getBestGrade(sub) !== null;
-                }) && (
-                  <span className="block mt-1 text-green-700">
-                    Note: Some selected submissions are already graded and will be re-evaluated.
-                  </span>
-                )}
-              </p>
-            </div>
-          )}
+          {isEvaluationReady() &&
+            selectedSubmissions.length > 0 &&
+            !isEvaluating && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-800">
+                  <span className="font-medium">Ready for evaluation!</span> All
+                  required files are uploaded and {selectedSubmissions.length}{" "}
+                  student submissions are selected for evaluation with{" "}
+                  {selectedModel}.
+                  {selectedSubmissions.some((id) => {
+                    const sub = assessment.submissions.find(
+                      (s) => s.submission_id === id
+                    );
+                    return sub && getBestGrade(sub) !== null;
+                  }) && (
+                    <span className="block mt-1 text-green-700">
+                      Note: Some selected submissions are already graded and
+                      will be re-evaluated.
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
         </div>
       </div>
     </div>

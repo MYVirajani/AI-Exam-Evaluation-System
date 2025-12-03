@@ -1,18 +1,18 @@
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { v4 as uuidv4 } from "uuid"; // npm install uuid
 
-// ✅ GET /api/admin/evaluation-models (already exists)
+// ---------------------------------------------------------
+// GET /api/admin/evaluation-models
+// ---------------------------------------------------------
 export async function GET() {
   try {
     const models = await prisma.evaluation_Model.findMany({
       include: {
-        pricing_plans: true, // include available pricing plans for display
+        pricing_plans: true,
       },
       orderBy: { model_name: "asc" },
     });
-    console.log('models: ', models);
+
     return NextResponse.json(models);
   } catch (err) {
     console.error("Error fetching evaluation models:", err);
@@ -23,33 +23,58 @@ export async function GET() {
   }
 }
 
-
+// ---------------------------------------------------------
+// POST /api/admin/evaluation-models
+// ---------------------------------------------------------
 export async function POST(req: Request) {
   try {
-    const { model_name, description } = await req.json();
+    const {
+      model_name,
+      provider,
+      chat_model,
+      temperature,
+      embedding_model,
+      description,
+    } = await req.json();
 
-    if (!model_name) {
+    // ----------------- Validation -----------------
+    if (!model_name || !provider || !embedding_model) {
       return NextResponse.json(
-        { error: "Model name is required." },
+        {
+          error:
+            "model_name, provider, and embedding_model are required fields.",
+        },
         { status: 400 }
       );
     }
 
+    // ----------------- Create Record -----------------
     const newModel = await prisma.evaluation_Model.create({
       data: {
-        model_id: uuidv4(), // ✅ Generate unique ID
         model_name,
-        description: description || null, // Allow empty description
+        provider,
+        chat_model: chat_model || null,
+        temperature: typeof temperature === "number" ? temperature : 0.0,
+        embedding_model,
+        description: description || null,
       },
     });
 
     return NextResponse.json(newModel, { status: 201 });
   } catch (err) {
     console.error("Error creating evaluation model:", err);
+
+    if (err.code === "P2002") {
+      // Prisma unique constraint error
+      return NextResponse.json(
+        { error: "Model name must be unique." },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to create evaluation model" },
       { status: 500 }
     );
   }
 }
-

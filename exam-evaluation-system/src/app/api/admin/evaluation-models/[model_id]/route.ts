@@ -1,27 +1,46 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// PUT /api/admin/evaluation-models/:id
+// ---------------------------------------------------------
+// PUT /api/admin/evaluation-models/:model_id
+// ---------------------------------------------------------
 export async function PUT(
   req: Request,
   { params }: { params: { model_id: string } }
 ) {
   try {
     const modelId = params.model_id;
-    const { model_name, description } = await req.json();
 
-    if (!model_name) {
+    const {
+      model_name,
+      provider,
+      chat_model,
+      temperature,
+      embedding_model,
+      description,
+    } = await req.json();
+
+    // -------- Validation --------
+    if (!model_name || !provider || !embedding_model) {
       return NextResponse.json(
-        { error: "Model name is required." },
+        {
+          error:
+            "model_name, provider, and embedding_model are required fields.",
+        },
         { status: 400 }
       );
     }
 
+    // -------- Update Model --------
     const updatedModel = await prisma.evaluation_Model.update({
-      where: { model_id: modelId },
+      where: { id: modelId },
       data: {
         model_name,
-        description: description || null,
+        provider,
+        chat_model: chat_model ?? null,
+        temperature: typeof temperature === "number" ? temperature : undefined,
+        embedding_model,
+        description: description ?? null,
       },
       include: {
         pricing_plans: true,
@@ -29,8 +48,16 @@ export async function PUT(
     });
 
     return NextResponse.json(updatedModel, { status: 200 });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error updating evaluation model:", err);
+
+    if (err.code === "P2002") {
+      return NextResponse.json(
+        { error: "Model name must be unique." },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to update evaluation model" },
       { status: 500 }
@@ -38,7 +65,9 @@ export async function PUT(
   }
 }
 
-// DELETE /api/admin/evaluation-models/:id
+// ---------------------------------------------------------
+// DELETE /api/admin/evaluation-models/:model_id
+// ---------------------------------------------------------
 export async function DELETE(
   req: Request,
   { params }: { params: { model_id: string } }
@@ -47,7 +76,7 @@ export async function DELETE(
     const modelId = params.model_id;
 
     await prisma.evaluation_Model.delete({
-      where: { model_id: modelId },
+      where: { id: modelId }, 
     });
 
     return NextResponse.json(
@@ -56,6 +85,7 @@ export async function DELETE(
     );
   } catch (err) {
     console.error("Error deleting evaluation model:", err);
+
     return NextResponse.json(
       { error: "Failed to delete evaluation model" },
       { status: 500 }

@@ -40,7 +40,7 @@ class LectureMaterialDBService(BaseRelationalDB):
         """
 
         lecture_material_media_table = """
-        CREATE TABLE IF NOT EXISTS lecture_material_media (
+        CREATE TABLE IF NOT EXISTS "Lecture_Material_Media" (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             model_id UUID,
             lecture_material_id UUID NOT NULL,
@@ -60,10 +60,10 @@ class LectureMaterialDBService(BaseRelationalDB):
         );
 
         CREATE INDEX IF NOT EXISTS idx_lmm_lecture_material_id 
-            ON lecture_material_media(lecture_material_id);
+            ON "Lecture_Material_Media"(lecture_material_id);
 
         CREATE INDEX IF NOT EXISTS idx_lmm_model_id 
-            ON lecture_material_media(model_id);
+            ON "Lecture_Material_Media"(model_id);
         """
 
         try:
@@ -112,7 +112,7 @@ class LectureMaterialDBService(BaseRelationalDB):
     def insert_media(self, model_id, lecture_material_id, media_url, media_summary):
         try:
             check_sql = """
-                SELECT id FROM lecture_material_media
+                SELECT id FROM "Lecture_Material_Media"
                 WHERE model_id = %s
                   AND lecture_material_id = %s
                   AND media_url = %s
@@ -122,24 +122,27 @@ class LectureMaterialDBService(BaseRelationalDB):
             self.cursor.execute(check_sql, (model_id, lecture_material_id, media_url))
             result = self.cursor.fetchone()
 
+            # Update existing
             if result:
                 media_id = result[0]
                 update_sql = """
-                    UPDATE lecture_material_media
+                    UPDATE "Lecture_Material_Media"
                     SET media_summary = %s,
                         updated_on = NOW()
                     WHERE id = %s;
                 """
+
                 self.cursor.execute(update_sql, (media_summary, media_id))
                 self.conn.commit()
 
                 logger.info(f"Updated existing media summary for media_id={media_id}")
                 return media_id
 
+            # Insert new
             media_id = str(uuid.uuid4())
 
             insert_sql = """
-                INSERT INTO lecture_material_media (
+                INSERT INTO "Lecture_Material_Media" (
                     id,
                     model_id,
                     lecture_material_id,
@@ -169,7 +172,7 @@ class LectureMaterialDBService(BaseRelationalDB):
     # ----------------------------------------------------
     def update_media_summary(self, media_id, media_summary):
         sql = """
-        UPDATE lecture_material_media
+        UPDATE "Lecture_Material_Media"
         SET media_summary = %s,
             updated_on = NOW()
         WHERE id = %s;
@@ -187,7 +190,7 @@ class LectureMaterialDBService(BaseRelationalDB):
     def fetch_media_by_lecture_material(self, lecture_material_id):
         sql = """
         SELECT media_url, media_summary
-        FROM lecture_material_media
+        FROM "Lecture_Material_Media"
         WHERE lecture_material_id = %s;
         """
 
@@ -255,7 +258,7 @@ class LectureMaterialDBService(BaseRelationalDB):
             m.media_summary,
             m.id AS media_id
         FROM "Lecture_Material" lm
-        LEFT JOIN lecture_material_media m 
+        LEFT JOIN "Lecture_Material_Media" m 
             ON lm.id = m.lecture_material_id
         WHERE lm.lesson_id = ANY(%s)
         """
@@ -263,7 +266,7 @@ class LectureMaterialDBService(BaseRelationalDB):
         params = [lesson_ids]
 
         if media_ids:
-            sql += " AND m.id = ANY(%s)"
+            sql += ' AND m.id = ANY(%s)'
             params.append(media_ids)
 
         sql += " ORDER BY lm.created_on DESC;"
@@ -299,14 +302,9 @@ class LectureMaterialDBService(BaseRelationalDB):
             raise
 
     # ----------------------------------------------------
-    # UPDATED FUNCTION: FETCH MATERIAL IDs BY LIST OF LESSON IDs
+    # FETCH MATERIAL IDs BY LESSON LIST
     # ----------------------------------------------------
     def get_lecture_material_ids_by_lessons(self, lesson_ids: list, created_by: str = None):
-        """
-        Return lecture_material IDs for a list of lesson_ids.
-        If created_by is provided → filter by created_by.
-        """
-
         try:
             if created_by:
                 sql = """

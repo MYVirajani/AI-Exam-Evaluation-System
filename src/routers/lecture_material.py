@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import List
 
 from src.scripts.lecture_materials.pipeline import process_lecture_materials
 
@@ -7,27 +8,26 @@ router = APIRouter(prefix="/lecture-material", tags=["Lecture Material Processin
 
 
 class LectureMaterialProcessRequest(BaseModel):
-    lesson_id: str
-    model_id: str = "eaa81306-f9e3-4c96-901d-3b7a80a3f4ac"
+    lesson_ids: List[str]  # Accept multiple lesson IDs
+    model_ids: List[str] = ["eaa81306-f9e3-4c96-901d-3b7a80a3f4ac"]  # Default model ID
 
 
 @router.post("/process-extract-embed")
 def process_lecture_material_endpoint(request: LectureMaterialProcessRequest):
     """
-    Endpoint: Trigger lecture material processing pipeline.
+    Endpoint: Trigger lecture material processing pipeline for multiple lessons and models.
     """
-
     try:
         process_lecture_materials(
-            lesson_id=request.lesson_id,
-            model_id=request.model_id
+            lesson_ids=request.lesson_ids,
+            model_ids=request.model_ids
         )
 
         return {
             "status": "success",
-            "lesson_id": request.lesson_id,
-            "model_id": request.model_id,
-            "message": "Lecture material processing completed"
+            "lesson_ids": request.lesson_ids,
+            "model_ids": request.model_ids,
+            "message": "Lecture material processing completed for all specified lessons and models"
         }
 
     except Exception as e:

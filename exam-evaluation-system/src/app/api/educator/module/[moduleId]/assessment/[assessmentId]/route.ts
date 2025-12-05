@@ -115,6 +115,7 @@ export async function GET(
             file_url: true,
             media_extracted_file_url: true,
             ip_address: true,
+            is_graded: true,
 
             student: {
               select: {

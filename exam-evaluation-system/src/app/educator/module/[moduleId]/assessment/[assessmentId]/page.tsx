@@ -57,8 +57,10 @@ interface AssessmentDataFromApi {
     deadline: string;
     created_on: string;
     auto_grade: boolean;
+    is_graded: boolean;
     model_id?: string | null;
     model_answer_paper?: {
+      id: string;
       file_url: string;
       created_on: string;
       updated_on: string;
@@ -115,6 +117,8 @@ export default function AssessmentPage() {
   const [sortField, setSortField] = useState("registration_number");
   const [sortDirection, setSortDirection] = useState("asc");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [isDeletingModelAnswer, setIsDeletingModelAnswer] = useState(false);
+  const [isProcessingModelAnswer, setIsProcessingModelAnswer] = useState(false);
 
   const breadcrumbs = assessment
     ? getAssessmentBreadcrumbs(
@@ -155,31 +159,6 @@ export default function AssessmentPage() {
     return student?.user?.email || "No email available";
   };
 
-  // Helper function to get the best grade (latest AI grade or assessment grade)
-  const getBestGrade = (submission: Submission) => {
-    if (submission.latest_ai_grade) {
-      return {
-        marks_awarded: submission.latest_ai_grade.marks_awarded,
-        max_marks: submission.latest_ai_grade.max_marks,
-        source: `AI (${submission.latest_ai_grade.model_used})`,
-        graded_at: submission.latest_ai_grade.graded_at,
-        isAI: true,
-      };
-    }
-
-    if (submission.assessment_grade) {
-      return {
-        marks_awarded: submission.assessment_grade.marks_awarded,
-        max_marks: submission.assessment_grade.max_marks,
-        source: "Manual",
-        graded_at: null,
-        isAI: false,
-      };
-    }
-
-    return null;
-  };
-
   // Filter and sort submissions
   const filteredAndSortedSubmissions = useMemo(() => {
     if (!assessment?.submissions) return [];
@@ -196,15 +175,7 @@ export default function AssessmentPage() {
         studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         studentEmail.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const bestGrade = getBestGrade(sub);
-      const isGraded = bestGrade !== null;
-
-      const matchesFilter =
-        filterStatus === "all" ||
-        (filterStatus === "graded" && isGraded) ||
-        (filterStatus === "ungraded" && !isGraded);
-
-      return matchesSearch && matchesFilter;
+      return matchesSearch;
     });
 
     filtered.sort((a, b) => {
@@ -222,12 +193,6 @@ export default function AssessmentPage() {
         case "submitted_at":
           aValue = new Date(a.submission_start_at);
           bValue = new Date(b.submission_start_at);
-          break;
-        case "grade":
-          const gradeA = getBestGrade(a);
-          const gradeB = getBestGrade(b);
-          aValue = gradeA?.marks_awarded || 0;
-          bValue = gradeB?.marks_awarded || 0;
           break;
         default:
           aValue = a.student.registration_number;
@@ -304,6 +269,103 @@ export default function AssessmentPage() {
       <span className="text-blue-600">↓</span>
     );
   };
+  const deleteModelAnswer = async () => {
+    if (!assessment?.model_answer_paper?.file_url) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete the model answer? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    setIsDeletingModelAnswer(true);
+    const toastId = toast.loading("Deleting model answer...");
+
+    try {
+      const res = await fetch(
+        `/api/educator/module/${moduleId}/assessment/${assessmentId}/model-paper`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Delete failed");
+      }
+
+      await refetchAssessment();
+
+      toast.success("Model answer deleted successfully!", { id: toastId });
+    } catch (error) {
+      console.error("Error deleting model answer:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete model answer",
+        { id: toastId }
+      );
+    } finally {
+      setIsDeletingModelAnswer(false);
+    }
+  };
+
+const processModelAnswer = async () => {
+  if (!assessment?.model_answer_paper?.file_url) {
+    toast.error("Please upload a model answer first");
+    return;
+  }
+
+  if (!selectedModelId || evaluationModels.length === 0) {
+    toast.error("Please select an AI model first");
+    return;
+  }
+
+  setIsProcessingModelAnswer(true);
+  const toastId = toast.loading("Processing model answer for grading...");
+
+  try {
+    // Load API URL from env
+    const API_BASE_URL = "http://localhost:8000"; // Replace with your actual model server URL
+
+    if (!API_BASE_URL) {
+      throw new Error(
+        "API base URL is not defined. Set MODEL_SERVER_URL in .env.local"
+      );
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/model-answer/process-extract-embed`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model_answer_paper_id: assessment.model_answer_paper.id,
+          assessment_id: assessmentId,
+          model_id: selectedModelId,
+          extract_media: true,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Failed to process model answer");
+    }
+
+    toast.success("Model answer processed successfully!", { id: toastId });
+    await refetchAssessment();
+  } catch (error) {
+    console.error("Error processing model answer:", error);
+    toast.error(
+      error instanceof Error ? error.message : "Failed to process model answer",
+      { id: toastId }
+    );
+  } finally {
+    setIsProcessingModelAnswer(false);
+  }
+};
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {
@@ -461,13 +523,19 @@ export default function AssessmentPage() {
     }
   };
 
-  const triggerFileInput = (ref: React.RefObject<HTMLInputElement>) => {
+  const triggerFileInput = (ref: React.RefObject<HTMLInputElement | null>) => {
     ref.current?.click();
   };
 
   const startEvaluation = async () => {
     setIsEvaluating(true);
     setEvaluationStatus("Starting evaluation...");
+
+    if (!assessment) {
+      setEvaluationStatus("❌ Assessment not found");
+      setIsEvaluating(false);
+      return;
+    }
 
     const validSelectedSubmissions = selectedSubmissions.filter((subId) =>
       assessment.submissions.some((sub) => sub.submission_id === subId)
@@ -503,9 +571,8 @@ export default function AssessmentPage() {
 
       if (data.success) {
         const selectedModelName =
-          evaluationModels.find(
-            (m) => m.id === selectedModelId
-          )?.model_name || "AI";
+          evaluationModels.find((m) => m.id === selectedModelId)?.model_name ||
+          "AI";
 
         setEvaluationStatus(`✅ Evaluation completed successfully!`);
         toast.success(
@@ -559,7 +626,6 @@ export default function AssessmentPage() {
 
   const isEvaluationReady = () => {
     return (
-      (assessment?.question_paper?.file_url || uploadedFiles.questionPaper) &&
       (assessment?.model_answer_paper?.file_url || uploadedFiles.modelAnswer) &&
       assessment?.submissions &&
       assessment.submissions.length > 0
@@ -736,21 +802,44 @@ export default function AssessmentPage() {
           </div>
 
           {/* Model Answer */}
+
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">
                 Model Answer
               </h2>
               {assessment.model_answer_paper?.file_url && (
-                <a
-                  href={assessment.model_answer_paper.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  <FileIcon className="w-4 h-4 mr-2" />
-                  View Current Model Answer
-                </a>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={assessment.model_answer_paper.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    <FileIcon className="w-4 h-4 mr-2" />
+                    View Current Model Answer
+                  </a>
+                  <button
+                    onClick={deleteModelAnswer}
+                    disabled={isDeletingModelAnswer}
+                    className="inline-flex items-center text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Delete model answer"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -761,6 +850,7 @@ export default function AssessmentPage() {
               className="hidden"
               accept={FILE_CONFIG.MODEL_PAPER.types.join(",")}
             />
+
             {!assessment?.model_answer_paper?.file_url && (
               <FileUploadSection
                 title="Upload Model Answer"
@@ -771,8 +861,8 @@ export default function AssessmentPage() {
               />
             )}
 
-            {uploadedFiles.modelAnswer && (
-              <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end gap-3">
+              {uploadedFiles.modelAnswer && (
                 <Button
                   onClick={uploadModelAnswer}
                   disabled={isUploadingModelAnswer}
@@ -782,8 +872,24 @@ export default function AssessmentPage() {
                     ? "Uploading..."
                     : "Upload Model Answer"}
                 </Button>
-              </div>
-            )}
+              )}
+
+              {assessment?.model_answer_paper?.file_url && (
+                <Button
+                  onClick={processModelAnswer}
+                  disabled={
+                    isProcessingModelAnswer ||
+                    !selectedModelId ||
+                    evaluationModels.length === 0
+                  }
+                  className="px-6 bg-green-600 hover:bg-green-700"
+                >
+                  {isProcessingModelAnswer
+                    ? "Processing..."
+                    : "Submit for Grading"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -956,15 +1062,6 @@ export default function AssessmentPage() {
                       <SortIcon field="submitted_at" />
                     </div>
                   </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort("grade")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Current Grade
-                      <SortIcon field="grade" />
-                    </div>
-                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
@@ -972,7 +1069,6 @@ export default function AssessmentPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedSubmissions.map((sub) => {
-                  const bestGrade = getBestGrade(sub);
                   return (
                     <tr
                       key={sub.submission_id}
@@ -1028,53 +1124,16 @@ export default function AssessmentPage() {
                           ).toLocaleTimeString()}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {bestGrade ? (
-                          <div className="text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900">
-                                {bestGrade.marks_awarded}
-                              </span>
-                              <span className="text-gray-500">
-                                /{bestGrade.max_marks}
-                              </span>
-                              {bestGrade.isAI && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                  {bestGrade.source}
-                                </span>
-                              )}
-                            </div>
-                            {bestGrade.graded_at && (
-                              <div className="text-xs text-gray-400 mt-1">
-                                {new Date(
-                                  bestGrade.graded_at
-                                ).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
+                      <td className="px-4 py-2">
+                        {assessment?.is_graded ? (
+                          <span className="text-green-600 font-semibold">
+                            Graded
+                          </span>
                         ) : (
-                          <span className="text-sm text-gray-400">
-                            Not graded
+                          <span className="text-yellow-600 font-semibold">
+                            Pending
                           </span>
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              bestGrade
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {bestGrade ? "Graded" : "Pending"}
-                          </span>
-                          {bestGrade && (
-                            <span className="text-xs text-gray-500">
-                              Can re-evaluate
-                            </span>
-                          )}
-                        </div>
                       </td>
                     </tr>
                   );
@@ -1195,9 +1254,8 @@ export default function AssessmentPage() {
                 <Dropdown
                   options={evaluationModels.map((model) => model.model_name)}
                   selectedOption={
-                    evaluationModels.find(
-                      (m) => m.id === selectedModelId
-                    )?.model_name || ""
+                    evaluationModels.find((m) => m.id === selectedModelId)
+                      ?.model_name || ""
                   }
                   onSelect={(modelName) => {
                     const model = evaluationModels.find(
@@ -1231,33 +1289,6 @@ export default function AssessmentPage() {
                 : `Start Evaluation (${selectedSubmissions.length} selected)`}
             </Button>
           </div>
-
-          {isEvaluationReady() &&
-            selectedSubmissions.length > 0 &&
-            !isEvaluating && (
-              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm text-green-800">
-                  <span className="font-medium">Ready for evaluation!</span> All
-                  required files are uploaded and {selectedSubmissions.length}{" "}
-                  student submissions are selected for evaluation with{" "}
-                  {evaluationModels.find(
-                    (m) => m.id === selectedModelId
-                  )?.model_name || "selected model"}
-                  .
-                  {selectedSubmissions.some((id) => {
-                    const sub = assessment.submissions.find(
-                      (s) => s.submission_id === id
-                    );
-                    return sub && getBestGrade(sub) !== null;
-                  }) && (
-                    <span className="block mt-1 text-green-700">
-                      Note: Some selected submissions are already graded and
-                      will be re-evaluated.
-                    </span>
-                  )}
-                </p>
-              </div>
-            )}
         </div>
       </div>
     </div>

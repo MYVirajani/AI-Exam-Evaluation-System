@@ -1,5 +1,6 @@
-import { NextResponse, NextRequest } from 'next/server'; 
-import { prisma } from '@/lib/prisma';
+// exam-evaluation-system\src\app\api\educator\module\[moduleId]\assessment\[assessmentId]\route.ts
+import { NextResponse, NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
@@ -22,7 +23,31 @@ export async function GET(
       );
     }
 
-    // Fetch module details
+    // -------------------------------------------------------------------
+    // 1. Fetch Educator SUBSCRIBED Evaluation Models
+    // -------------------------------------------------------------------
+    const activeSubscriptions = await prisma.subscription.findMany({
+      where: {
+        educator_id: educatorId,
+        status: "ACTIVE",
+      },
+      include: {
+        pricing_plan: {
+          include: {
+            evaluation_model: true,
+          },
+        },
+      },
+    });
+
+    const evaluationModels =
+      activeSubscriptions
+        .map((sub) => sub.pricing_plan?.evaluation_model)
+        .filter(Boolean) || [];
+
+    // -------------------------------------------------------------------
+    // 2. Fetch module info
+    // -------------------------------------------------------------------
     const moduleData = await prisma.module.findUnique({
       where: { module_id: moduleId },
       select: {
@@ -39,12 +64,13 @@ export async function GET(
       );
     }
 
-    // Count enrollments
     const enrollmentCount = await prisma.enrollment.count({
       where: { module_id: moduleId },
     });
 
-    // Fetch assessment + question paper + model answer paper + submissions
+    // -------------------------------------------------------------------
+    // 3. Fetch assessment WITHOUT GRADES
+    // -------------------------------------------------------------------
     const assessment = await prisma.assessment.findFirst({
       where: {
         assessment_id: assessmentId,
@@ -55,7 +81,6 @@ export async function GET(
         module: true,
         educator: true,
 
-        // Question Paper (file_url)
         question_paper: {
           select: {
             question_paper_id: true,
@@ -65,7 +90,6 @@ export async function GET(
           },
         },
 
-        // Model Answer Paper (file_url + extracted media)
         model_answer_paper: {
           select: {
             id: true,
@@ -78,19 +102,30 @@ export async function GET(
 
         marking_scheme: true,
         questions: {
-          orderBy: { question_number: 'asc' },
+          orderBy: { question_number: "asc" },
         },
 
         submissions: {
-          include: {
-            // Submission document/handwritten files
+          select: {
+            submission_id: true,
+            student_id: true,
+            type: true,
+            submission_start_at: true,
+            submission_end_at: true,
+            file_url: true,
+            media_extracted_file_url: true,
+            ip_address: true,
+
             student: {
-              include: {
+              select: {
+                user_id: true,
+                registration_number: true,
                 user: {
                   select: {
                     first_name: true,
                     last_name: true,
                     email: true,
+                    profile_image_url: true,
                   },
                 },
               },
@@ -107,67 +142,120 @@ export async function GET(
       );
     }
 
-    // Collect submission IDs
+    // -------------------------------------------------------------------
+    // 4. Fetch ONLY model_id from assessment_Grade
+    // -------------------------------------------------------------------
     const submissionIds = assessment.submissions.map(
       (s) => s.submission_id
     );
 
-    // Fetch AI grading results
-    const gradeResults = await prisma.assessment_Grade.findMany({
+    const assessmentGrades = await prisma.assessment_Grade.findMany({
       where: {
         submission_id: { in: submissionIds },
       },
-      include: {
-        evaluation_model: true,
-        submission: true,
+      select: {
+        submission_id: true,
+        model_id: true,
       },
     });
 
-    // Enhance submissions with AI grades + full submission data
-    const enhancedSubmissions = assessment.submissions.map((submission) => {
-      const grades = gradeResults.filter(
-        (gr) => gr.submission_id === submission.submission_id
+    const modelMap = new Map(
+      assessmentGrades.map((g) => [g.submission_id, g.model_id])
+    );
+
+    // Add model_id to submissions
+    const cleanedSubmissions = assessment.submissions.map((sub) => ({
+      ...sub,
+      model_id: modelMap.get(sub.submission_id) || null,
+    }));
+
+    // -------------------------------------------------------------------
+    // 5. Final response JSON
+    // -------------------------------------------------------------------
+    return NextResponse.json(
+      {
+        module: moduleData,
+        enrollmentCount,
+        evaluation_models: evaluationModels,
+        subscriptions: activeSubscriptions.map((sub) => ({
+          subscription_id: sub.subscription_id,
+          status: sub.status,
+          start_date: sub.start_date,
+          pricing_plan_id: sub.pricing_plan_id,
+        })),
+        assessment: {
+          ...assessment,
+          submissions: cleanedSubmissions,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("Error in combined assessment endpoint:", err);
+    return NextResponse.json(
+      { success: false, message: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
+
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ assessmentId: string }> }
+) {
+  try {
+    const { assessmentId } = await ctx.params;
+
+    const body = await req.json();
+    console.log("PATCH request body:", body);
+    const { model_id, deadline, auto_grade } = body;
+
+    // Validate
+    if (!assessmentId) {
+      return NextResponse.json(
+        { success: false, message: "Missing assessmentId" },
+        { status: 400 }
       );
+    }
 
-      let latestAIGrade = null;
-      if (grades.length > 0) {
-        const grade = grades[0];
-        latestAIGrade = {
-          model_id: grade.model_id,
-          model_name: grade.evaluation_model?.model_name,
-          score: grade.score,
-          max_marks: grade.max_marks,
-        };
-      }
-
-      return {
-        ...submission,
-
-        // document submission fields
-        file_url: submission.file_url,
-        media_extracted_file_url: submission.media_extracted_file_url,
-
-        // handwritten submission fields
-        handwritten_file_url: submission.handwritten_file_url,
-        is_handwritten: submission.is_handwritten,
-
-        latest_ai_grade: latestAIGrade,
-      };
+    // Check if assessment exists
+    const existing = await prisma.assessment.findUnique({
+      where: { assessment_id: assessmentId },
+      select: { assessment_id: true },
     });
 
-    const enhancedAssessment = {
-      ...assessment,
-      submissions: enhancedSubmissions,
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, message: "Assessment not found" },
+        { status: 404 }
+      );
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      updated_on: new Date(),
     };
 
-    return NextResponse.json({
-      module: moduleData,
-      enrollmentCount,
-      assessment: enhancedAssessment,
+    if (model_id !== undefined) updateData.model_id = model_id;
+    if (deadline !== undefined) updateData.deadline = new Date(deadline);
+    if (auto_grade !== undefined) updateData.auto_grade = auto_grade;
+
+    const updatedAssessment = await prisma.assessment.update({
+      where: { assessment_id: assessmentId },
+      data: updateData,
     });
 
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Assessment updated successfully",
+        assessment: updatedAssessment,
+      },
+      { status: 200 }
+    );
   } catch (err) {
-    console.error("[GET educator/module/[moduleId]/assessment/[assessmentId]]", err);
+    console.error("Error updating assessment:", err);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

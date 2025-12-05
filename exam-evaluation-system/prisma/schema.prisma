@@ -191,10 +191,11 @@ model Assessment {
   deadline                  DateTime           @db.Timestamptz(6)
   open_at                   DateTime?          @db.Timestamptz(6)
   close_at                  DateTime?          @db.Timestamptz(6)
-  total_marks               Decimal?           @db.Decimal(5, 2) //total marks calculated by all questions of assessment
-  max_marks                 Decimal?           @db.Decimal(5, 2) //max marks a student can allocate by assessment
+  total_marks               Decimal?           @db.Decimal(5, 2)
+  max_marks                 Decimal?           @db.Decimal(5, 2)
+  model_id                  String? // optional FK
   password                  String?
-  shuffle_questions         Boolean            @default(false) // Whether to shuffle questions
+  shuffle_questions         Boolean            @default(false)
   max_attempts              Int?
   auto_grade                Boolean            @default(false)
   back_navigation           Boolean            @default(true)
@@ -203,6 +204,7 @@ model Assessment {
 
   module             Module               @relation(fields: [module_id], references: [module_id])
   educator           Educator             @relation(fields: [created_by], references: [user_id])
+  evaluation_model   Evaluation_Model?    @relation(fields: [model_id], references: [id]) // FIXED
   question_paper     Question_Paper?
   model_answer_paper Model_Answer_Paper?
   marking_scheme     Marking_Scheme?
@@ -395,6 +397,7 @@ model Evaluation_Model {
   Assessment_Grading     Assessment_Grading[]
   grading_results        Grading_Results[]
   assessment_grade       Assessment_Grade[]
+  Assessment             Assessment[]
 }
 
 model Pricing_Plan {

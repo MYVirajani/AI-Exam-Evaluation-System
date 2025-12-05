@@ -423,7 +423,6 @@ export default function QuizFormPage() {
   const validateForm = () => {
     if (!formData.title.trim()) return "Quiz title is required";
 
-
     const { isComplete, missingAnswers } = checkAllQuestionsComplete();
     if (!isComplete) {
       return `Please complete all questions:\n${missingAnswers.join("\n")}`;
@@ -1281,15 +1280,15 @@ export default function QuizFormPage() {
 
         {/* Questions Section */}
         <QuizSection
-  questions={formData.questions}
-  onAddQuestion={addQuestion}
-  onUpdateQuestion={updateQuestion}
-  onUpdateMCQOption={updateMCQOption}
-  onAddMCQOption={addMCQOption}
-  onRemoveMCQOption={removeMCQOption}
-  onRemoveQuestion={removeQuestion}
-  assessmentId={assessmentId}
-/>
+          questions={formData.questions}
+          onAddQuestion={addQuestion}
+          onUpdateQuestion={updateQuestion}
+          onUpdateMCQOption={updateMCQOption}
+          onAddMCQOption={addMCQOption}
+          onRemoveMCQOption={removeMCQOption}
+          onRemoveQuestion={removeQuestion}
+          assessmentId={assessmentId}
+        />
 
         {/* Action Buttons */}
         <div

@@ -17,6 +17,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface User {
   first_name: string;
@@ -119,16 +120,18 @@ export default function AssessmentResultsPage() {
     fetchData();
   }, [assessmentId]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading assessment results...</p>
-        </div>
-      </div>
-    );
-  }
+ 
+   if (loading) {
+      return (
+        <LoadingAnimation
+          size="lg"
+          variant="wave"
+          text="Loading assessment results..."
+          fullScreen={true}
+          color="blue"
+        />
+      );
+    }
 
   if (error || !data) {
     return (

@@ -20,6 +20,7 @@ import Dropdown from "@/components/Dropdown";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
 import { formatOpenCloseTime, formatDuration } from "@/utils/date-time";
 import { downloadQuestionPaper } from "@/utils/questionPaperExport";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface User {
   first_name: string;
@@ -162,11 +163,11 @@ export default function QuizAssessmentPage() {
     try {
       await downloadQuestionPaper(
         assessment,
-        selectedDownloadFormat.toLowerCase() as 'pdf' | 'docx' | 'excel'
+        selectedDownloadFormat.toLowerCase() as "pdf" | "docx" | "excel"
       );
     } catch (error) {
-      console.error('Download failed:', error);
-      alert('Failed to download question paper. Please try again.');
+      console.error("Download failed:", error);
+      alert("Failed to download question paper. Please try again.");
     } finally {
       setIsDownloading(false);
     }
@@ -219,12 +220,13 @@ export default function QuizAssessmentPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-sm">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading quiz assessment...</p>
-        </div>
-      </div>
+      <LoadingAnimation
+        size="lg"
+        variant="wave"
+        text="Loading quiz assessment..."
+        fullScreen={true}
+        color="blue"
+      />
     );
   }
 

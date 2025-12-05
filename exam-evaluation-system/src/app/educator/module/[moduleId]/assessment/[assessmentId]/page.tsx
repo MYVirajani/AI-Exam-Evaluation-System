@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import { FILE_CONFIG } from "@/lib/fileConfig";
 import Link from "next/link";
 import LoadingAnimation from "@/components/LoadingAnimation";
+import AdvancedAssessmentSettings from "@/components/AdvancedAssessmentSettings";
 
 interface User {
   first_name: string;
@@ -40,6 +41,13 @@ interface Submission {
   } | null;
 }
 
+interface EvaluationModel {
+  id: string;
+  model_name: string;
+  provider: string;
+  description?: string;
+}
+
 interface AssessmentDataFromApi {
   assessment: {
     assessment_id: string;
@@ -48,6 +56,8 @@ interface AssessmentDataFromApi {
     description?: string;
     deadline: string;
     created_on: string;
+    auto_grade: boolean;
+    model_id?: string | null;
     model_answer_paper?: {
       file_url: string;
       created_on: string;
@@ -66,12 +76,7 @@ interface AssessmentDataFromApi {
     module_name: string;
   };
   enrollmentCount: number;
-}
-interface EvaluationModel {
-  evaluation_model_id: string;
-  model_name: string;
-  provider: string;
-  description?: string;
+  evaluation_models: EvaluationModel[];
 }
 
 type Assessment = AssessmentDataFromApi["assessment"] & {
@@ -98,7 +103,6 @@ export default function AssessmentPage() {
     []
   );
   const [selectedModelId, setSelectedModelId] = useState<string>("");
-  const [loadingModels, setLoadingModels] = useState(true);
   const [isUploadingModelAnswer, setIsUploadingModelAnswer] = useState(false);
   const [isUploadingQuestionPaper, setIsUploadingQuestionPaper] =
     useState(false);
@@ -140,7 +144,7 @@ export default function AssessmentPage() {
     }
 
     if (email) {
-      return email.split("@")[0]; // Use email username as fallback
+      return email.split("@")[0];
     }
 
     return `Student ${student.registration_number}`;
@@ -153,7 +157,6 @@ export default function AssessmentPage() {
 
   // Helper function to get the best grade (latest AI grade or assessment grade)
   const getBestGrade = (submission: Submission) => {
-    // Check if there's a latest AI grade
     if (submission.latest_ai_grade) {
       return {
         marks_awarded: submission.latest_ai_grade.marks_awarded,
@@ -164,7 +167,6 @@ export default function AssessmentPage() {
       };
     }
 
-    // Fallback to assessment grade
     if (submission.assessment_grade) {
       return {
         marks_awarded: submission.assessment_grade.marks_awarded,
@@ -205,7 +207,6 @@ export default function AssessmentPage() {
       return matchesSearch && matchesFilter;
     });
 
-    // Sort submissions
     filtered.sort((a, b) => {
       let aValue, bValue;
 
@@ -331,6 +332,16 @@ export default function AssessmentPage() {
         };
 
         setAssessment(enrichedAssessment);
+
+        // Set evaluation models from the response
+        if (data.evaluation_models && data.evaluation_models.length > 0) {
+          setEvaluationModels(data.evaluation_models);
+          setSelectedModelId(data.evaluation_models[0].id);
+        } else {
+          toast.error(
+            "No evaluation models available. Please subscribe to a plan."
+          );
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch assessment"
@@ -368,6 +379,11 @@ export default function AssessmentPage() {
         module: updatedData.module,
         enrollmentCount: updatedData.enrollmentCount,
       });
+
+      // Update evaluation models if they changed
+      if (updatedData.evaluation_models) {
+        setEvaluationModels(updatedData.evaluation_models);
+      }
     }
   };
 
@@ -449,43 +465,6 @@ export default function AssessmentPage() {
     ref.current?.click();
   };
 
-  useEffect(() => {
-    const fetchEvaluationModels = async () => {
-      if (!educatorId) return;
-
-      try {
-        setLoadingModels(true);
-        const response = await fetch(
-          `/api/educator/${educatorId}/evaluation-model`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch evaluation models");
-        }
-
-        const data = await response.json();
-
-        if (data.evaluation_models && data.evaluation_models.length > 0) {
-          setEvaluationModels(data.evaluation_models);
-          // Set the first model as default
-          setSelectedModelId(data.evaluation_models[0].evaluation_model_id);
-        } else {
-          toast.error(
-            "No evaluation models available. Please subscribe to a plan."
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching evaluation models:", error);
-        toast.error("Failed to load evaluation models");
-      } finally {
-        setLoadingModels(false);
-      }
-    };
-
-    fetchEvaluationModels();
-  }, [educatorId]);
-
-  // Update startEvaluation to use selectedModelId
   const startEvaluation = async () => {
     setIsEvaluating(true);
     setEvaluationStatus("Starting evaluation...");
@@ -505,7 +484,7 @@ export default function AssessmentPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          selectedModelId, // Changed from selectedModel
+          selectedModelId,
           moduleId,
           assessmentId,
           selectedSubmissions: validSelectedSubmissions,
@@ -525,7 +504,7 @@ export default function AssessmentPage() {
       if (data.success) {
         const selectedModelName =
           evaluationModels.find(
-            (m) => m.evaluation_model_id === selectedModelId
+            (m) => m.id === selectedModelId
           )?.model_name || "AI";
 
         setEvaluationStatus(`✅ Evaluation completed successfully!`);
@@ -566,7 +545,6 @@ export default function AssessmentPage() {
       return;
     }
 
-    // Only allow submissions from current assessment
     const validSelectedSubmissions = selectedSubmissions.filter((id) =>
       assessment.submissions.some((s) => s.submission_id === id)
     );
@@ -576,7 +554,6 @@ export default function AssessmentPage() {
       return;
     }
 
-    // Start evaluation with filtered submissions
     startEvaluation();
   };
 
@@ -663,36 +640,47 @@ export default function AssessmentPage() {
         </div>
 
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
-  <div className="flex items-center justify-between">
-    <div>
-      <h3 className="font-medium text-gray-900 mb-1">
-        Assessment Results
-      </h3>
-      <p className="text-sm text-gray-600">
-        View detailed grading results and analytics
-      </p>
-    </div>
-    <Link
-      href={`/educator/module/${assessment.module.module_id}/assessment/${assessmentId}/assessment-results`}
-      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-    >
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-gray-900 mb-1">
+                Assessment Results
+              </h3>
+              <p className="text-sm text-gray-600">
+                View detailed grading results and analytics
+              </p>
+            </div>
+            <Link
+              href={`/educator/module/${assessment.module.module_id}/assessment/${assessmentId}/assessment-results`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              View Dashboard
+            </Link>
+          </div>
+        </div>
+
+        {/* Advanced Assessment Settings */}
+        <AdvancedAssessmentSettings
+          assessmentId={assessmentId}
+          moduleId={moduleId}
+          currentDeadline={assessment.deadline}
+          currentAutoGrade={assessment.auto_grade}
+          currentDefaultModelId={assessment.model_id}
+          evaluationModels={evaluationModels}
+          onUpdateSuccess={refetchAssessment}
         />
-      </svg>
-      View Dashboard
-    </Link>
-  </div>
-</div>
 
         {/* File Upload Sections */}
         <div className="space-y-6">
@@ -814,7 +802,6 @@ export default function AssessmentPage() {
 
             {/* Controls */}
             <div className="flex flex-col lg:flex-row gap-4 mb-4">
-              {/* Search - Fixed text visibility */}
               <div className="flex-1 max-w-sm">
                 <div className="relative">
                   <svg
@@ -839,7 +826,7 @@ export default function AssessmentPage() {
                       setCurrentPage(1);
                     }}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                    style={{ color: "#111827" }} // Ensure dark text
+                    style={{ color: "#111827" }}
                   />
                   {searchTerm && (
                     <button
@@ -873,7 +860,6 @@ export default function AssessmentPage() {
                 }}
                 className="w-48"
               />
-              {/* Items Per Page Dropdown */}
               <Dropdown
                 options={[
                   "10 per page",
@@ -1145,7 +1131,6 @@ export default function AssessmentPage() {
                   Previous
                 </button>
 
-                {/* Page numbers */}
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                     let pageNum;
@@ -1206,14 +1191,12 @@ export default function AssessmentPage() {
               <label className="text-sm font-medium text-gray-700">
                 Select AI Model:
               </label>
-              {loadingModels ? (
-                <div className="text-sm text-gray-500">Loading models...</div>
-              ) : evaluationModels.length > 0 ? (
+              {evaluationModels.length > 0 ? (
                 <Dropdown
                   options={evaluationModels.map((model) => model.model_name)}
                   selectedOption={
                     evaluationModels.find(
-                      (m) => m.evaluation_model_id === selectedModelId
+                      (m) => m.id === selectedModelId
                     )?.model_name || ""
                   }
                   onSelect={(modelName) => {
@@ -1221,7 +1204,7 @@ export default function AssessmentPage() {
                       (m) => m.model_name === modelName
                     );
                     if (model) {
-                      setSelectedModelId(model.evaluation_model_id);
+                      setSelectedModelId(model.id);
                     }
                   }}
                 />
@@ -1249,8 +1232,6 @@ export default function AssessmentPage() {
             </Button>
           </div>
 
-          {/* ... rest of evaluation section ... */}
-
           {isEvaluationReady() &&
             selectedSubmissions.length > 0 &&
             !isEvaluating && (
@@ -1260,7 +1241,7 @@ export default function AssessmentPage() {
                   required files are uploaded and {selectedSubmissions.length}{" "}
                   student submissions are selected for evaluation with{" "}
                   {evaluationModels.find(
-                    (m) => m.evaluation_model_id === selectedModelId
+                    (m) => m.id === selectedModelId
                   )?.model_name || "selected model"}
                   .
                   {selectedSubmissions.some((id) => {

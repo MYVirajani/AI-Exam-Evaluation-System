@@ -323,12 +323,12 @@ const processModelAnswer = async () => {
   const toastId = toast.loading("Processing model answer for grading...");
 
   try {
-    // Load API URL from env
-    const API_BASE_URL = "http://localhost:8000"; // Replace with your actual model server URL
+    // Load API URL from .env
+    const API_BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVER_URL;
 
     if (!API_BASE_URL) {
       throw new Error(
-        "API base URL is not defined. Set MODEL_SERVER_URL in .env.local"
+        "API base URL is not defined. Add NEXT_PUBLIC_MODEL_SERVER_URL to exam-evaluation-system/.env"
       );
     }
 
@@ -366,6 +366,7 @@ const processModelAnswer = async () => {
     setIsProcessingModelAnswer(false);
   }
 };
+
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {

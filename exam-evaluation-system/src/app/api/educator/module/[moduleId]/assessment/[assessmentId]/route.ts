@@ -26,6 +26,7 @@ export async function GET(
     const moduleData = await prisma.module.findUnique({
       where: { module_id: moduleId },
       select: {
+        module_id: true,
         module_code: true,
         module_name: true,
       },

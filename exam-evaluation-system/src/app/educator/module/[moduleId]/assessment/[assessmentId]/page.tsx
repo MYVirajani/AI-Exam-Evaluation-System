@@ -13,6 +13,7 @@ import { FILE_CONFIG } from "@/lib/fileConfig";
 import Link from "next/link";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import AdvancedAssessmentSettings from "@/components/AdvancedAssessmentSettings";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface User {
   first_name: string;
@@ -119,6 +120,7 @@ export default function AssessmentPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [isDeletingModelAnswer, setIsDeletingModelAnswer] = useState(false);
   const [isProcessingModelAnswer, setIsProcessingModelAnswer] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const breadcrumbs = assessment
     ? getAssessmentBreadcrumbs(
@@ -272,12 +274,6 @@ export default function AssessmentPage() {
   const deleteModelAnswer = async () => {
     if (!assessment?.model_answer_paper?.file_url) return;
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete the model answer? This action cannot be undone."
-    );
-
-    if (!confirmed) return;
-
     setIsDeletingModelAnswer(true);
     const toastId = toast.loading("Deleting model answer...");
 
@@ -295,6 +291,7 @@ export default function AssessmentPage() {
       await refetchAssessment();
 
       toast.success("Model answer deleted successfully!", { id: toastId });
+      setShowDeleteConfirm(false);
     } catch (error) {
       console.error("Error deleting model answer:", error);
       toast.error(
@@ -307,66 +304,66 @@ export default function AssessmentPage() {
       setIsDeletingModelAnswer(false);
     }
   };
-
-const processModelAnswer = async () => {
-  if (!assessment?.model_answer_paper?.file_url) {
-    toast.error("Please upload a model answer first");
-    return;
-  }
-
-  if (!selectedModelId || evaluationModels.length === 0) {
-    toast.error("Please select an AI model first");
-    return;
-  }
-
-  setIsProcessingModelAnswer(true);
-  const toastId = toast.loading("Processing model answer for grading...");
-
-  try {
-    // Load API URL from .env
-    const API_BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVER_URL;
-
-    if (!API_BASE_URL) {
-      throw new Error(
-        "API base URL is not defined. Add NEXT_PUBLIC_MODEL_SERVER_URL to exam-evaluation-system/.env"
-      );
+  const processModelAnswer = async () => {
+    if (!assessment?.model_answer_paper?.file_url) {
+      toast.error("Please upload a model answer first");
+      return;
     }
 
-    const response = await fetch(
-      `${API_BASE_URL}/model-answer/process-extract-embed`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model_answer_paper_id: assessment.model_answer_paper.id,
-          assessment_id: assessmentId,
-          model_id: selectedModelId,
-          extract_media: true,
-        }),
+    if (!selectedModelId || evaluationModels.length === 0) {
+      toast.error("Please select an AI model first");
+      return;
+    }
+
+    setIsProcessingModelAnswer(true);
+    const toastId = toast.loading("Processing model answer for grading...");
+
+    try {
+      // Load API URL from .env
+      const API_BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVER_URL;
+
+      if (!API_BASE_URL) {
+        throw new Error(
+          "API base URL is not defined. Add NEXT_PUBLIC_MODEL_SERVER_URL to exam-evaluation-system/.env"
+        );
       }
-    );
 
-    const data = await response.json();
+      const response = await fetch(
+        `${API_BASE_URL}/model-answer/process-extract-embed`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model_answer_paper_id: assessment.model_answer_paper.id,
+            assessment_id: assessmentId,
+            model_id: selectedModelId,
+            extract_media: true,
+          }),
+        }
+      );
 
-    if (!response.ok) {
-      throw new Error(data.detail || "Failed to process model answer");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to process model answer");
+      }
+
+      toast.success("Model answer processed successfully!", { id: toastId });
+      await refetchAssessment();
+    } catch (error) {
+      console.error("Error processing model answer:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to process model answer",
+        { id: toastId }
+      );
+    } finally {
+      setIsProcessingModelAnswer(false);
     }
-
-    toast.success("Model answer processed successfully!", { id: toastId });
-    await refetchAssessment();
-  } catch (error) {
-    console.error("Error processing model answer:", error);
-    toast.error(
-      error instanceof Error ? error.message : "Failed to process model answer",
-      { id: toastId }
-    );
-  } finally {
-    setIsProcessingModelAnswer(false);
-  }
-};
-
+  };
 
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {
@@ -804,94 +801,123 @@ const processModelAnswer = async () => {
 
           {/* Model Answer */}
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Model Answer
-              </h2>
-              {assessment.model_answer_paper?.file_url && (
-                <div className="flex items-center gap-3">
-                  <a
-                    href={assessment.model_answer_paper.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    <FileIcon className="w-4 h-4 mr-2" />
-                    View Current Model Answer
-                  </a>
-                  <button
-                    onClick={deleteModelAnswer}
-                    disabled={isDeletingModelAnswer}
-                    className="inline-flex items-center text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Delete model answer"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <input
-              type="file"
-              ref={modelAnswerInputRef}
-              onChange={(e) => handleFileChange(e, "modelAnswer")}
-              className="hidden"
-              accept={FILE_CONFIG.MODEL_PAPER.types.join(",")}
+          <>
+            <ConfirmDialog
+              isOpen={showDeleteConfirm}
+              title="Delete Model Answer"
+              message="Are you sure you want to delete the model answer? This action cannot be undone and will remove all processed data."
+              onConfirm={deleteModelAnswer}
+              onCancel={() => setShowDeleteConfirm(false)}
+              confirmText="Delete"
+              cancelText="Cancel"
+              variant="destructive"
+              loading={isDeletingModelAnswer}
+              icon={
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              }
             />
 
-            {!assessment?.model_answer_paper?.file_url && (
-              <FileUploadSection
-                title="Upload Model Answer"
-                icon={<FileIcon />}
-                type="MODEL_PAPER"
-                uploadedFile={uploadedFiles.modelAnswer}
-                onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Model Answer
+                </h2>
+                {assessment.model_answer_paper?.file_url && (
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={assessment.model_answer_paper.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      <FileIcon className="w-4 h-4 mr-2" />
+                      View Current Model Answer
+                    </a>
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      disabled={isDeletingModelAnswer}
+                      className="inline-flex items-center text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Delete model answer"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <input
+                type="file"
+                ref={modelAnswerInputRef}
+                onChange={(e) => handleFileChange(e, "modelAnswer")}
+                className="hidden"
+                accept={FILE_CONFIG.MODEL_PAPER.types.join(",")}
               />
-            )}
 
-            <div className="mt-4 flex justify-end gap-3">
-              {uploadedFiles.modelAnswer && (
-                <Button
-                  onClick={uploadModelAnswer}
-                  disabled={isUploadingModelAnswer}
-                  className="px-6"
-                >
-                  {isUploadingModelAnswer
-                    ? "Uploading..."
-                    : "Upload Model Answer"}
-                </Button>
+              {!assessment?.model_answer_paper?.file_url && (
+                <FileUploadSection
+                  title="Upload Model Answer"
+                  icon={<FileIcon />}
+                  type="MODEL_PAPER"
+                  uploadedFile={uploadedFiles.modelAnswer}
+                  onTriggerUpload={() => triggerFileInput(modelAnswerInputRef)}
+                />
               )}
 
-              {assessment?.model_answer_paper?.file_url && (
-                <Button
-                  onClick={processModelAnswer}
-                  disabled={
-                    isProcessingModelAnswer ||
-                    !selectedModelId ||
-                    evaluationModels.length === 0
-                  }
-                  className="px-6 bg-green-600 hover:bg-green-700"
-                >
-                  {isProcessingModelAnswer
-                    ? "Processing..."
-                    : "Submit for Grading"}
-                </Button>
-              )}
+              <div className="mt-4 flex justify-end gap-3">
+                {uploadedFiles.modelAnswer && (
+                  <Button
+                    onClick={uploadModelAnswer}
+                    disabled={isUploadingModelAnswer}
+                    className="px-6"
+                  >
+                    {isUploadingModelAnswer
+                      ? "Uploading..."
+                      : "Upload Model Answer"}
+                  </Button>
+                )}
+
+                {assessment?.model_answer_paper?.file_url && (
+                  <Button
+                    onClick={processModelAnswer}
+                    disabled={
+                      isProcessingModelAnswer ||
+                      !selectedModelId ||
+                      evaluationModels.length === 0
+                    }
+                    className="px-6 bg-green-600 hover:bg-green-700"
+                  >
+                    {isProcessingModelAnswer
+                      ? "Processing..."
+                      : "Submit for Grading"}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          </>
         </div>
 
         {/* Enhanced Submissions Selection */}

@@ -3,29 +3,28 @@ import { prisma } from '@/lib/prisma';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
+
+// =========================
+// UPLOAD MODEL ANSWER (POST)
+// =========================
 export async function POST(
   request: Request,
   { params }: { params: { moduleId: string; assessmentId: string } }
 ) {
   try {
-    // const session = await getServerSession(authOptions);
-    // if (!session || !session.user) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
-
-    const {  assessmentId } = params;
+    const { assessmentId } = params;
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
         { error: 'Only PDF and DOCX files are allowed' },
@@ -33,7 +32,6 @@ export async function POST(
       );
     }
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'File size must be less than 5MB' },
@@ -41,7 +39,6 @@ export async function POST(
       );
     }
 
-    // Create upload directory if it doesn't exist
     const projectRoot = process.cwd();
     const parentDir = path.dirname(projectRoot);
     const baseDir = path.join(parentDir, 'data');
@@ -53,32 +50,30 @@ export async function POST(
       await fs.mkdir(uploadDir, { recursive: true });
     }
 
-    // Generate unique filename
     const fileExtension = path.extname(file.name);
     const fileName = `${uuidv4()}${fileExtension}`;
     const filePath = path.join(uploadDir, fileName);
     const relativeFilePath = path.join('data', 'Model_Answers', fileName);
 
-    // Convert file to buffer and save to disk
     const buffer = Buffer.from(await file.arrayBuffer());
     await fs.writeFile(filePath, buffer);
 
-    // Save to database
+    // Check if existing record exists
     const existingModelAnswer = await prisma.model_Answer_Paper.findUnique({
       where: { assessment_id: assessmentId },
     });
 
     let modelAnswer;
     if (existingModelAnswer) {
-      // Delete old file if exists
+      // Delete old file
       try {
-        const oldFilePath = path.join(baseDir, existingModelAnswer.file_url.replace('data/', ''));
+        const oldFilePath = path.join(parentDir, existingModelAnswer.file_url);
         await fs.unlink(oldFilePath);
       } catch (error) {
         console.error('Error deleting old file:', error);
       }
 
-      // Update existing record
+      // Update record
       modelAnswer = await prisma.model_Answer_Paper.update({
         where: { id: existingModelAnswer.id },
         data: {
@@ -104,6 +99,56 @@ export async function POST(
     });
   } catch (error) {
     console.error('Error uploading model answer:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// =========================
+// DELETE MODEL ANSWER (DELETE)
+// =========================
+export async function DELETE(
+  request: Request,
+  { params }: { params: { moduleId: string; assessmentId: string } }
+) {
+  try {
+    const { assessmentId } = params;
+
+    // Find existing record
+    const existingModelAnswer = await prisma.model_Answer_Paper.findUnique({
+      where: { assessment_id: assessmentId },
+    });
+
+    if (!existingModelAnswer) {
+      return NextResponse.json(
+        { error: 'No model answer found for this assessment' },
+        { status: 404 }
+      );
+    }
+
+    // Build absolute file path
+    const projectRoot = process.cwd();
+    const parentDir = path.dirname(projectRoot);
+    const absolutePath = path.join(parentDir, existingModelAnswer.file_url);
+
+    // Delete file
+    try {
+      await fs.unlink(absolutePath);
+    } catch (error) {
+      console.error('File deletion error:', error);
+      // Continue even if file is missing
+    }
+
+    // Delete DB record
+    await prisma.model_Answer_Paper.delete({
+      where: { id: existingModelAnswer.id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Model answer deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting model answer:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

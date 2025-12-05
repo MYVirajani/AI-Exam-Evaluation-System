@@ -30,7 +30,7 @@ export default function AdvancedAssessmentSettings({
   evaluationModels,
   onUpdateSuccess,
 }: AdvancedAssessmentSettingsProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   // Helper function to format date for datetime-local input

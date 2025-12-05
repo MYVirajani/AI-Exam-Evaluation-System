@@ -1,23 +1,19 @@
-//exam-evaluation-system\src\app\api\educator\assessment\[assessmentId]\assessment-grades\route.ts
-import { Router, Request, Response } from "express";
 import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 
-const router = Router();
+// ------------------------------------------------------
+// GET /api/educator/assessment/[assessmentId]/assessment-grades
+// Query param: ?assessmentId=xxxx
+// ------------------------------------------------------
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const assessmentId = searchParams.get("assessmentId");
 
-/**
- * GET /assessment-grade?assessmentId=xxxx
- * Returns:
- *  - assessment details (title, type, deadline, module code, module name)
- *  - submissions list with student & user data
- *  - unique evaluation models used for grading
- */
-router.get("/", async (req: Request, res: Response) => {
-  const { assessmentId } = req.query;
-
-  if (!assessmentId || typeof assessmentId !== "string") {
-    return res.status(400).json({
-      message: "assessmentId query parameter is required",
-    });
+  if (!assessmentId) {
+    return NextResponse.json(
+      { message: "assessmentId query parameter is required" },
+      { status: 400 }
+    );
   }
 
   try {
@@ -41,9 +37,10 @@ router.get("/", async (req: Request, res: Response) => {
     });
 
     if (!assessment) {
-      return res.status(404).json({
-        message: "Assessment not found",
-      });
+      return NextResponse.json(
+        { message: "Assessment not found" },
+        { status: 404 }
+      );
     }
 
     // ------------------------------------------------
@@ -67,7 +64,6 @@ router.get("/", async (req: Request, res: Response) => {
         is_handwritten: true,
         handwritten_file_url: true,
 
-        // Student → User
         student: {
           select: {
             user_id: true,
@@ -89,15 +85,16 @@ router.get("/", async (req: Request, res: Response) => {
     });
 
     if (submissions.length === 0) {
-      return res.status(404).json({
-        message: "No submissions found for this assessment",
-      });
+      return NextResponse.json(
+        { message: "No submissions found for this assessment" },
+        { status: 404 }
+      );
     }
 
     const submissionIds = submissions.map((s) => s.submission_id);
 
     // ------------------------------------------------
-    // 3. Fetch Evaluation Models via Assessment_Grading
+    // 3. Fetch Evaluation Models (Assessment_Grade)
     // ------------------------------------------------
     const assessmentGrades = await prisma.assessment_Grade.findMany({
       where: {
@@ -108,7 +105,7 @@ router.get("/", async (req: Request, res: Response) => {
       },
     });
 
-    // Extract unique evaluation models
+    // Remove duplicates
     const evaluationModelsMap = new Map();
     assessmentGrades.forEach((g) => {
       if (g.evaluation_model) {
@@ -119,20 +116,18 @@ router.get("/", async (req: Request, res: Response) => {
     const evaluationModels = Array.from(evaluationModelsMap.values());
 
     // ------------------------------------------------
-    // Final Response
+    // Final Output
     // ------------------------------------------------
-    return res.json({
+    return NextResponse.json({
       assessment,
       submissions,
       evaluation_models: evaluationModels,
     });
-
   } catch (error) {
     console.error("Error fetching assessment grade data:", error);
-    res.status(500).json({
-      message: "Internal server error",
-    });
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
   }
-});
-
-export default router;
+}

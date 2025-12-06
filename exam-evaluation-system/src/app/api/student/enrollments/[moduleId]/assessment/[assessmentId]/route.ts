@@ -6,7 +6,7 @@ export async function GET(
   context: { params: Promise<{ moduleId: string; assessmentId: string }> }
 ) {
   try {
-    const { assessmentId } = await context.params; // ✅ FIXED
+    const { assessmentId } = await context.params;
     const studentId = request.nextUrl.searchParams.get("studentId");
 
     console.log("Fetching assessment for ID:", assessmentId);
@@ -34,8 +34,17 @@ export async function GET(
         back_navigation: true,
         case_sensitive_evaluation: true,
         password: true,
+        model_id: true,   // ✅ include active grading model ID
 
-        // Check if at least 1 question exists
+        evaluation_model: {
+          select: {
+            id: true,
+            model_name: true,
+            provider: true,
+            description: true,
+          },
+        },
+
         questions: {
           select: { id: true },
           take: 1,
@@ -49,18 +58,16 @@ export async function GET(
         },
 
         question_paper: {
-          select: {
-            file_url: true,
-            created_on: true,
-          },
+          select: { file_url: true, created_on: true },
         },
 
         submissions: {
           where: studentId ? { student_id: studentId } : undefined,
           include: {
-            student: true,          // relation
-            answers: true,          // relation
-            grading_results: true,  // relation
+            student: true,
+            answers: true,
+            grading_results: true,
+            assessment_grade: true, 
           },
           orderBy: { submission_start_at: "asc" },
         },
@@ -74,12 +81,10 @@ export async function GET(
       );
     }
 
-    // Attempts remaining
     const attemptsRemaining = assessment.max_attempts
       ? Math.max(assessment.max_attempts - assessment.submissions.length, 0)
       : null;
 
-    // Last submission
     const lastSubmission =
       assessment.submissions.length > 0
         ? assessment.submissions[assessment.submissions.length - 1]
@@ -88,6 +93,8 @@ export async function GET(
     const response = {
       module_code: assessment.module.module_code,
       module_name: assessment.module.module_name,
+
+      assessment_model: assessment.evaluation_model ?? null, 
 
       assessment_data: {
         assessment_id: assessment.assessment_id,
@@ -108,7 +115,7 @@ export async function GET(
         has_questions: assessment.questions.length > 0,
       },
 
-      question_paper: assessment.question_paper || null,
+      question_paper: assessment.question_paper ?? null,
 
       submissions: assessment.submissions.map((s) => ({
         submission_id: s.submission_id,
@@ -119,13 +126,14 @@ export async function GET(
         ip_address: s.ip_address,
         device_info: s.device_info,
         is_graded: s.is_graded,
-        student_score: s.student_score, // ✅ SCALAR FIELD (ALLOWED)
+        student_score: s.student_score,
         is_handwritten: s.is_handwritten,
         handwritten_file_url: s.handwritten_file_url,
 
-        // Relations
-        grading_results: s.grading_results,
         answers: s.answers,
+        grading_results: s.grading_results,
+
+        assessment_grade: s.assessment_grade,
       })),
 
       attempts_remaining: attemptsRemaining,
@@ -135,11 +143,11 @@ export async function GET(
             student_score: lastSubmission.student_score,
             is_graded: lastSubmission.is_graded,
             submitted_at: lastSubmission.submission_end_at,
+            assessment_grade: lastSubmission.assessment_grade?.[0] ?? null,
           }
         : null,
     };
 
-    console.log("response:", response);
     return NextResponse.json(response);
   } catch (error) {
     console.error("Failed to fetch assessment details:", error);

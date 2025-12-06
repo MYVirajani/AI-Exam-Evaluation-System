@@ -426,8 +426,124 @@ class StudentAnswerServiceWithMedia(BaseRelationalDB):
             return []
 
     # ==================================================================================
+    # GET MEDIA BY SUBMISSION
+    # ==================================================================================
+    def get_media_by_submission(self, submission_id: str, model_id: str = None):
+        """
+        Fetch media records for a given submission_id by joining through Student_Answer.
+        """
+
+        if not submission_id:
+            logging.warning("[DB] get_media_by_submission called with empty submission_id.")
+            return []
+
+        try:
+            query = f"""
+                SELECT 
+                    sam.id,
+                    sam.student_answer_id,
+                    sam.media_url
+                FROM {self.student_answer_media_table} sam
+                INNER JOIN {self.student_answer_table} sa
+                    ON sam.student_answer_id = sa.id
+                WHERE sa.submission_id = %s
+            """
+
+            params = [submission_id]
+
+            if model_id:
+                query += " AND sam.model_id = %s"
+                params.append(model_id)
+
+            self.cursor.execute(query, tuple(params))
+            rows = self.cursor.fetchall()
+
+            if not rows:
+                logging.info(
+                    f"[DB] No media found for submission_id={submission_id}, model_id={model_id}"
+                )
+                return []
+
+            return [
+                {
+                    "id": str(r[0]),
+                    "student_answer_id": str(r[1]),
+                    "media_url": r[2],
+                }
+                for r in rows
+            ]
+
+        except Exception as e:
+            logging.error(
+                f"[DB] ❌ Failed to fetch media for submission_id={submission_id}, model_id={model_id}: {e}",
+                exc_info=True,
+            )
+            self.conn.rollback()
+            return []
+
+    # ==================================================================================
+    # UPDATE MEDIA SUMMARY
+    # ==================================================================================
+    def update_media_summary(self, media_id: str, summary: str, model_id: str = None):
+        """
+        Update media_summary TEXT field (JSON stored as string) for a given media_id.
+        Ensures updated_on is also updated.
+        """
+
+        if not media_id:
+            logging.warning("[DB] update_media_summary called with empty media_id.")
+            return False
+
+        try:
+            # Convert dict/list/string safely to JSON string for storage
+            summary_json = json.dumps(summary)
+
+            # Use provided model_id or default model_id of service
+            model_filter = model_id if model_id else self.model_id
+
+            query = f"""
+                UPDATE {self.student_answer_media_table}
+                SET 
+                    media_summary = %s,
+                    updated_on = NOW()
+                WHERE id = %s
+                  AND model_id = %s;
+            """
+
+            params = (summary_json, media_id, model_filter)
+
+            self.cursor.execute(query, params)
+
+            if self.cursor.rowcount == 0:
+                logging.warning(
+                    f"[DB] ⚠️ No media found with id={media_id}, model_id={model_filter}"
+                )
+                self.conn.rollback()
+                return False
+
+            self.commit()
+
+            logging.info(
+                f"[DB] ✅ Updated media summary for media_id={media_id}, model_id={model_filter}"
+            )
+            return True
+
+        except Exception as e:
+            logging.error(
+                f"[DB] ❌ Failed to update media_id={media_id}, model_id={model_filter}: {e}",
+                exc_info=True,
+            )
+            self.conn.rollback()
+            return False
+
+    # ==================================================================================
+    # COMMIT
+    # ==================================================================================
     def commit(self):
         self.conn.commit()
 
+    # ==================================================================================
+    # ROLLBACK
+    # ==================================================================================
     def rollback(self):
         self.conn.rollback()

@@ -4,6 +4,7 @@ import { useSearchParams, useParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { FileUploadSection } from "@/components/Upload/FileUploadSection";
 import Button from "@/components/Button";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import toast from "react-hot-toast";
 import { FileIcon } from "@/components/Icons";
 import { FILE_CONFIG, getMaxSizeInBytes } from "@/lib/fileConfig";
@@ -14,7 +15,7 @@ interface AssessmentData {
   title: string;
   description: string;
   deadline: string;
-  auto_grade: boolean; 
+  auto_grade: boolean; // Added missing field
 }
 
 interface Paper {
@@ -46,6 +47,12 @@ interface Submission {
 interface AssessmentResponse {
   module_code: string;
   module_name: string;
+  assessment_model: {
+    id: string;
+    model_name: string;
+    provider: string;
+    description: string | null;
+  } | null;
   assessment_data: AssessmentData;
   question_paper: Paper | null;
   submissions: Submission[];
@@ -73,6 +80,9 @@ export default function StudentAssessmentPage() {
   const [answerScriptFile, setAnswerScriptFile] = useState<File | null>(null);
   const [isHandwritten, setIsHandwritten] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -183,6 +193,94 @@ export default function StudentAssessmentPage() {
 
   const triggerFileInput = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleSubmitForGrading = async () => {
+    if (!latestSubmission || !assessment?.assessment_model) return;
+
+    const modelServerUrl = process.env.NEXT_PUBLIC_MODEL_SERVER_URL || 'http://localhost:8000';
+    const toastId = toast.loading("Submitting for grading...");
+    setIsProcessing(true);
+
+    try {
+      const response = await fetch(`${modelServerUrl}/student-answer/process-extract-embed`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          submission_ids: [latestSubmission.submission_id],
+          assignment_id: assessmentId,
+          model_id: assessment.assessment_model.id,
+          preprocess: true,
+          extract: true,
+          summarize_media: true,
+          embed: true,
+          delay_between: 0.8,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to submit for grading');
+      }
+
+      const result = await response.json();
+      toast.success("Submitted for grading successfully!", { id: toastId });
+
+      // Refresh assessment data
+      const queryParams = new URLSearchParams({ studentId });
+      const refreshRes = await fetch(
+        `/api/student/enrollments/${moduleId}/assessment/${assessmentId}?${queryParams.toString()}`
+      );
+      const refreshedData: AssessmentResponse = await refreshRes.json();
+      setAssessment(refreshedData);
+
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to submit for grading", {
+        id: toastId,
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteSubmission = async () => {
+    if (!latestSubmission) return;
+
+    const toastId = toast.loading("Deleting submission...");
+    setIsDeleting(true);
+
+    try {
+      const deleteUrl = `/api/student/enrollments/${moduleId}/assessment/${assessmentId}/submission/${latestSubmission.submission_id}`;
+
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete submission');
+      }
+
+      toast.success("Submission deleted successfully!", { id: toastId });
+      setShowDeleteDialog(false);
+
+      // Refresh assessment data
+      const queryParams = new URLSearchParams({ studentId });
+      const refreshRes = await fetch(
+        `/api/student/enrollments/${moduleId}/assessment/${assessmentId}?${queryParams.toString()}`
+      );
+      const refreshedData: AssessmentResponse = await refreshRes.json();
+      setAssessment(refreshedData);
+
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete submission", {
+        id: toastId,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -341,9 +439,14 @@ export default function StudentAssessmentPage() {
               <span>
                 Due: {formatDate(assessment.assessment_data.deadline)}
               </span>
-              {assessment.assessment_data.auto_grade && (
+              {assessment.assessment_data.auto_grade && gradeInfo && (
                 <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
                   Auto-Graded
+                </span>
+              )}
+              {assessment.assessment_data.auto_grade && !gradeInfo && latestSubmission && (
+                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">
+                  Grading Pending
                 </span>
               )}
             </div>
@@ -400,15 +503,21 @@ export default function StudentAssessmentPage() {
 
         {/* Submission Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Answer Submission
-          </h3>
-
-          {latestSubmission ? (
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center space-x-3">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Answer Submission
+            </h3>
+            
+            {/* Delete Icon - Only show if NOT graded */}
+            {latestSubmission && !gradeInfo && (
+              <button
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isProcessing || isDeleting}
+                className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Delete submission"
+              >
                 <svg
-                  className="h-5 w-5 text-green-600"
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -417,27 +526,81 @@ export default function StudentAssessmentPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                   />
                 </svg>
-                <div className="flex-1">
-                  <p className="font-medium text-green-800">
-                    Submission Completed
-                  </p>
-                  <p className="text-sm text-green-600 mt-1">
-                    Submitted on:{" "}
-                    {formatDate(latestSubmission.submission_start_at)}
-                  </p>
-                  {latestSubmission.file_url && (
-                    <a
-                      href={latestSubmission.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-sm text-green-700 hover:text-green-800 underline mt-2"
-                    >
-                      View Your Submission
+              </button>
+            )}
+          </div>
+
+          {latestSubmission ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center space-x-3">
+                  <svg
+                    className="h-5 w-5 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="font-medium text-green-800">
+                      Submission Completed
+                    </p>
+                    <p className="text-sm text-green-600 mt-1">
+                      Submitted on:{" "}
+                      {formatDate(latestSubmission.submission_start_at)}
+                    </p>
+                    {latestSubmission.file_url && (
+                      <a
+                        href={latestSubmission.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-sm text-green-700 hover:text-green-800 underline mt-2"
+                      >
+                        View Your Submission
+                        <svg
+                          className="ml-1 h-3 w-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              {assessment.assessment_model && !gradeInfo && (
+                <Button
+                  onClick={handleSubmitForGrading}
+                  disabled={isProcessing || isDeleting}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isProcessing ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Processing...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center space-x-2">
                       <svg
-                        className="ml-1 h-3 w-3"
+                        className="h-4 w-4"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -446,13 +609,14 @@ export default function StudentAssessmentPage() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
-                    </a>
+                      <span>Submit for Grading</span>
+                    </div>
                   )}
-                </div>
-              </div>
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
@@ -626,6 +790,19 @@ export default function StudentAssessmentPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="Delete Submission"
+        message="Are you sure you want to delete your submission? This action cannot be undone and you will need to upload a new submission."
+        onConfirm={handleDeleteSubmission}
+        onCancel={() => setShowDeleteDialog(false)}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        loading={isDeleting}
+      />
     </div>
   );
 }

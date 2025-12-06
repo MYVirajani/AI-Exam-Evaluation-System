@@ -14,12 +14,22 @@ interface AssessmentData {
   title: string;
   description: string;
   deadline: string;
+  auto_grade: boolean; 
 }
 
 interface Paper {
   file_url: string;
   created_on: string;
   updated_on: string;
+}
+
+interface AssessmentGrade {
+  grade_id: string;
+  max_marks: number;
+  marks_awarded: number;
+  feedback: string | null;
+  graded_at: string;
+  auto_graded: boolean;
 }
 
 interface Submission {
@@ -29,16 +39,8 @@ interface Submission {
   submission_end_at: string | null;
   type: string;
   is_graded: boolean;
-  grade: Graded | null;
-}
-
-interface Graded {
-  grade_id: string;
-  max_marks: number;
-  marks_awarded: number;
-  feedback: string;
-  graded_at: string;
-  auto_graded: boolean;
+  student_score: number | null;
+  assessment_grade: AssessmentGrade | null; // Updated to match API response
 }
 
 interface AssessmentResponse {
@@ -48,13 +50,12 @@ interface AssessmentResponse {
   question_paper: Paper | null;
   submissions: Submission[];
   attempts_remaining: number | null;
-  last_attempt_grade: Graded | null;
-}
-
-interface AIGradingResult {
-  total_marks: number;
-  total_possible: number;
-  model: 'gemini' | 'openai';
+  last_attempt_grade: {
+    student_score: number | null;
+    is_graded: boolean;
+    submitted_at: string | null;
+    assessment_grade: AssessmentGrade | null;
+  } | null;
 }
 
 export default function StudentAssessmentPage() {
@@ -68,8 +69,6 @@ export default function StudentAssessmentPage() {
   const [assessment, setAssessment] = useState<AssessmentResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [aiResults, setAiResults] = useState<AIGradingResult[]>([]);
-  const [loadingAiResults, setLoadingAiResults] = useState(false);
 
   const [answerScriptFile, setAnswerScriptFile] = useState<File | null>(null);
   const [isHandwritten, setIsHandwritten] = useState(false);
@@ -87,7 +86,7 @@ export default function StudentAssessmentPage() {
       setLoading(true);
       setError(null);
       try {
-        const queryParams = new URLSearchParams({ studentId, moduleId });
+        const queryParams = new URLSearchParams({ studentId });
         const url = `/api/student/enrollments/${moduleId}/assessment/${assessmentId}?${queryParams.toString()}`;
 
         const res = await fetch(url);
@@ -108,76 +107,12 @@ export default function StudentAssessmentPage() {
     fetchAssessment();
   }, [moduleId, assessmentId, studentId]);
 
-  // Fetch AI grading results
-  useEffect(() => {
-    const fetchAIResults = async () => {
-      if (!assessment || !studentId) return;
-
-      setLoadingAiResults(true);
-      try {
-        // First, get student registration number from student_id
-        const studentRes = await fetch(`/api/student/${studentId}`);
-        if (!studentRes.ok) return;
-        
-        const studentData = await studentRes.json();
-        const registrationNumber = studentData.registration_number;
-
-        const results: AIGradingResult[] = [];
-
-        // Fetch from both Gemini and OpenAI tables
-        const models = ['gemini', 'openai'];
-        
-        for (const model of models) {
-          try {
-            const response = await fetch(
-              `/api/ai-results/${model}?student_index=${registrationNumber}&assessment_id=${assessmentId}`
-            );
-            
-            if (response.ok) {
-              const data = await response.json();
-              if (data && data.length > 0) {
-                // Get the latest result for this model
-                const latestResult = data[0];
-                results.push({
-                  total_marks: latestResult.total_marks,
-                  total_possible: latestResult.total_possible,
-                  model: model === 'openai' ? 'openai' : 'gemini'
-                });
-              }
-            }
-          } catch (error) {
-            console.error(`Failed to fetch ${model} results:`, error);
-          }
-        }
-
-        setAiResults(results);
-      } catch (error) {
-        console.error('Failed to fetch AI results:', error);
-      } finally {
-        setLoadingAiResults(false);
-      }
-    };
-
-    fetchAIResults();
-  }, [assessment, studentId, assessmentId]);
-
-  const getBestAIResult = () => {
-    if (aiResults.length === 0) return null;
-    
-    return aiResults.reduce((best, current) => {
-      const currentPercentage = (current.total_marks / current.total_possible) * 100;
-      const bestPercentage = (best.total_marks / best.total_possible) * 100;
-      return currentPercentage > bestPercentage ? current : best;
-    });
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Extended file types to include images
     const allowedTypes = [
-      ...FILE_CONFIG.ANSWER_SCRIPT.types, // Original types from config
+      ...FILE_CONFIG.ANSWER_SCRIPT.types,
       '.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG'
     ];
     
@@ -229,7 +164,7 @@ export default function StudentAssessmentPage() {
       toast.success("Answer script uploaded successfully!", { id: toastId });
 
       // Refresh assessment data
-      const queryParams = new URLSearchParams({ studentId, moduleId });
+      const queryParams = new URLSearchParams({ studentId });
       const refreshRes = await fetch(
         `/api/student/enrollments/${moduleId}/assessment/${assessmentId}?${queryParams.toString()}`
       );
@@ -248,43 +183,6 @@ export default function StudentAssessmentPage() {
 
   const triggerFileInput = () => {
     fileInputRef.current?.click();
-  };
-
-  const getStatusBadge = (assessment: AssessmentResponse) => {
-    const bestAIResult = getBestAIResult();
-    const latestSubmission = assessment.submissions && assessment.submissions.length > 0 
-      ? assessment.submissions[assessment.submissions.length - 1] 
-      : null;
-    const isGraded = latestSubmission?.grade || assessment.last_attempt_grade || bestAIResult;
-    
-    if (isGraded) {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          Graded
-        </span>
-      );
-    }
-    if (latestSubmission) {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          Submitted
-        </span>
-      );
-    }
-    const deadline = new Date(assessment.assessment_data.deadline);
-    const now = new Date();
-    if (now > deadline) {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-          Overdue
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-        Pending
-      </span>
-    );
   };
 
   const formatDate = (dateString: string) => {
@@ -400,14 +298,16 @@ export default function StudentAssessmentPage() {
     );
   }
 
-  // Get submission and grading data
-  const bestAIResult = getBestAIResult();
-  const latestSubmission = assessment.submissions && assessment.submissions.length > 0 
+  // Get latest submission
+  const latestSubmission = assessment.submissions.length > 0 
     ? assessment.submissions[assessment.submissions.length - 1] 
     : null;
-  const gradeInfo = latestSubmission?.grade || assessment.last_attempt_grade;
 
-  // Create extended accept attribute for file input
+  // Get grade info - only show if auto_grade is true
+  const gradeInfo = assessment.assessment_data.auto_grade 
+    ? assessment.last_attempt_grade?.assessment_grade 
+    : null;
+
   const extendedFileTypes = [
     ...FILE_CONFIG.ANSWER_SCRIPT.types,
     '.png', '.jpg', '.jpeg'
@@ -425,7 +325,6 @@ export default function StudentAssessmentPage() {
               </h1>
               <p className="text-sm text-gray-500">Assessment Details</p>
             </div>
-            {getStatusBadge(assessment)}
           </div>
         </div>
 
@@ -442,6 +341,11 @@ export default function StudentAssessmentPage() {
               <span>
                 Due: {formatDate(assessment.assessment_data.deadline)}
               </span>
+              {assessment.assessment_data.auto_grade && (
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+                  Auto-Graded
+                </span>
+              )}
             </div>
           </div>
 
@@ -642,104 +546,86 @@ export default function StudentAssessmentPage() {
           )}
         </div>
 
-        {/* Grading Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Grading Information
-          </h3>
+        {/* Grading Section - Only show if auto_grade is true */}
+        {assessment.assessment_data.auto_grade && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Grading Information
+            </h3>
 
-          {gradeInfo || bestAIResult ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-900">
-                      {gradeInfo 
-                        ? gradeInfo.marks_awarded 
-                        : bestAIResult?.total_marks
-                      }
-                    </p>
-                    <p className="text-sm text-blue-600">Marks Awarded</p>
+            {gradeInfo ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-900">
+                        {gradeInfo.marks_awarded}
+                      </p>
+                      <p className="text-sm text-blue-600">Marks Awarded</p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-gray-900">
+                        {gradeInfo.max_marks}
+                      </p>
+                      <p className="text-sm text-gray-600">Total Marks</p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-900">
+                        {getGradePercentage(gradeInfo.marks_awarded, gradeInfo.max_marks)}%
+                      </p>
+                      <p className="text-sm text-green-600">Percentage</p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">
-                      {gradeInfo 
-                        ? gradeInfo.max_marks 
-                        : bestAIResult?.total_possible
-                      }
-                    </p>
-                    <p className="text-sm text-gray-600">Total Marks</p>
+
+                {gradeInfo.feedback && (
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="font-medium text-gray-900 mb-2">Feedback</h4>
+                    <p className="text-gray-700">{gradeInfo.feedback}</p>
                   </div>
-                </div>
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-900">
-                      {gradeInfo 
-                        ? getGradePercentage(gradeInfo.marks_awarded, gradeInfo.max_marks)
-                        : getGradePercentage(bestAIResult?.total_marks || 0, bestAIResult?.total_possible || 1)
-                      }%
-                    </p>
-                    <p className="text-sm text-green-600">Percentage</p>
-                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-sm text-gray-600 border-t border-gray-200 pt-4">
+                  <span>
+                    Graded on: {formatDate(gradeInfo.graded_at)}
+                  </span>
+                  {gradeInfo.auto_graded && (
+                    <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
+                      Auto Graded
+                    </span>
+                  )}
                 </div>
               </div>
-
-              {gradeInfo?.feedback && (
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <h4 className="font-medium text-gray-900 mb-2">Feedback</h4>
-                  <p className="text-gray-700">{gradeInfo.feedback}</p>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-sm text-gray-600 border-t border-gray-200 pt-4">
-                <span>
-                  Graded on: {gradeInfo 
-                    ? formatDate(gradeInfo.graded_at)
-                    : "Recently"
-                  }
-                </span>
-                <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
-                  Auto Graded
-                </span>
+            ) : (
+              <div className="text-center p-8">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400 mb-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  />
+                </svg>
+                <p className="text-gray-500 font-medium">
+                  Assessment not graded yet
+                </p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Your submission will be auto-graded shortly
+                </p>
               </div>
-            </div>
-          ) : (
-            <div>
-              {loadingAiResults ? (
-                <div className="text-center p-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-sm text-gray-500 mt-2">Loading results...</p>
-                </div>
-              ) : (
-                <div className="text-center p-8">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400 mb-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                    />
-                  </svg>
-                  <p className="text-gray-500 font-medium">
-                    Assessment not graded yet
-                  </p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Your submission will be graded once reviewed by the instructor
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

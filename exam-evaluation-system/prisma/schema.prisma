@@ -211,6 +211,7 @@ model Assessment {
   submissions        Submission[]
   questions          Question[]
   Assessment_Grading Assessment_Grading[]
+  Assessment_Grade   Assessment_Grade[]
 }
 
 model Question_Paper {
@@ -473,9 +474,13 @@ model Assessment_Grade {
   id            String   @id @default(uuid())
   model_id      String
   submission_id String
+  assessment_id String
   score         Decimal? @db.Decimal(5, 2)
   max_marks     Decimal? @db.Decimal(5, 2)
+  created_on    DateTime @default(now()) @db.Timestamptz(6)
+  updated_on    DateTime @default(now()) @db.Timestamptz(6)
 
   evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
+  assessment       Assessment       @relation(fields: [assessment_id], references: [assessment_id])
   submission       Submission       @relation(fields: [submission_id], references: [submission_id])
 }

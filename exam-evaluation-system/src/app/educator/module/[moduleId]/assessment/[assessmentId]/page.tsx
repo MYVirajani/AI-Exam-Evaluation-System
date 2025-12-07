@@ -525,6 +525,8 @@ export default function AssessmentPage() {
     ref.current?.click();
   };
 
+  // Replace the startEvaluation function in your AssessmentPage component
+
   const startEvaluation = async () => {
     setIsEvaluating(true);
     setEvaluationStatus("Starting evaluation...");
@@ -539,65 +541,96 @@ export default function AssessmentPage() {
       assessment.submissions.some((sub) => sub.submission_id === subId)
     );
 
-    const createdDate = new Date(assessment.created_on);
-    const year = createdDate.getFullYear();
-    const month = createdDate.toLocaleString("default", { month: "long" });
+    if (validSelectedSubmissions.length === 0) {
+      setEvaluationStatus("❌ No valid submissions selected");
+      setIsEvaluating(false);
+      toast.error("Please select valid submissions for evaluation");
+      return;
+    }
+
+    if (!assessment.model_answer_paper?.id) {
+      setEvaluationStatus("❌ Model answer not found");
+      setIsEvaluating(false);
+      toast.error("Model answer ID not found");
+      return;
+    }
 
     try {
-      const response = await fetch("/api/educator/start-evaluation", {
+      // Load API URL from .env
+      const API_BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVER_URL;
+
+      if (!API_BASE_URL) {
+        throw new Error(
+          "API base URL is not defined. Add NEXT_PUBLIC_MODEL_SERVER_URL to .env"
+        );
+      }
+
+      setEvaluationStatus(
+        `Grading ${validSelectedSubmissions.length} submissions...`
+      );
+
+      // Call the RAG grader endpoint
+      const response = await fetch(`${API_BASE_URL}/rag-grader/grade`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          selectedModelId,
-          moduleId,
-          assessmentId,
-          selectedSubmissions: validSelectedSubmissions,
-          parameters: {
-            year,
-            month,
-          },
+          model_id: selectedModelId,
+          submission_ids: validSelectedSubmissions,
+          model_paper_id: assessment.model_answer_paper.id,
+          assessment_id: assessmentId,
+          lecturer_id: educatorId,
+          module_id: moduleId,
+          top_k: 5,
+          question_numbers: null, // Optional: can be passed if needed
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to start evaluation");
+        throw new Error(data.detail || "Failed to grade submissions");
       }
 
-      if (data.success) {
-        const selectedModelName =
-          evaluationModels.find((m) => m.id === selectedModelId)?.model_name ||
-          "AI";
+      // Success handling
+      const selectedModelName =
+        evaluationModels.find((m) => m.id === selectedModelId)?.model_name ||
+        "AI";
 
-        setEvaluationStatus(`✅ Evaluation completed successfully!`);
-        toast.success(
-          `Evaluation completed successfully with ${selectedModelName}!`
-        );
+      let statusMessage = `✅ Successfully graded ${data.count} submissions with ${selectedModelName}!`;
 
-        await refetchAssessment();
-      } else {
-        setEvaluationStatus(`⚠️ Evaluation completed with some issues`);
-        toast.error("Evaluation completed with some issues");
+      if (data.model_answer_embedded) {
+        statusMessage += "\n📝 Model answer was processed and embedded.";
       }
+
+      if (data.student_missing_embeddings_processed?.length > 0) {
+        statusMessage += `\n🔄 Processed ${data.student_missing_embeddings_processed.length} student submissions.`;
+      }
+
+      setEvaluationStatus(statusMessage);
+      toast.success(
+        `Evaluation completed successfully! Graded ${data.count} submissions.`
+      );
+
+      // Refetch assessment to get updated grades
+      await refetchAssessment();
     } catch (error) {
-      console.error("Error starting evaluation:", error);
+      console.error("Error during evaluation:", error);
       setEvaluationStatus("❌ Evaluation failed");
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
-      toast.error(`Failed to start evaluation: ${errorMessage}`);
+      toast.error(`Failed to complete evaluation: ${errorMessage}`);
     } finally {
       setIsEvaluating(false);
     }
   };
 
   const handleStartEvaluation = () => {
-    if (!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) {
-      toast.error("Please upload a question paper first");
-      return;
-    }
+    // if (!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) {
+    //   toast.error("Please upload a question paper first");
+    //   return;
+    // }
     if (
       !assessment?.model_answer_paper?.file_url &&
       !uploadedFiles.modelAnswer

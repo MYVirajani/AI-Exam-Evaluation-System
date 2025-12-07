@@ -444,7 +444,6 @@ enum SubscriptionStatus {
 }
 
 model Grading_Results {
-  id                String   @id @default(uuid())
   model_id          String
   submission_id     String
   student_answer_id String
@@ -459,19 +458,18 @@ model Grading_Results {
   created_on        DateTime @default(now()) @db.Timestamptz(6)
   updated_on        DateTime @default(now()) @db.Timestamptz(6)
 
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
-  submission       Submission       @relation(fields: [submission_id], references: [submission_id])
-  student_answer   Student_Answer   @relation(fields: [student_answer_id], references: [id])
-  Question         Question?        @relation(fields: [question_id], references: [id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id], onDelete: Cascade)
+  submission       Submission       @relation(fields: [submission_id], references: [submission_id], onDelete: Cascade)
+  student_answer   Student_Answer   @relation(fields: [student_answer_id], references: [id], onDelete: Cascade)
+  Question         Question?        @relation(fields: [question_id], references: [id], onDelete: SetNull)
 
-  @@unique([model_id, submission_id, student_answer_id])
+  @@id([model_id, submission_id, student_answer_id]) // ← composite PK
   @@index([model_id])
   @@index([submission_id])
   @@index([student_answer_id])
 }
 
 model Assessment_Grade {
-  id            String   @id @default(uuid())
   model_id      String
   submission_id String
   assessment_id String
@@ -480,7 +478,12 @@ model Assessment_Grade {
   created_on    DateTime @default(now()) @db.Timestamptz(6)
   updated_on    DateTime @default(now()) @db.Timestamptz(6)
 
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
-  assessment       Assessment       @relation(fields: [assessment_id], references: [assessment_id])
-  submission       Submission       @relation(fields: [submission_id], references: [submission_id])
+  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id], onDelete: Cascade)
+  assessment       Assessment       @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade)
+  submission       Submission       @relation(fields: [submission_id], references: [submission_id], onDelete: Cascade)
+
+  @@id([model_id, submission_id, assessment_id]) // ← composite PK
+  @@index([model_id])
+  @@index([submission_id])
+  @@index([assessment_id])
 }

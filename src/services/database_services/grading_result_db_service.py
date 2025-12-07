@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class GradingResultDB(BaseRelationalDB):
     """
-    Database service class for the Prisma model Grading_Results.
+    Database service class for model Grading_Results.
     """
 
     def __init__(self):
@@ -19,50 +19,50 @@ class GradingResultDB(BaseRelationalDB):
         self._ensure_table_exists()
 
     def rollback(self):
-        """Rollback wrapper."""
         try:
             self.conn.rollback()
         except Exception as e:
             logger.error(f"[DB] ❌ Rollback failed: {e}", exc_info=True)
 
     # ---------------------------------------------------------
-    # CREATE TABLE with correct UNIQUE key and FK mappings
+    # CREATE TABLE — aligned 100% with Prisma schema
     # ---------------------------------------------------------
     def _ensure_table_exists(self):
         try:
             query = f"""
-            CREATE TABLE IF NOT EXISTS {self.table_name} (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                model_id VARCHAR NOT NULL,
-                submission_id VARCHAR NOT NULL,
-                student_answer_id VARCHAR NOT NULL,
-                question_number VARCHAR NOT NULL,
-                question_id VARCHAR,
-                score DECIMAL(5,2),
-                max_marks DECIMAL(5,2),
-                feedback TEXT NOT NULL,
-                grading_method VARCHAR,
-                similarity_score DECIMAL(5,4),
-                context_used TEXT,
-                created_on TIMESTAMPTZ(6) DEFAULT NOW(),
-                updated_on TIMESTAMPTZ(6) DEFAULT NOW(),
+CREATE TABLE IF NOT EXISTS {self.table_name} (
+    model_id VARCHAR NOT NULL,
+    submission_id VARCHAR NOT NULL,
+    student_answer_id VARCHAR NOT NULL,
 
-                CONSTRAINT fk_grading_model
-                    FOREIGN KEY (model_id) REFERENCES "Evaluation_Model"(id),
+    question_id VARCHAR,
+    question_number VARCHAR,
 
-                CONSTRAINT fk_grading_submission
-                    FOREIGN KEY (submission_id) REFERENCES "Submission"(submission_id),
+    score DECIMAL(5,2),
+    max_marks DECIMAL(5,2),
+    feedback TEXT,
+    grading_method VARCHAR,
+    similarity_score DECIMAL(5,4),
+    context_used TEXT,
 
-                CONSTRAINT fk_grading_answer
-                    FOREIGN KEY (student_answer_id) REFERENCES "Student_Answer"(id),
+    created_on TIMESTAMPTZ(6) DEFAULT NOW(),
+    updated_on TIMESTAMPTZ(6) DEFAULT NOW(),
 
-                CONSTRAINT fk_grading_question
-                    FOREIGN KEY (question_id) REFERENCES "Question"(id),
+    CONSTRAINT pk_grading PRIMARY KEY (model_id, submission_id, student_answer_id),
 
-                CONSTRAINT unique_grading UNIQUE (submission_id, question_number, model_id)
-            );
-            """
+    CONSTRAINT fk_grading_model
+        FOREIGN KEY (model_id) REFERENCES "Evaluation_Model"(id) ON DELETE CASCADE,
 
+    CONSTRAINT fk_grading_submission
+        FOREIGN KEY (submission_id) REFERENCES "Submission"(submission_id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_grading_answer
+        FOREIGN KEY (student_answer_id) REFERENCES "Student_Answer"(id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_grading_question
+        FOREIGN KEY (question_id) REFERENCES "Question"(id) ON DELETE SET NULL
+);
+"""
             self.cursor.execute(query)
             self.conn.commit()
             logger.info("[DB] ✅ Grading_Results table verified/created.")
@@ -72,26 +72,20 @@ class GradingResultDB(BaseRelationalDB):
             self.conn.rollback()
 
     # ---------------------------------------------------------
-    # INSERT or UPDATE with correct ON CONFLICT
+    # INSERT or UPDATE — based on composite PK
     # ---------------------------------------------------------
     def save_result(self, record: Union[Dict[str, Any], Any]) -> bool:
-
         if is_dataclass(record):
             record = asdict(record)
         elif not isinstance(record, dict):
             record = record.__dict__
 
-        # Convert enum fields to values
+        # Convert enums → string values
         for key, value in record.items():
             if isinstance(value, Enum):
                 record[key] = value.value
 
-        required_fields = [
-            "model_id",
-            "submission_id",
-            "student_answer_id",
-            "question_number"
-        ]
+        required_fields = ["model_id", "submission_id", "student_answer_id"]
 
         for f in required_fields:
             if not record.get(f):
@@ -126,15 +120,16 @@ class GradingResultDB(BaseRelationalDB):
                 %(similarity_score)s,
                 %(context_used)s
             )
-            ON CONFLICT (submission_id, question_number, model_id)
+            ON CONFLICT (model_id, submission_id, student_answer_id)
             DO UPDATE SET
+                question_number = EXCLUDED.question_number,
+                question_id = EXCLUDED.question_id,
                 score = EXCLUDED.score,
                 max_marks = EXCLUDED.max_marks,
                 feedback = EXCLUDED.feedback,
                 grading_method = EXCLUDED.grading_method,
                 similarity_score = EXCLUDED.similarity_score,
                 context_used = EXCLUDED.context_used,
-                question_id = EXCLUDED.question_id,
                 updated_on = NOW();
             """
 
@@ -142,8 +137,8 @@ class GradingResultDB(BaseRelationalDB):
             self.commit()
 
             logger.info(
-                f"[DB] ✅ Saved grading result: submission={record['submission_id']} "
-                f"question={record['question_number']}"
+                f"[DB] ✅ Saved grading result: model={record['model_id']} "
+                f"submission={record['submission_id']} answer={record['student_answer_id']}"
             )
             return True
 
@@ -169,7 +164,6 @@ class GradingResultDB(BaseRelationalDB):
         try:
             query = f"""
             SELECT 
-                id,
                 model_id,
                 submission_id,
                 student_answer_id,
@@ -185,7 +179,7 @@ class GradingResultDB(BaseRelationalDB):
                 updated_on
             FROM {self.table_name}
             WHERE submission_id = %s
-            ORDER BY question_number ASC;
+            ORDER BY question_number ASC NULLS LAST;
             """
 
             self.cursor.execute(query, (submission_id,))
@@ -193,20 +187,19 @@ class GradingResultDB(BaseRelationalDB):
 
             return [
                 {
-                    "id": r[0],
-                    "model_id": r[1],
-                    "submission_id": r[2],
-                    "student_answer_id": r[3],
-                    "question_number": r[4],
-                    "question_id": r[5],
-                    "score": float(r[6]) if r[6] else None,
-                    "max_marks": float(r[7]) if r[7] else None,
-                    "feedback": r[8],
-                    "grading_method": r[9],
-                    "similarity_score": float(r[10]) if r[10] else None,
-                    "context_used": r[11],
-                    "created_on": r[12],
-                    "updated_on": r[13],
+                    "model_id": r[0],
+                    "submission_id": r[1],
+                    "student_answer_id": r[2],
+                    "question_number": r[3],
+                    "question_id": r[4],
+                    "score": float(r[5]) if r[5] is not None else None,
+                    "max_marks": float(r[6]) if r[6] is not None else None,
+                    "feedback": r[7],
+                    "grading_method": r[8],
+                    "similarity_score": float(r[9]) if r[9] is not None else None,
+                    "context_used": r[10],
+                    "created_on": r[11],
+                    "updated_on": r[12],
                 }
                 for r in rows
             ]
@@ -216,7 +209,7 @@ class GradingResultDB(BaseRelationalDB):
             return []
 
     # ---------------------------------------------------------
-    # DELETE BY SUBMISSION
+    # DELETE
     # ---------------------------------------------------------
     def delete_by_submission(self, submission_id: str) -> bool:
         try:

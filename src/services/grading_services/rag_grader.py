@@ -9,7 +9,6 @@ Notes:
 - Provider SDK call lines may need small edits depending on exact SDK versions. See comments marked `# ADAPT`.
 """
 
-from asyncio.log import logger
 import os
 import json
 import base64
@@ -44,6 +43,7 @@ from src.services.database_services.model_answer_db_service import ModelAnswerDB
 from src.services.database_services.evaluation_model_db import EvaluationModelService
 from src.services.database_services.grading_result_db_service import GradingResultDB
 from src.models.grading_result_record import GradingResultRecord, GradingMethod
+from src.services.database_services.assessment_grade_db_service import AssessmentGradeDBService
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -110,14 +110,14 @@ class RAGGrader:
         self.student_db_service = StudentAnswerServiceWithMedia(model_id=self.model_id)
         self.result_db = GradingResultDB()
         self.lesson_db = LessonDBService()
-
+        self.assessment_grade_db = AssessmentGradeDBService()
         # unify llm_model label
         self.llm_model = self.provider
 
     # =======================================================================
     def grade_submissions_answers(self, submission_ids: List[str], model_paper_id: str,
-                              assessment_id: str, lecturer_id: str, module_id: str,
-                              top_k: int = 5,question_numbers: Optional[List[str]] = None):
+                                  assessment_id: str, lecturer_id: str, module_id: str,
+                                  top_k: int = 5, question_numbers: Optional[List[str]] = None):
         """
         Grade all submissions and return a list of GradingResultRecord objects (in-memory).
         Commits results at the end. Rolls back on errors.
@@ -166,11 +166,11 @@ class RAGGrader:
                         record = GradingResultRecord(
                             submission_id=submission_id,
                             question_number=question_number,
-                            question_id=question_id,
+                            question_id=None,
                             student_answer_id=student_answer_id,
                             model_id=self.model_id,
                             score=0.0,
-                            max_marks=max_marks,
+                            max_marks=0.0,
                             feedback="Student hasn't provided the answer.",
                             answer_source="No answer",
                             grading_method=GradingMethod.RAG.value,
@@ -179,15 +179,15 @@ class RAGGrader:
                         )
                         self.result_db.save_result(record=record)
                         graded_records.append(record)
-                        updated=self.student_db_service.update_score_and_feedback(
+                        updated = self.student_db_service.update_score_and_feedback(
                             student_answer_id=student_answer_id,
                             score=0.0,
                             feedback="Student hasn't provided the answer."
                         )
                         if updated:
-                            logger.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
+                            log.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
                         else:
-                            logger.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")    
+                            log.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")
                         continue
 
                     # Build answer description
@@ -204,8 +204,8 @@ class RAGGrader:
                     stud_emb = self.student_vector_service.get_student_answer_embeddings(
                         submission_id, question_number
                     )
-                    q_emb = model_emb.get("question_embedding")
-                    q_emb= self._normalize_embedding(q_emb)
+                    q_emb = model_emb.get("question_embedding") if model_emb else None
+                    q_emb = self._normalize_embedding(q_emb)
                     model_emb = self._normalize_embedding(model_emb)
                     stud_emb = self._normalize_embedding(stud_emb)
 
@@ -215,11 +215,11 @@ class RAGGrader:
                         record = GradingResultRecord(
                             submission_id=submission_id,
                             question_number=question_number,
-                            question_id=question_id,
+                            question_id=None,
                             student_answer_id=student_answer_id,
                             model_id=self.model_id,
                             score=0.0,
-                            max_marks=max_marks,
+                            max_marks=0.0,
                             feedback="Missing embeddings; skipping automatic grading.",
                             answer_source="no-embedding",
                             grading_method=GradingMethod.RAG.value,
@@ -228,22 +228,22 @@ class RAGGrader:
                         )
                         self.result_db.save_result(record)
                         graded_records.append(record)
-                        updated=self.student_db_service.update_score_and_feedback(
+                        updated = self.student_db_service.update_score_and_feedback(
                             student_answer_id=student_answer_id,
                             score=0.0,
                             feedback="Missing embeddings; skipping automatic grading."
                         )
                         if updated:
-                            logger.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
+                            log.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
                         else:
-                            logger.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")    
+                            log.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")
                         continue
 
                     sim_score = self._compute_cosine_similarity(
                         np.array(model_emb), np.array(stud_emb)
                     )
-                    lessons=self.lesson_db.get_lesson_ids(module_id=module_id, lecturer_id=lecturer_id)
-                    
+                    lessons = self.lesson_db.get_lesson_ids(module_id=module_id, lecturer_id=lecturer_id)
+
                     lecture_material_ids = self.lecture_db.get_lecture_material_ids_by_lessons(lesson_ids=lessons, created_by=lecturer_id)
 
                     # Lecture Context
@@ -319,15 +319,15 @@ class RAGGrader:
                         )
                         self.result_db.save_result(record)
                         graded_records.append(record)
-                        updated=self.student_db_service.update_score_and_feedback(
+                        updated = self.student_db_service.update_score_and_feedback(
                             student_answer_id=student_answer_id,
                             score=float(score),
                             feedback=feedback
                         )
                         if updated:
-                            logger.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
+                            log.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
                         else:
-                            logger.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")    
+                            log.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")
                     except Exception as e:
                         log.error(f"Error saving grading result for {submission_id}/{question_number}: {e}", exc_info=True)
                         self.result_db.rollback()
@@ -349,7 +349,53 @@ class RAGGrader:
             except Exception:
                 pass
 
+        # FINAL STEP → SAVE TOTAL MARKS INTO Assessment_Grade
+        # ----------------------------------------------------------------------
+        self.save_total_marks_to_assessment_grade(
+            graded_records=graded_records,
+            assessment_id=assessment_id
+        )
+
         return graded_records
+
+    # =======================================================================
+    #              SAVE TOTAL MARKS PER SUBMISSION  (NEW FUNCTION)
+    # =======================================================================
+    def save_total_marks_to_assessment_grade(self, graded_records, assessment_id: str):
+        """
+        Calculate total marks for each submission and store them in Assessment_Grade.
+        """
+
+        # Group scores by submission_id
+        submissions = {}
+        for r in graded_records:
+            if r.submission_id not in submissions:
+                submissions[r.submission_id] = {"score": 0.0, "max_marks": 0.0}
+
+            submissions[r.submission_id]["score"] += float(r.score or 0)
+            submissions[r.submission_id]["max_marks"] += float(r.max_marks or 0)
+
+        # Save totals to Assessment_Grade
+        for submission_id, totals in submissions.items():
+            total_score = totals["score"]
+            total_max_marks = totals["max_marks"]
+
+            try:
+                self.assessment_grade_db.upsert_assessment_grade(
+                    submission_id=submission_id,
+                    assessment_id=assessment_id,
+                    model_id=self.model_id,
+                    total_score=total_score,
+                    total_max_marks=total_max_marks
+                )
+
+                log.info(
+                    f"[Assessment Grade] Saved totals for {submission_id}: "
+                    f"{total_score}/{total_max_marks}"
+                )
+
+            except Exception as e:
+                log.error(f"❌ Failed saving Assessment_Grade for {submission_id}: {e}")
 
     # =======================================================================
     def _call_openai(self, prompt: str):
@@ -539,8 +585,8 @@ if __name__ == "__main__":
     parser.add_argument("--assessment-id", required=True, help="Assessment id")
     parser.add_argument("--lecturer-id", required=True, help="Lecturer id")
     parser.add_argument("--module-id", required=True, help="Module id")
-    parser.add_argument("--top-k", type=int, default=5, help="Top K lecture chunks to retrieve for context"),
-    parser.add_argument("--question-numbers", type=str, default=None, help="Comma-separated question numbers to grade (all if omitted)")    
+    parser.add_argument("--top-k", type=int, default=5, help="Top K lecture chunks to retrieve for context")
+    parser.add_argument("--question-numbers", type=str, default=None, help="Comma-separated question numbers to grade (all if omitted)")
     args = parser.parse_args()
 
     submission_ids = [s.strip() for s in args.submission_ids.split(",") if s.strip()]
@@ -551,8 +597,8 @@ if __name__ == "__main__":
         assessment_id=args.assessment_id,
         lecturer_id=args.lecturer_id,
         module_id=args.module_id,
-        top_k=5
-        ,question_numbers=[qn.strip() for qn in args.question_numbers.split(",")] if args.question_numbers else None
+        top_k=5,
+        question_numbers=[qn.strip() for qn in args.question_numbers.split(",")] if args.question_numbers else None
     )
 
     print(f"Graded {len(results)} answer records.")

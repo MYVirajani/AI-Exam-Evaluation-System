@@ -78,7 +78,7 @@ interface SubmissionData {
   evaluation_model?: EvaluationModel;
 }
 
-const SubmissionReviewPage = () => {
+export default function SubmissionReviewPage() {
   const params = useParams();
   const router = useRouter();
   
@@ -186,37 +186,42 @@ const SubmissionReviewPage = () => {
     onClose: () => void 
   }) => (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="font-semibold text-lg">File Preview</h3>
+      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+        <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-slate-50 to-slate-100">
+          <h3 className="font-semibold text-xl text-slate-800">File Preview</h3>
           <div className="flex gap-2">
             <a
               href={url}
               download
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 hover:bg-gray-100 rounded"
+              className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+              title="Download"
             >
-              <Download className="w-5 h-5" />
+              <Download className="w-5 h-5 text-slate-700" />
             </a>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded">
-              <X className="w-5 h-5" />
+            <button 
+              onClick={onClose} 
+              className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+              title="Close"
+            >
+              <X className="w-5 h-5 text-slate-700" />
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-6 bg-slate-50">
           {type === 'pdf' ? (
-            <iframe src={url} className="w-full h-full min-h-[600px]" title="PDF Viewer" />
+            <iframe src={url} className="w-full h-full min-h-[600px] rounded-lg" title="PDF Viewer" />
           ) : type === 'image' ? (
-            <img src={url} alt="Submission" className="max-w-full h-auto mx-auto" />
+            <img src={url} alt="Submission" className="max-w-full h-auto mx-auto rounded-lg shadow-md" />
           ) : type === 'video' ? (
-            <video controls className="max-w-full h-auto mx-auto">
+            <video controls className="max-w-full h-auto mx-auto rounded-lg shadow-md">
               <source src={url} type="video/mp4" />
               Your browser does not support the video tag.
             </video>
           ) : (
             <div className="text-center p-8">
-              <p>Preview not available. <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Download file</a></p>
+              <p className="text-slate-700">Preview not available. <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline font-medium">Download file</a></p>
             </div>
           )}
         </div>
@@ -226,10 +231,10 @@ const SubmissionReviewPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading submission...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-slate-700 font-medium text-lg">Loading submission...</p>
         </div>
       </div>
     );
@@ -237,12 +242,15 @@ const SubmissionReviewPage = () => {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center text-red-600">
-          <p>Error loading submission data</p>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="text-center bg-white p-8 rounded-xl shadow-lg">
+          <div className="text-red-600 mb-4">
+            <X className="w-16 h-16 mx-auto mb-2" />
+            <p className="text-lg font-semibold">Error loading submission data</p>
+          </div>
           <button 
-            onClick={() => router.back()} 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => router.back()}
+            className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
           >
             Go Back
           </button>
@@ -251,31 +259,27 @@ const SubmissionReviewPage = () => {
     );
   }
 
-  // FIXED: Properly calculate totalScore and maxScore by ensuring we're working with numbers
   const totalScore = data.student_answers.reduce((sum, ans) => {
-    // Convert score to number and handle null/undefined cases
     const score = ans.score !== null && ans.score !== undefined ? Number(ans.score) : 0;
     return sum + score;
   }, 0);
 
   const maxScore = data.student_answers.reduce((sum, ans) => {
-    // Convert max_marks to number and handle undefined cases
     const maxMarks = ans.question?.max_marks !== undefined ? Number(ans.question.max_marks) : 0;
     return sum + maxMarks;
   }, 0);
 
-  // Format the scores to show only necessary decimal places
   const formatScore = (score: number) => {
-    // If the score is an integer, don't show decimal places
     if (Number.isInteger(score)) {
       return score.toString();
     }
-    // Otherwise, show up to 2 decimal places
     return score.toFixed(2);
   };
 
+  const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {viewingFile && (
         <FileViewer
           url={viewingFile.url}
@@ -288,170 +292,179 @@ const SubmissionReviewPage = () => {
         {/* Back Button */}
         <button
           onClick={handleBackToResults}
-          className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors px-4 py-2 rounded-lg hover:bg-gray-100"
+          className="mb-6 flex items-center gap-2 text-slate-700 hover:text-slate-900 transition-colors px-4 py-2.5 rounded-lg hover:bg-white shadow-sm bg-white/70 backdrop-blur-sm font-medium"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Back to Results</span>
         </button>
 
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-start mb-4">
+        <div className="bg-white rounded-xl shadow-md p-8 mb-6 border border-slate-200">
+          <div className="flex justify-between items-start mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-4xl font-bold text-slate-900 mb-3">
                 {data.assessment.assessment_name}
               </h1>
-              <p className="text-gray-600">
+              <p className="text-slate-600 text-lg font-medium">
                 {data.module.module_code} - {data.module.module_name}
               </p>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-blue-600">
+            <div className="text-right bg-gradient-to-br from-blue-50 to-indigo-50 px-8 py-6 rounded-xl border-2 border-blue-200">
+              <div className="text-4xl font-bold text-blue-700 mb-1">
                 {formatScore(totalScore)} / {formatScore(maxScore)}
               </div>
-              <p className="text-sm text-gray-600">Total Score</p>
+              <p className="text-sm text-slate-600 font-medium mb-2">Total Score</p>
+              <div className="text-lg font-semibold text-indigo-600">
+                {formatScore(percentage)}%
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+          <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-200">
             <div>
-              <p className="text-sm text-gray-600">Assessment Type</p>
-              <p className="font-medium">{data.assessment.assessment_type}</p>
+              <p className="text-sm text-slate-500 font-medium mb-1">Assessment Type</p>
+              <p className="font-semibold text-slate-800 text-lg">{data.assessment.assessment_type}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Deadline</p>
-              <p className="font-medium">{new Date(data.assessment.deadline).toLocaleDateString()}</p>
+              <p className="text-sm text-slate-500 font-medium mb-1">Deadline</p>
+              <p className="font-semibold text-slate-800 text-lg">{new Date(data.assessment.deadline).toLocaleDateString()}</p>
             </div>
           </div>
         </div>
 
         {/* Student Info */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Student Information</h2>
-          <div className="flex items-start gap-4">
+        <div className="bg-white rounded-xl shadow-md p-8 mb-6 border border-slate-200">
+          <h2 className="text-2xl font-bold mb-6 text-slate-900">Student Information</h2>
+          <div className="flex items-start gap-6">
             {data.submission.student.user.profile_image_url && (
               <img
                 src={data.submission.student.user.profile_image_url}
                 alt="Student"
-                className="w-16 h-16 rounded-full object-cover"
+                className="w-20 h-20 rounded-full object-cover border-4 border-blue-100 shadow-md"
               />
             )}
-            <div className="flex-1 grid grid-cols-2 gap-4">
+            <div className="flex-1 grid grid-cols-2 gap-6">
               <div>
-                <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium">
+                <p className="text-sm text-slate-500 font-medium mb-1">Name</p>
+                <p className="font-semibold text-slate-800 text-lg">
                   {data.submission.student.user.title} {data.submission.student.user.first_name}{' '}
                   {data.submission.student.user.last_name}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Registration Number</p>
-                <p className="font-medium">{data.submission.student.registration_number}</p>
+                <p className="text-sm text-slate-500 font-medium mb-1">Registration Number</p>
+                <p className="font-semibold text-slate-800 text-lg">{data.submission.student.registration_number}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium">{data.submission.student.user.email}</p>
+                <p className="text-sm text-slate-500 font-medium mb-1">Email</p>
+                <p className="font-medium text-blue-600 text-base">{data.submission.student.user.email}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Institute</p>
-                <p className="font-medium">{data.submission.student.education_institute}</p>
+                <p className="text-sm text-slate-500 font-medium mb-1">Institute</p>
+                <p className="font-semibold text-slate-800 text-lg">{data.submission.student.education_institute}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Submission Files */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Submission Files</h2>
+        <div className="bg-white rounded-xl shadow-md p-8 mb-6 border border-slate-200">
+          <h2 className="text-2xl font-bold mb-6 text-slate-900">Submission Files</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {data.submission.file_url && (
               <button
                 onClick={() => setViewingFile({ url: data.submission.file_url!, type: 'pdf' })}
-                className="flex items-center gap-3 p-4 border rounded-lg hover:bg-gray-50 transition"
+                className="flex items-center gap-4 p-5 border-2 border-blue-200 rounded-xl hover:bg-blue-50 transition-all hover:shadow-md group"
               >
-                <FileText className="w-8 h-8 text-blue-600" />
-                <div className="text-left">
-                  <p className="font-medium">Original Submission</p>
-                  <p className="text-sm text-gray-600">View File</p>
+                <div className="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                  <FileText className="w-8 h-8 text-blue-700" />
                 </div>
-                <Eye className="w-5 h-5 ml-auto text-gray-400" />
+                <div className="text-left flex-1">
+                  <p className="font-semibold text-slate-800 text-base">Original Submission</p>
+                  <p className="text-sm text-slate-600">View File</p>
+                </div>
+                <Eye className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
               </button>
             )}
             {data.submission.media_extracted_file_url && (
               <button
                 onClick={() => setViewingFile({ url: data.submission.media_extracted_file_url!, type: 'pdf' })}
-                className="flex items-center gap-3 p-4 border rounded-lg hover:bg-gray-50 transition"
+                className="flex items-center gap-4 p-5 border-2 border-green-200 rounded-xl hover:bg-green-50 transition-all hover:shadow-md group"
               >
-                <Image className="w-8 h-8 text-green-600" />
-                <div className="text-left">
-                  <p className="font-medium">Media Extracted</p>
-                  <p className="text-sm text-gray-600">View File</p>
+                <div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                  <Image className="w-8 h-8 text-green-700" />
                 </div>
-                <Eye className="w-5 h-5 ml-auto text-gray-400" />
+                <div className="text-left flex-1">
+                  <p className="font-semibold text-slate-800 text-base">Media Extracted</p>
+                  <p className="text-sm text-slate-600">View File</p>
+                </div>
+                <Eye className="w-5 h-5 text-slate-400 group-hover:text-green-600 transition-colors" />
               </button>
             )}
             {data.submission.handwritten_file_url && (
               <button
                 onClick={() => setViewingFile({ url: data.submission.handwritten_file_url!, type: 'pdf' })}
-                className="flex items-center gap-3 p-4 border rounded-lg hover:bg-gray-50 transition"
+                className="flex items-center gap-4 p-5 border-2 border-purple-200 rounded-xl hover:bg-purple-50 transition-all hover:shadow-md group"
               >
-                <Edit2 className="w-8 h-8 text-purple-600" />
-                <div className="text-left">
-                  <p className="font-medium">Handwritten</p>
-                  <p className="text-sm text-gray-600">View File</p>
+                <div className="p-3 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                  <Edit2 className="w-8 h-8 text-purple-700" />
                 </div>
-                <Eye className="w-5 h-5 ml-auto text-gray-400" />
+                <div className="text-left flex-1">
+                  <p className="font-semibold text-slate-800 text-base">Handwritten</p>
+                  <p className="text-sm text-slate-600">View File</p>
+                </div>
+                <Eye className="w-5 h-5 text-slate-400 group-hover:text-purple-600 transition-colors" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Evaluation Model Tab */}
+        {/* Evaluation Model
         {data.evaluation_model && (
-          <div className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                <h2 className="text-white font-semibold text-lg">
+          <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-slate-200">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-5">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse shadow-lg"></div>
+                <h2 className="text-white font-bold text-xl">
                   Evaluation Model: {data.evaluation_model.model_name}
                 </h2>
               </div>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                 <div>
-                  <p className="text-sm text-gray-600">Provider</p>
-                  <p className="font-medium">{data.evaluation_model.provider}</p>
+                  <p className="text-sm text-slate-500 font-medium mb-1">Provider</p>
+                  <p className="font-semibold text-slate-800 text-base">{data.evaluation_model.provider}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Chat Model</p>
-                  <p className="font-medium">{data.evaluation_model.chat_model}</p>
+                  <p className="text-sm text-slate-500 font-medium mb-1">Chat Model</p>
+                  <p className="font-semibold text-slate-800 text-base">{data.evaluation_model.chat_model}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Temperature</p>
-                  <p className="font-medium">{data.evaluation_model.temperature}</p>
+                  <p className="text-sm text-slate-500 font-medium mb-1">Temperature</p>
+                  <p className="font-semibold text-slate-800 text-base">{data.evaluation_model.temperature}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Embedding Model</p>
-                  <p className="font-medium">{data.evaluation_model.embedding_model || 'N/A'}</p>
+                  <p className="text-sm text-slate-500 font-medium mb-1">Embedding Model</p>
+                  <p className="font-semibold text-slate-800 text-base">{data.evaluation_model.embedding_model || 'N/A'}</p>
                 </div>
               </div>
               {data.evaluation_model.description && (
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-sm text-gray-600 mb-1">Description</p>
-                  <p className="text-gray-700">{data.evaluation_model.description}</p>
+                <div className="pt-6 border-t border-slate-200">
+                  <p className="text-sm text-slate-500 font-medium mb-2">Description</p>
+                  <p className="text-slate-700 leading-relaxed">{data.evaluation_model.description}</p>
                 </div>
               )}
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Questions and Answers */}
         <div className="space-y-6">
           {data.student_answers.map((answer, index) => (
-            <div key={answer.id} className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold">
+            <div key={answer.id} className="bg-white rounded-xl shadow-md p-8 border border-slate-200">
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="text-2xl font-bold text-slate-900">
                   Question {answer.question_number}
                 </h3>
                 <div className="flex items-center gap-2">
@@ -459,15 +472,17 @@ const SubmissionReviewPage = () => {
                     <>
                       <button
                         onClick={cancelEditing}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                        className="p-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                         disabled={saving}
+                        title="Cancel"
                       >
                         <X className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => saveChanges(answer.id)}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded"
+                        className="p-2.5 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm"
                         disabled={saving}
+                        title="Save"
                       >
                         <Check className="w-5 h-5" />
                       </button>
@@ -475,7 +490,8 @@ const SubmissionReviewPage = () => {
                   ) : (
                     <button
                       onClick={() => startEditing(answer)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                      className="p-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                      title="Edit"
                     >
                       <Edit2 className="w-5 h-5" />
                     </button>
@@ -485,16 +501,16 @@ const SubmissionReviewPage = () => {
 
               {answer.question && (
                 <>
-                  <div className="mb-4 p-4 bg-gray-50 rounded">
-                    <p className="font-medium text-gray-900 mb-2">Question:</p>
-                    <p className="text-gray-700 whitespace-pre-wrap">{answer.question.question_text}</p>
+                  <div className="mb-5 p-5 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="font-semibold text-slate-900 mb-3 text-base">Question:</p>
+                    <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">{answer.question.question_text}</p>
                     {answer.question.media && answer.question.media.length > 0 && (
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-3 flex gap-2">
                         {answer.question.media.map(m => (
                           <button
                             key={m.id}
                             onClick={() => setViewingFile({ url: m.media_url, type: 'image' })}
-                            className="text-sm text-blue-600 hover:underline"
+                            className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
                           >
                             View Media
                           </button>
@@ -504,31 +520,31 @@ const SubmissionReviewPage = () => {
                   </div>
 
                   {answer.question.answer_text && (
-                    <div className="mb-4 p-4 bg-green-50 rounded">
-                      <p className="font-medium text-green-900 mb-2">Model Answer:</p>
-                      <p className="text-gray-700 whitespace-pre-wrap">{answer.question.answer_text}</p>
+                    <div className="mb-5 p-5 bg-green-50 rounded-lg border border-green-200">
+                      <p className="font-semibold text-green-900 mb-3 text-base">Model Answer:</p>
+                      <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">{answer.question.answer_text}</p>
                     </div>
                   )}
 
                   {answer.question.guideline_text && (
-                    <div className="mb-4 p-4 bg-blue-50 rounded">
-                      <p className="font-medium text-blue-900 mb-2">Grading Guidelines:</p>
-                      <p className="text-gray-700 whitespace-pre-wrap">{answer.question.guideline_text}</p>
+                    <div className="mb-5 p-5 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="font-semibold text-blue-900 mb-3 text-base">Grading Guidelines:</p>
+                      <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">{answer.question.guideline_text}</p>
                     </div>
                   )}
                 </>
               )}
 
-              <div className="mb-4 p-4 bg-purple-50 rounded">
-                <p className="font-medium text-purple-900 mb-2">Student Answer:</p>
-                <p className="text-gray-700 whitespace-pre-wrap">{answer.answer_text || 'No answer provided'}</p>
+              <div className="mb-6 p-5 bg-purple-50 rounded-lg border border-purple-200">
+                <p className="font-semibold text-purple-900 mb-3 text-base">Student Answer:</p>
+                <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">{answer.answer_text || 'No answer provided'}</p>
                 {answer.media && answer.media.length > 0 && (
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-3 flex gap-2">
                     {answer.media.map(m => (
                       <button
                         key={m.id}
                         onClick={() => setViewingFile({ url: m.media_url, type: 'image' })}
-                        className="text-sm text-purple-600 hover:underline"
+                        className="text-sm text-purple-600 hover:text-purple-700 hover:underline font-medium"
                       >
                         View Media
                       </button>
@@ -537,9 +553,9 @@ const SubmissionReviewPage = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
                     Score (Max: {answer.question?.max_marks || 0})
                   </label>
                   {editingAnswer === answer.id ? (
@@ -550,17 +566,17 @@ const SubmissionReviewPage = () => {
                       max={answer.question?.max_marks || 0}
                       min="0"
                       step="0.5"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 font-medium"
                     />
                   ) : (
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-3xl font-bold text-blue-700 bg-blue-50 px-4 py-3 rounded-lg border-2 border-blue-200">
                       {answer.score !== null ? formatScore(Number(answer.score)) : '-'} / {answer.question?.max_marks || 0}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
                     Feedback
                   </label>
                   {editingAnswer === answer.id ? (
@@ -568,12 +584,12 @@ const SubmissionReviewPage = () => {
                       value={editedFeedback}
                       onChange={(e) => setEditedFeedback(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
                       placeholder="Enter feedback for the student..."
                     />
                   ) : (
-                    <div className="p-3 bg-gray-50 rounded-lg min-h-[100px]">
-                      <p className="text-gray-700 whitespace-pre-wrap">
+                    <div className="p-4 bg-slate-50 rounded-lg min-h-[120px] border border-slate-200">
+                      <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">
                         {answer.feedback || 'No feedback provided'}
                       </p>
                     </div>
@@ -582,7 +598,7 @@ const SubmissionReviewPage = () => {
               </div>
 
               {answer.graded_at && (
-                <p className="text-sm text-gray-500 mt-4">
+                <p className="text-sm text-slate-500 mt-6 pt-4 border-t border-slate-200 font-medium">
                   Graded on: {new Date(answer.graded_at).toLocaleString()}
                 </p>
               )}
@@ -592,6 +608,4 @@ const SubmissionReviewPage = () => {
       </div>
     </div>
   );
-};
-
-export default SubmissionReviewPage;
+}

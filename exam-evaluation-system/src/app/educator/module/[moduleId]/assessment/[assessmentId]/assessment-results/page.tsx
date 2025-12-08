@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   PieChart,
   Pie,
@@ -35,7 +35,7 @@ interface Student {
 
 interface EvaluationModel {
   id: string;
-  name: string;
+  model_name: string;
   description: string | null;
   model_type: string;
 }
@@ -72,6 +72,7 @@ interface Submission {
 
 interface Assessment {
   assessment_id: string;
+  module_id: string;
   title: string;
   type: string;
   deadline: string;
@@ -97,7 +98,9 @@ const GRADE_RANGES = [
 
 export default function AssessmentResultsPage() {
   const params = useParams();
+  const router = useRouter();
   const assessmentId = params.assessmentId as string;
+  const moduleId = params.moduleId as string;
   const [data, setData] = useState<AssessmentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +133,17 @@ export default function AssessmentResultsPage() {
 
     fetchData();
   }, [assessmentId]);
+
+  const handleRowClick = (submission: Submission) => {
+    // Determine which model to use for navigation
+    const modelId = activeTab === "all" 
+      ? (data?.evaluation_models[0]?.id || "") 
+      : activeTab;
+    
+    // Navigate to submission review page
+    const reviewUrl = `/educator/module/${moduleId}/assessment/${assessmentId}/submission/${submission.submission_id}/model/${modelId}`;
+    router.push(reviewUrl);
+  };
 
   if (loading) {
     return (
@@ -324,7 +338,7 @@ export default function AssessmentResultsPage() {
                         : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
-                    {model.name}
+                    {model.model_name}
                   </button>
                 ))}
               </div>
@@ -408,6 +422,7 @@ export default function AssessmentResultsPage() {
             <h3 className="text-lg font-semibold text-gray-900">
               Student Results
             </h3>
+            <p className="text-sm text-gray-500 mt-1">Click on any row to view detailed submission</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -447,7 +462,8 @@ export default function AssessmentResultsPage() {
                   return (
                     <tr
                       key={submission.submission_id}
-                      className="hover:bg-gray-50"
+                      onClick={() => handleRowClick(submission)}
+                      className="hover:bg-blue-50 cursor-pointer transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">

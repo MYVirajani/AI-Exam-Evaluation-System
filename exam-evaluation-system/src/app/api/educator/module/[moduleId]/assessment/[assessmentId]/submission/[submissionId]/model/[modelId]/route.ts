@@ -1,3 +1,4 @@
+// api/educator/module/[moduleId]/assessment/[assessmentId]/submission/[submissionId]/model/[modelId]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -34,7 +35,7 @@ export async function GET(
     }
 
     // ---------------------------------------------------------
-    // 2. Fetch submission details
+    // 2. Fetch submission + student profile
     // ---------------------------------------------------------
     const submission = await prisma.submission.findUnique({
       where: { submission_id: submissionId },
@@ -45,6 +46,26 @@ export async function GET(
         is_handwritten: true,
         handwritten_file_url: true,
         is_graded: true,
+        student: {
+          select: {
+            registration_number: true,
+            education_institute: true,
+            user: {
+              select: {
+                user_id: true,
+                first_name: true,
+                last_name: true,
+                title: true,
+                username: true,
+                email: true,
+                phone_number: true,
+                country: true,
+                city: true,
+                profile_image_url: true,
+              },
+            },
+          },
+        },
       },
     });
 

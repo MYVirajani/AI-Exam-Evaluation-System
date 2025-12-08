@@ -1,4 +1,3 @@
-// exam-evaluation-system\src\app\api\educator\module\[moduleId]\assessment\[assessmentId]\route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -13,7 +12,6 @@ export async function GET(
 ) {
   try {
     const { moduleId, assessmentId } = await ctx.params;
-
     const educatorId = req.nextUrl.searchParams.get("educatorId");
 
     if (!educatorId) {
@@ -27,15 +25,10 @@ export async function GET(
     // 1. Fetch Educator SUBSCRIBED Evaluation Models
     // -------------------------------------------------------------------
     const activeSubscriptions = await prisma.subscription.findMany({
-      where: {
-        educator_id: educatorId,
-        status: "ACTIVE",
-      },
+      where: { educator_id: educatorId, status: "ACTIVE" },
       include: {
         pricing_plan: {
-          include: {
-            evaluation_model: true,
-          },
+          include: { evaluation_model: true },
         },
       },
     });
@@ -69,7 +62,7 @@ export async function GET(
     });
 
     // -------------------------------------------------------------------
-    // 3. Fetch assessment WITHOUT GRADES
+    // 3. Fetch assessment
     // -------------------------------------------------------------------
     const assessment = await prisma.assessment.findFirst({
       where: {
@@ -144,30 +137,36 @@ export async function GET(
     }
 
     // -------------------------------------------------------------------
-    // 4. Fetch ONLY model_id from assessment_Grade
+    // 4. Fetch ONLY assessment grades belonging to the model selected in assessment
     // -------------------------------------------------------------------
-    const submissionIds = assessment.submissions.map(
-      (s) => s.submission_id
+    const submissionIds = assessment.submissions.map((s) => s.submission_id);
+
+    const assessmentGrades = assessment.model_id
+      ? await prisma.assessment_Grade.findMany({
+          where: {
+            assessment_id: assessmentId,
+            submission_id: { in: submissionIds },
+            model_id: assessment.model_id,
+          },
+          select: {
+            submission_id: true,
+            model_id: true,
+            score: true,
+            max_marks: true,
+            updated_on: true,
+          },
+        })
+      : [];
+
+    // Map grades to submission_id → grade object
+    const gradeMap = new Map(
+      assessmentGrades.map((g) => [g.submission_id, g])
     );
 
-    const assessmentGrades = await prisma.assessment_Grade.findMany({
-      where: {
-        submission_id: { in: submissionIds },
-      },
-      select: {
-        submission_id: true,
-        model_id: true,
-      },
-    });
-
-    const modelMap = new Map(
-      assessmentGrades.map((g) => [g.submission_id, g.model_id])
-    );
-
-    // Add model_id to submissions
-    const cleanedSubmissions = assessment.submissions.map((sub) => ({
+    // Attach grade to each submission
+    const finalSubmissions = assessment.submissions.map((sub) => ({
       ...sub,
-      model_id: modelMap.get(sub.submission_id) || null,
+      grade: gradeMap.get(sub.submission_id) || null,
     }));
 
     // -------------------------------------------------------------------
@@ -178,15 +177,17 @@ export async function GET(
         module: moduleData,
         enrollmentCount,
         evaluation_models: evaluationModels,
+
         subscriptions: activeSubscriptions.map((sub) => ({
           subscription_id: sub.subscription_id,
           status: sub.status,
           start_date: sub.start_date,
           pricing_plan_id: sub.pricing_plan_id,
         })),
+
         assessment: {
           ...assessment,
-          submissions: cleanedSubmissions,
+          submissions: finalSubmissions,
         },
       },
       { status: 200 }
@@ -200,7 +201,9 @@ export async function GET(
   }
 }
 
-
+// -------------------------------------------------------------------
+// PATCH (No changes required)
+// -------------------------------------------------------------------
 export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ assessmentId: string }> }
@@ -212,7 +215,6 @@ export async function PATCH(
     console.log("PATCH request body:", body);
     const { model_id, deadline, auto_grade } = body;
 
-    // Validate
     if (!assessmentId) {
       return NextResponse.json(
         { success: false, message: "Missing assessmentId" },
@@ -220,7 +222,6 @@ export async function PATCH(
       );
     }
 
-    // Check if assessment exists
     const existing = await prisma.assessment.findUnique({
       where: { assessment_id: assessmentId },
       select: { assessment_id: true },
@@ -233,7 +234,6 @@ export async function PATCH(
       );
     }
 
-    // Prepare update data
     const updateData: any = {
       updated_on: new Date(),
     };

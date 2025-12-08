@@ -21,6 +21,14 @@ interface User {
   email: string;
 }
 
+interface Grade {
+  submission_id: string;
+  model_id: string;
+  score: number;
+  max_marks: number;
+  updated_on: string;
+}
+
 interface Submission {
   submission_id: string;
   file_url: string;
@@ -30,16 +38,7 @@ interface Submission {
     registration_number: string;
     user: User;
   };
-  assessment_grade?: {
-    marks_awarded: number;
-    max_marks: number;
-  } | null;
-  latest_ai_grade?: {
-    marks_awarded: number;
-    max_marks: number;
-    model_used: string;
-    graded_at: string;
-  } | null;
+  grade?: Grade | null;
 }
 
 interface EvaluationModel {
@@ -161,6 +160,38 @@ export default function AssessmentPage() {
     return student?.user?.email || "No email available";
   };
 
+  // Helper function to get submission status based on selected model
+  const getSubmissionStatus = (submission: Submission): "Graded" | "Pending" => {
+    if (!selectedModelId) {
+      return submission.grade ? "Graded" : "Pending";
+    }
+
+    if (submission.grade && submission.grade.model_id === selectedModelId) {
+      return "Graded";
+    }
+
+    return "Pending";
+  };
+
+  // Get grading statistics for the selected model
+  const getGradingStats = () => {
+    if (!assessment || !selectedModelId) {
+      return { graded: 0, pending: 0, percentage: 0 };
+    }
+
+    const graded = assessment.submissions.filter(
+      (sub) => sub.grade && sub.grade.model_id === selectedModelId
+    ).length;
+
+    const total = assessment.submissions.length;
+    const pending = total - graded;
+    const percentage = total > 0 ? Math.round((graded / total) * 100) : 0;
+
+    return { graded, pending, percentage };
+  };
+
+  const stats = getGradingStats();
+
   // Filter and sort submissions
   const filteredAndSortedSubmissions = useMemo(() => {
     if (!assessment?.submissions) return [];
@@ -168,6 +199,7 @@ export default function AssessmentPage() {
     let filtered = assessment.submissions.filter((sub) => {
       const studentName = getStudentDisplayName(sub.student);
       const studentEmail = getStudentEmail(sub.student);
+      const status = getSubmissionStatus(sub);
 
       const matchesSearch =
         searchTerm === "" ||
@@ -177,7 +209,12 @@ export default function AssessmentPage() {
         studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         studentEmail.toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchesSearch;
+      const matchesFilter =
+        filterStatus === "all" ||
+        (filterStatus === "graded" && status === "Graded") ||
+        (filterStatus === "ungraded" && status === "Pending");
+
+      return matchesSearch && matchesFilter;
     });
 
     filtered.sort((a, b) => {
@@ -196,6 +233,10 @@ export default function AssessmentPage() {
           aValue = new Date(a.submission_start_at);
           bValue = new Date(b.submission_start_at);
           break;
+        case "status":
+          aValue = getSubmissionStatus(a);
+          bValue = getSubmissionStatus(b);
+          break;
         default:
           aValue = a.student.registration_number;
           bValue = b.student.registration_number;
@@ -213,6 +254,7 @@ export default function AssessmentPage() {
     sortField,
     sortDirection,
     filterStatus,
+    selectedModelId,
   ]);
 
   // Pagination
@@ -271,6 +313,7 @@ export default function AssessmentPage() {
       <span className="text-blue-600">↓</span>
     );
   };
+
   const deleteModelAnswer = async () => {
     if (!assessment?.model_answer_paper?.file_url) return;
 
@@ -304,6 +347,7 @@ export default function AssessmentPage() {
       setIsDeletingModelAnswer(false);
     }
   };
+
   const processModelAnswer = async () => {
     if (!assessment?.model_answer_paper?.file_url) {
       toast.error("Please upload a model answer first");
@@ -319,7 +363,6 @@ export default function AssessmentPage() {
     const toastId = toast.loading("Processing model answer for grading...");
 
     try {
-      // Load API URL from .env
       const API_BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVER_URL;
 
       if (!API_BASE_URL) {
@@ -393,7 +436,6 @@ export default function AssessmentPage() {
 
         setAssessment(enrichedAssessment);
 
-        // Set evaluation models from the response
         if (data.evaluation_models && data.evaluation_models.length > 0) {
           setEvaluationModels(data.evaluation_models);
           setSelectedModelId(data.evaluation_models[0].id);
@@ -440,7 +482,6 @@ export default function AssessmentPage() {
         enrollmentCount: updatedData.enrollmentCount,
       });
 
-      // Update evaluation models if they changed
       if (updatedData.evaluation_models) {
         setEvaluationModels(updatedData.evaluation_models);
       }
@@ -525,8 +566,6 @@ export default function AssessmentPage() {
     ref.current?.click();
   };
 
-  // Replace the startEvaluation function in your AssessmentPage component
-
   const startEvaluation = async () => {
     setIsEvaluating(true);
     setEvaluationStatus("Starting evaluation...");
@@ -556,7 +595,6 @@ export default function AssessmentPage() {
     }
 
     try {
-      // Load API URL from .env
       const API_BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVER_URL;
 
       if (!API_BASE_URL) {
@@ -569,7 +607,6 @@ export default function AssessmentPage() {
         `Grading ${validSelectedSubmissions.length} submissions...`
       );
 
-      // Call the RAG grader endpoint
       const response = await fetch(`${API_BASE_URL}/rag-grader/grade`, {
         method: "POST",
         headers: {
@@ -583,7 +620,7 @@ export default function AssessmentPage() {
           lecturer_id: educatorId,
           module_id: moduleId,
           top_k: 5,
-          question_numbers: null, // Optional: can be passed if needed
+          question_numbers: null,
         }),
       });
 
@@ -593,12 +630,11 @@ export default function AssessmentPage() {
         throw new Error(data.detail || "Failed to grade submissions");
       }
 
-      // Success handling
       const selectedModelName =
         evaluationModels.find((m) => m.id === selectedModelId)?.model_name ||
         "AI";
 
-      let statusMessage = `✅ Successfully graded ${data.count} submissions with ${selectedModelName}!`;
+      let statusMessage = `✅ Successfully graded ${data.count} questions with ${selectedModelName}!`;
 
       if (data.model_answer_embedded) {
         statusMessage += "\n📝 Model answer was processed and embedded.";
@@ -613,7 +649,6 @@ export default function AssessmentPage() {
         `Evaluation completed successfully! Graded ${data.count} submissions.`
       );
 
-      // Refetch assessment to get updated grades
       await refetchAssessment();
     } catch (error) {
       console.error("Error during evaluation:", error);
@@ -627,10 +662,6 @@ export default function AssessmentPage() {
   };
 
   const handleStartEvaluation = () => {
-    // if (!assessment?.question_paper?.file_url && !uploadedFiles.questionPaper) {
-    //   toast.error("Please upload a question paper first");
-    //   return;
-    // }
     if (
       !assessment?.model_answer_paper?.file_url &&
       !uploadedFiles.modelAnswer
@@ -705,6 +736,7 @@ export default function AssessmentPage() {
         <div className="mb-6">
           <Breadcrumbs items={breadcrumbs} className="" />
         </div>
+
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="border-b border-gray-100 pb-4 mb-4">
@@ -735,6 +767,42 @@ export default function AssessmentPage() {
             </p>
           )}
         </div>
+
+        {/* Grading Statistics Card - NEW */}
+        {selectedModelId && (
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Grading Progress for{" "}
+                {evaluationModels.find((m) => m.id === selectedModelId)
+                  ?.model_name || "Selected Model"}
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-sm text-gray-600 mb-1">Total Submissions</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {assessment.submissions.length}
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-sm text-gray-600 mb-1">Graded</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {stats.graded}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentage}% complete
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-sm text-gray-600 mb-1">Pending</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {stats.pending}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
           <div className="flex items-center justify-between">
@@ -833,7 +901,6 @@ export default function AssessmentPage() {
           </div>
 
           {/* Model Answer */}
-
           <>
             <ConfirmDialog
               isOpen={showDeleteConfirm}
@@ -1122,13 +1189,25 @@ export default function AssessmentPage() {
                       <SortIcon field="submitted_at" />
                     </div>
                   </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort("status")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      <SortIcon field="status" />
+                    </div>
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    Score
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedSubmissions.map((sub) => {
+                  const status = getSubmissionStatus(sub);
+                  const hasGrade = sub.grade && sub.grade.model_id === selectedModelId;
+
                   return (
                     <tr
                       key={sub.submission_id}
@@ -1184,15 +1263,29 @@ export default function AssessmentPage() {
                           ).toLocaleTimeString()}
                         </div>
                       </td>
-                      <td className="px-4 py-2">
-                        {assessment?.is_graded ? (
-                          <span className="text-green-600 font-semibold">
-                            Graded
-                          </span>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            status === "Graded"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {hasGrade ? (
+                          <div className="text-sm">
+                            <span className="font-semibold text-gray-900">
+                              {sub.grade!.score}
+                            </span>
+                            <span className="text-gray-500">
+                              {" "}/ {sub.grade!.max_marks}
+                            </span>
+                          </div>
                         ) : (
-                          <span className="text-yellow-600 font-semibold">
-                            Pending
-                          </span>
+                          <span className="text-sm text-gray-400">-</span>
                         )}
                       </td>
                     </tr>
@@ -1296,7 +1389,9 @@ export default function AssessmentPage() {
         {/* Evaluation Status */}
         {evaluationStatus && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-            <p className="text-sm text-blue-800">{evaluationStatus}</p>
+            <p className="text-sm text-blue-800 whitespace-pre-line">
+              {evaluationStatus}
+            </p>
           </div>
         )}
 

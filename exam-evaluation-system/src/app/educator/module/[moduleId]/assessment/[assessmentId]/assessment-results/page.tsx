@@ -8,8 +8,6 @@ import {
   Cell,
   BarChart,
   Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -35,6 +33,24 @@ interface Student {
   user: User;
 }
 
+interface EvaluationModel {
+  id: string;
+  name: string;
+  description: string | null;
+  model_type: string;
+}
+
+interface AssessmentGrade {
+  model_id: string;
+  submission_id: string;
+  assessment_id: string;
+  score: number;
+  max_marks: number;
+  created_on: string;
+  updated_on: string;
+  evaluation_model: EvaluationModel;
+}
+
 interface Submission {
   submission_id: string;
   student_id: string;
@@ -51,13 +67,7 @@ interface Submission {
   is_handwritten: boolean;
   handwritten_file_url: string | null;
   student: Student;
-}
-
-interface EvaluationModel {
-  id: string;
-  name: string;
-  description: string | null;
-  model_type: string;
+  grades_by_model: Record<string, AssessmentGrade>;
 }
 
 interface Assessment {
@@ -107,6 +117,7 @@ export default function AssessmentResultsPage() {
         const result = await response.json();
         setData(result);
 
+        // Set first evaluation model as default tab if available
         if (result.evaluation_models.length > 0) {
           setActiveTab(result.evaluation_models[0].id);
         }
@@ -120,18 +131,17 @@ export default function AssessmentResultsPage() {
     fetchData();
   }, [assessmentId]);
 
- 
-   if (loading) {
-      return (
-        <LoadingAnimation
-          size="lg"
-          variant="wave"
-          text="Loading assessment results..."
-          fullScreen={true}
-          color="blue"
-        />
-      );
-    }
+  if (loading) {
+    return (
+      <LoadingAnimation
+        size="lg"
+        variant="wave"
+        text="Loading assessment results..."
+        fullScreen={true}
+        color="blue"
+      />
+    );
+  }
 
   if (error || !data) {
     return (
@@ -144,14 +154,35 @@ export default function AssessmentResultsPage() {
     );
   }
 
-  const filteredSubmissions =
-    activeTab === "all"
-      ? data.submissions
-      : data.submissions.filter((s) => s.is_graded);
+  // Get score for a submission based on active tab
+  const getScore = (submission: Submission): number | null => {
+    if (activeTab === "all") {
+      return submission.student_score;
+    }
+    
+    const grade = submission.grades_by_model[activeTab];
+    if (grade && grade.max_marks > 0) {
+      return (grade.score / grade.max_marks) * 100;
+    }
+    
+    return null;
+  };
 
-  const gradedSubmissions = filteredSubmissions.filter(
-    (s) => s.is_graded && s.student_score !== null
-  );
+  // Check if submission is graded for active model
+  const isGraded = (submission: Submission): boolean => {
+    if (activeTab === "all") {
+      return submission.is_graded;
+    }
+    return submission.grades_by_model[activeTab] !== undefined;
+  };
+
+  // Filter submissions based on active tab
+  const filteredSubmissions = data.submissions;
+
+  const gradedSubmissions = filteredSubmissions.filter((s) => {
+    const score = getScore(s);
+    return isGraded(s) && score !== null;
+  });
 
   // Calculate statistics
   const stats = {
@@ -160,24 +191,23 @@ export default function AssessmentResultsPage() {
     pending: filteredSubmissions.length - gradedSubmissions.length,
     average:
       gradedSubmissions.length > 0
-        ? gradedSubmissions.reduce((sum, s) => sum + (s.student_score || 0), 0) /
+        ? gradedSubmissions.reduce((sum, s) => sum + (getScore(s) || 0), 0) /
           gradedSubmissions.length
         : 0,
-    highest: Math.max(...gradedSubmissions.map((s) => s.student_score || 0), 0),
-    lowest: gradedSubmissions.length > 0 
-      ? Math.min(...gradedSubmissions.map((s) => s.student_score || 0))
-      : 0,
+    highest: Math.max(...gradedSubmissions.map((s) => getScore(s) || 0), 0),
+    lowest:
+      gradedSubmissions.length > 0
+        ? Math.min(...gradedSubmissions.map((s) => getScore(s) || 0))
+        : 0,
   };
 
   // Prepare grade distribution data for pie chart
   const gradeDistribution = GRADE_RANGES.map((range) => ({
     name: range.label,
-    value: gradedSubmissions.filter(
-      (s) =>
-        s.student_score !== null &&
-        s.student_score >= range.min &&
-        s.student_score <= range.max
-    ).length,
+    value: gradedSubmissions.filter((s) => {
+      const score = getScore(s);
+      return score !== null && score >= range.min && score <= range.max;
+    }).length,
     color: range.color,
   }));
 
@@ -187,12 +217,10 @@ export default function AssessmentResultsPage() {
     const max = (i + 1) * 10;
     return {
       range: `${min}-${max}`,
-      count: gradedSubmissions.filter(
-        (s) =>
-          s.student_score !== null &&
-          s.student_score >= min &&
-          s.student_score < max
-      ).length,
+      count: gradedSubmissions.filter((s) => {
+        const score = getScore(s);
+        return score !== null && score >= min && score < max;
+      }).length,
     };
   });
 
@@ -200,12 +228,12 @@ export default function AssessmentResultsPage() {
   const passFailData = [
     {
       name: "Pass (≥40)",
-      count: gradedSubmissions.filter((s) => (s.student_score || 0) >= 40).length,
+      count: gradedSubmissions.filter((s) => (getScore(s) || 0) >= 40).length,
       fill: "#22c55e",
     },
     {
       name: "Fail (<40)",
-      count: gradedSubmissions.filter((s) => (s.student_score || 0) < 40).length,
+      count: gradedSubmissions.filter((s) => (getScore(s) || 0) < 40).length,
       fill: "#ef4444",
     },
   ];
@@ -229,7 +257,8 @@ export default function AssessmentResultsPage() {
                   {data.assessment.type}
                 </span>
                 <span className="text-sm text-gray-500">
-                  Deadline: {new Date(data.assessment.deadline).toLocaleDateString()}
+                  Deadline:{" "}
+                  {new Date(data.assessment.deadline).toLocaleDateString()}
                 </span>
               </div>
             </div>
@@ -248,7 +277,9 @@ export default function AssessmentResultsPage() {
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Pending</p>
-            <p className="text-2xl font-bold text-orange-600">{stats.pending}</p>
+            <p className="text-2xl font-bold text-orange-600">
+              {stats.pending}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Average</p>
@@ -258,11 +289,13 @@ export default function AssessmentResultsPage() {
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Highest</p>
-            <p className="text-2xl font-bold text-green-600">{stats.highest}%</p>
+            <p className="text-2xl font-bold text-green-600">
+              {stats.highest.toFixed(1)}%
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Lowest</p>
-            <p className="text-2xl font-bold text-red-600">{stats.lowest}%</p>
+            <p className="text-2xl font-bold text-red-600">{stats.lowest.toFixed(1)}%</p>
           </div>
         </div>
 
@@ -279,7 +312,7 @@ export default function AssessmentResultsPage() {
                       : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
-                  All Submissions
+                  All Submissions (Student Scores)
                 </button>
                 {data.evaluation_models.map((model) => (
                   <button
@@ -315,7 +348,7 @@ export default function AssessmentResultsPage() {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
+                      `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`
                     }
                     outerRadius={80}
                     fill="#8884d8"
@@ -358,7 +391,11 @@ export default function AssessmentResultsPage() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="count" fill="#3b82f6" name="Number of Students" />
+                  <Bar
+                    dataKey="count"
+                    fill="#3b82f6"
+                    name="Number of Students"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -401,22 +438,26 @@ export default function AssessmentResultsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSubmissions.map((submission) => {
+                  const score = getScore(submission);
+                  const graded = isGraded(submission);
                   const grade = GRADE_RANGES.find(
-                    (r) =>
-                      submission.student_score !== null &&
-                      submission.student_score >= r.min &&
-                      submission.student_score <= r.max
+                    (r) => score !== null && score >= r.min && score <= r.max
                   );
 
                   return (
-                    <tr key={submission.submission_id} className="hover:bg-gray-50">
+                    <tr
+                      key={submission.submission_id}
+                      className="hover:bg-gray-50"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="h-10 w-10 flex-shrink-0">
                             {submission.student.user.profile_image_url ? (
                               <img
                                 className="h-10 w-10 rounded-full object-cover"
-                                src={submission.student.user.profile_image_url}
+                                src={
+                                  submission.student.user.profile_image_url
+                                }
                                 alt=""
                               />
                             ) : (
@@ -447,9 +488,7 @@ export default function AssessmentResultsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        {submission.student_score !== null
-                          ? `${submission.student_score}%`
-                          : "-"}
+                        {score !== null ? `${score.toFixed(1)}%` : "-"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {grade && (
@@ -467,12 +506,12 @@ export default function AssessmentResultsPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            submission.is_graded
+                            graded
                               ? "bg-green-100 text-green-800"
                               : "bg-yellow-100 text-yellow-800"
                           }`}
                         >
-                          {submission.is_graded ? "Graded" : "Pending"}
+                          {graded ? "Graded" : "Pending"}
                         </span>
                       </td>
                     </tr>

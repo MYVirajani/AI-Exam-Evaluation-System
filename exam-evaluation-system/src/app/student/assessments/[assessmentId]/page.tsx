@@ -25,12 +25,10 @@ interface Paper {
 }
 
 interface AssessmentGrade {
-  grade_id: string;
+  score:number;
   max_marks: number;
-  marks_awarded: number;
-  feedback: string | null;
-  graded_at: string;
-  auto_graded: boolean;
+  created_on: string;
+  updated_on: string;
 }
 
 interface Submission {
@@ -723,7 +721,7 @@ export default function StudentAssessmentPage() {
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="text-center">
                       <p className="text-2xl font-bold text-blue-900">
-                        {gradeInfo.marks_awarded}
+                        {gradeInfo.score}
                       </p>
                       <p className="text-sm text-blue-600">Marks Awarded</p>
                     </div>
@@ -739,29 +737,29 @@ export default function StudentAssessmentPage() {
                   <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                     <div className="text-center">
                       <p className="text-2xl font-bold text-green-900">
-                        {getGradePercentage(gradeInfo.marks_awarded, gradeInfo.max_marks)}%
+                        {getGradePercentage(gradeInfo.score, gradeInfo.max_marks)}%
                       </p>
                       <p className="text-sm text-green-600">Percentage</p>
                     </div>
                   </div>
                 </div>
 
-                {gradeInfo.feedback && (
+                {/* {gradeInfo.feedback && (
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <h4 className="font-medium text-gray-900 mb-2">Feedback</h4>
                     <p className="text-gray-700">{gradeInfo.feedback}</p>
                   </div>
-                )}
+                )} */}
 
                 <div className="flex items-center justify-between text-sm text-gray-600 border-t border-gray-200 pt-4">
                   <span>
-                    Graded on: {formatDate(gradeInfo.graded_at)}
+                    Graded on: {formatDate(gradeInfo.updated_on)}
                   </span>
-                  {gradeInfo.auto_graded && (
+                  {/* {gradeInfo.auto_graded && (
                     <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
                       Auto Graded
                     </span>
-                  )}
+                  )} */}
                 </div>
               </div>
             ) : (

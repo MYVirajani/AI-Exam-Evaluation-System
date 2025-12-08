@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 
   try {
     // ------------------------------------------------
-    // 1. Fetch Assessment + Module Data
+    // 1. Fetch Assessment
     // ------------------------------------------------
     const assessment = await prisma.assessment.findUnique({
       where: { assessment_id: assessmentId },
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     }
 
     // ------------------------------------------------
-    // 2. Fetch Submissions WITH Student + User
+    // 2. Fetch Submissions
     // ------------------------------------------------
     const submissions = await prisma.submission.findMany({
       where: { assessment_id: assessmentId },
@@ -94,33 +94,62 @@ export async function GET(req: Request) {
     const submissionIds = submissions.map((s) => s.submission_id);
 
     // ------------------------------------------------
-    // 3. Fetch Evaluation Models (Assessment_Grade)
+    // 3. Fetch All Assessment Grades For These Submissions
     // ------------------------------------------------
     const assessmentGrades = await prisma.assessment_Grade.findMany({
-      where: {
-        submission_id: { in: submissionIds },
-      },
+      where: { submission_id: { in: submissionIds } },
       include: {
         evaluation_model: true,
       },
     });
 
-    // Remove duplicates
+    // ------------------------------------------------
+    // 4. Build Evaluation Models List (unique)
+    // ------------------------------------------------
     const evaluationModelsMap = new Map();
     assessmentGrades.forEach((g) => {
       if (g.evaluation_model) {
-        evaluationModelsMap.set(g.evaluation_model.id, g.evaluation_model);
+        evaluationModelsMap.set(g.model_id, g.evaluation_model);
       }
     });
 
     const evaluationModels = Array.from(evaluationModelsMap.values());
 
     // ------------------------------------------------
+    // 5. Attach "grades_by_model" to each submission
+    // ------------------------------------------------
+    const submissionsWithGrades = submissions.map((sub) => {
+      const gradesForThisSubmission = assessmentGrades.filter(
+        (g) => g.submission_id === sub.submission_id
+      );
+
+      const gradesByModel: Record<string, any> = {};
+
+      gradesForThisSubmission.forEach((g) => {
+        gradesByModel[g.model_id] = {
+          model_id: g.model_id,
+          submission_id: g.submission_id,
+          assessment_id: g.assessment_id,
+          score: g.score,
+          max_marks: g.max_marks,
+          created_on: g.created_on,
+          updated_on: g.updated_on,
+          evaluation_model: g.evaluation_model,
+        };
+      });
+
+      return {
+        ...sub,
+        grades_by_model: gradesByModel,
+      };
+    });
+
+    // ------------------------------------------------
     // Final Output
     // ------------------------------------------------
     return NextResponse.json({
       assessment,
-      submissions,
+      submissions: submissionsWithGrades,
       evaluation_models: evaluationModels,
     });
   } catch (error) {

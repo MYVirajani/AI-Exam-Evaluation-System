@@ -6,6 +6,7 @@ import json
 import uuid
 import sys
 import os
+from decimal import Decimal
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
@@ -45,7 +46,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             answer_text TEXT,
             mcq_answer_options JSONB,
             guideline_text TEXT,
-            max_marks INTEGER,
+            max_marks DECIMAL(5,2),          -- UPDATED HERE
             created_on TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_on TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
@@ -71,7 +72,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             raise
 
     # ---------------------------------------------------------
-    # SAVE MODEL ANSWERS (DELETE MEDIA FIRST)
+    # SAVE MODEL ANSWERS
     # ---------------------------------------------------------
     def save_model_answers(
         self,
@@ -85,9 +86,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             return
 
         try:
-            # --------------------------
-            # Delete existing media first
-            # --------------------------
+            # Delete existing media
             self.cursor.execute(
                 f"""
                 DELETE FROM {self.question_media_table} qm
@@ -95,22 +94,19 @@ class ModelAnswerDBService(BaseRelationalDB):
                 WHERE qm.question_id = q.id
                   AND q.assessment_id=%s
                   AND q.model_answer_paper_id=%s
+                  AND q.model_id=%s
                 """,
-                (assessment_id, model_answer_paper_id)
+                (assessment_id, model_answer_paper_id, self.model_id)
             )
 
-            # --------------------------
             # Delete existing questions
-            # --------------------------
             self.cursor.execute(
                 f"""DELETE FROM {self.question_table}
-                    WHERE assessment_id=%s AND model_answer_paper_id=%s""",
-                (assessment_id, model_answer_paper_id)
+                    WHERE assessment_id=%s AND model_answer_paper_id=%s AND model_id=%s""",
+                (assessment_id, model_answer_paper_id, self.model_id)
             )
 
-            # --------------------------
             # Insert new questions
-            # --------------------------
             insert_q = f"""
                 INSERT INTO {self.question_table} (
                     id,
@@ -131,10 +127,18 @@ class ModelAnswerDBService(BaseRelationalDB):
 
             now = datetime.utcnow()
             q_values = []
-            id_map = {}  # Map question_number → generated UUID
+            id_map = {}
 
             for ans in model_answers:
                 qid = str(uuid.uuid4())
+
+                # --- Ensure decimal compatibility ---
+                max_marks_value = (
+                    Decimal(str(ans.max_marks))
+                    if ans.max_marks is not None
+                    else None
+                )
+
                 q_values.append((
                     qid,
                     self.model_id,
@@ -144,9 +148,9 @@ class ModelAnswerDBService(BaseRelationalDB):
                     ans.question_number,
                     ans.question_text,
                     ans.answer_text,
-                    [],   
+                    [],
                     ans.guideline_text,
-                    ans.max_marks,
+                    max_marks_value,   # UPDATED HERE
                     now,
                     now
                 ))
@@ -154,9 +158,7 @@ class ModelAnswerDBService(BaseRelationalDB):
 
             execute_values(self.cursor, insert_q, q_values)
 
-            # --------------------------
-            # Insert associated media
-            # --------------------------
+            # Insert Media
             media_values = self._prepare_media_values(model_answers, id_map)
             if media_values:
                 insert_media = f"""
@@ -294,7 +296,7 @@ class ModelAnswerDBService(BaseRelationalDB):
             return []
 
     # ---------------------------------------------------------
-    # UPDATE MEDIA
+    # UPDATE MEDIA SUMMARY
     # ---------------------------------------------------------
     def update_media_summary(self, media_id: str, summary: str) -> bool:
         try:
@@ -345,7 +347,7 @@ class ModelAnswerDBService(BaseRelationalDB):
                 "question_number": row[1],
                 "question_text": row[2],
                 "guideline_text": row[3],
-                "max_marks": row[5],
+                "max_marks": row[5],   # This is now Decimal
                 "model_answer": {
                     "answer_text": row[4],
                     "media_summaries": row[6] or []

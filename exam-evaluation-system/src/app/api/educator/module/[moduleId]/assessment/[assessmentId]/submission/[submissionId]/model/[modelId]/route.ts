@@ -7,11 +7,14 @@ export async function GET(
   { params }: { params: { moduleId: string; assessmentId: string; submissionId: string; modelId: string } }
 ) {
   try {
+    console.log("📥 Incoming Params:", params);
+
     const { assessmentId, submissionId, modelId } = params;
 
     // ---------------------------------------------------------
     // 1. Fetch assessment + module details
     // ---------------------------------------------------------
+    console.log("🔍 Fetching assessment...");
     const assessment = await prisma.assessment.findUnique({
       where: { assessment_id: assessmentId },
       select: {
@@ -30,13 +33,17 @@ export async function GET(
       },
     });
 
+    console.log("📘 Assessment Result:", assessment);
+
     if (!assessment) {
+      console.warn("❌ Assessment not found:", assessmentId);
       return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
     }
 
     // ---------------------------------------------------------
     // 2. Fetch submission + student profile
     // ---------------------------------------------------------
+    console.log("🔍 Fetching submission...");
     const submission = await prisma.submission.findUnique({
       where: { submission_id: submissionId },
       select: {
@@ -69,13 +76,17 @@ export async function GET(
       },
     });
 
+    console.log("📝 Submission Result:", submission);
+
     if (!submission) {
+      console.warn("❌ Submission not found:", submissionId);
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
 
     // ---------------------------------------------------------
     // 3. Fetch student answers for this submission + model
     // ---------------------------------------------------------
+    console.log("🔍 Fetching raw student answers...");
     const rawStudentAnswers = await prisma.student_Answer.findMany({
       where: {
         submission_id: submissionId,
@@ -108,11 +119,16 @@ export async function GET(
       orderBy: { question_number: "asc" },
     });
 
+    console.log("📄 Raw Student Answers:", rawStudentAnswers);
+
     // ---------------------------------------------------------
     // 4. Fetch questions for each student answer
     // ---------------------------------------------------------
+    console.log("🔍 Fetching questions for each student answer...");
     const studentAnswersWithQuestions = await Promise.all(
       rawStudentAnswers.map(async (ans) => {
+        console.log(`🔎 Fetching question for Q${ans.question_number}`);
+
         const question = await prisma.question.findFirst({
           where: {
             question_number: ans.question_number,
@@ -137,6 +153,8 @@ export async function GET(
           },
         });
 
+        console.log(`📘 Result for Q${ans.question_number}:`, question);
+
         return {
           ...ans,
           question: question || null,
@@ -147,6 +165,7 @@ export async function GET(
     // ---------------------------------------------------------
     // 5. Fetch evaluation model metadata
     // ---------------------------------------------------------
+    console.log("🔍 Fetching evaluation model metadata...");
     const evaluationModel = await prisma.evaluation_Model.findUnique({
       where: { id: modelId },
       select: {
@@ -160,10 +179,12 @@ export async function GET(
       },
     });
 
+    console.log("🤖 Evaluation Model:", evaluationModel);
+
     // ---------------------------------------------------------
     // 6. Final response
     // ---------------------------------------------------------
-    return NextResponse.json({
+    const responseData = {
       module: assessment.module,
       assessment: {
         assessment_id: assessment.assessment_id,
@@ -175,9 +196,13 @@ export async function GET(
       submission: submission,
       evaluation_model: evaluationModel,
       student_answers: studentAnswersWithQuestions,
-    });
+    };
+
+    console.log("✅ Final Response:", responseData);
+
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error("Error in endpoint:", error);
+    console.error("🔥 Error in endpoint:", error);
     return NextResponse.json(
       { error: "Internal server error", details: String(error) },
       { status: 500 }

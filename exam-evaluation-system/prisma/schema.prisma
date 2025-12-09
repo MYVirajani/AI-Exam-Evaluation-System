@@ -247,7 +247,7 @@ model Question {
   answer_text           String?
   mcq_answer_options    String[]     @default([])
   guideline_text        String
-  max_marks             Int
+  max_marks             Decimal?           @db.Decimal(5, 2)
   created_on            DateTime     @default(now()) @db.Timestamptz(6)
   updated_on            DateTime     @default(now()) @db.Timestamptz(6)
 

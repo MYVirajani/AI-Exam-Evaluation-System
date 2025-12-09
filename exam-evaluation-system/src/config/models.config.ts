@@ -66,7 +66,7 @@ export const CHAT_MODELS: ModelOption[] = [
     provider: 'openai',
     description: 'Fast and efficient model'
   },
-  
+
   // Anthropic Models
   {
     value: 'claude-3-opus',
@@ -92,7 +92,7 @@ export const CHAT_MODELS: ModelOption[] = [
     provider: 'anthropic',
     description: 'Previous generation Claude'
   },
-  
+
   // Google Gemini Models
   {
     value: 'gemini-2.0-flash',
@@ -118,7 +118,7 @@ export const CHAT_MODELS: ModelOption[] = [
     provider: 'gemini',
     description: 'Most capable Gemini model'
   },
-  
+
   // DeepSeek Models
   {
     value: 'deepseek-chat',
@@ -131,6 +131,12 @@ export const CHAT_MODELS: ModelOption[] = [
     label: 'DeepSeek Coder',
     provider: 'deepseek',
     description: 'Optimized for coding tasks'
+  },
+  {
+    value: 'deepseek-r1:7b',
+    label: 'DeepSeek R1 7B',
+    provider: 'deepseek',
+    description: 'Local DeepSeek R1 7B model'
   }
 ];
 
@@ -155,7 +161,7 @@ export const EMBEDDING_MODELS: ModelOption[] = [
     provider: 'openai',
     description: 'Previous generation embedding'
   },
-  
+
   // Anthropic Embeddings
   {
     value: 'claude-embedding-v1',
@@ -163,7 +169,7 @@ export const EMBEDDING_MODELS: ModelOption[] = [
     provider: 'anthropic',
     description: 'Anthropic embedding model'
   },
-  
+
   // Google Gemini Embeddings
   {
     value: 'embedding-001',
@@ -177,7 +183,7 @@ export const EMBEDDING_MODELS: ModelOption[] = [
     provider: 'gemini',
     description: 'Latest Google embedding'
   },
-  
+
   // DeepSeek Embeddings
   {
     value: 'deepseek-embedding',
@@ -196,12 +202,17 @@ export const getProviderValue = (label: string): ProviderValue | undefined => {
   return PROVIDERS.find(p => p.label === label)?.value;
 };
 
-export const getChatModelsByProvider = (provider: ProviderValue): ModelOption[] => {
-  return CHAT_MODELS.filter(m => m.provider === provider);
+// ⭐ Modified: DeepSeek should show ALL embedding models
+export const getEmbeddingModelsByProvider = (provider: ProviderValue): ModelOption[] => {
+  if (provider === 'deepseek' || provider === 'anthropic') {
+    // return every embedding model from all providers
+    return EMBEDDING_MODELS;
+  }
+  return EMBEDDING_MODELS.filter(m => m.provider === provider);
 };
 
-export const getEmbeddingModelsByProvider = (provider: ProviderValue): ModelOption[] => {
-  return EMBEDDING_MODELS.filter(m => m.provider === provider);
+export const getChatModelsByProvider = (provider: ProviderValue): ModelOption[] => {
+  return CHAT_MODELS.filter(m => m.provider === provider);
 };
 
 export const getChatModelLabel = (value: string): string => {

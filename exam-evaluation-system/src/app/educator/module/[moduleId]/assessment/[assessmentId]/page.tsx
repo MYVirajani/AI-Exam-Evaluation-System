@@ -38,7 +38,7 @@ interface Submission {
     registration_number: string;
     user: User;
   };
-  grade?: Grade | null;
+  grades: Grade[]; // Changed from grade?: Grade | null to grades: Grade[]
 }
 
 interface EvaluationModel {
@@ -155,32 +155,30 @@ export default function AssessmentPage() {
     return `Student ${student.registration_number}`;
   };
 
-  // Helper function to get student email
   const getStudentEmail = (student: any) => {
-    return student?.user?.email || "No email available";
+    return student?.user?.email || "";
   };
 
-  // Helper function to get submission status based on selected model
-  const getSubmissionStatus = (submission: Submission): "Graded" | "Pending" => {
-    if (!selectedModelId) {
-      return submission.grade ? "Graded" : "Pending";
-    }
+  const getSubmissionStatus = (
+    submission: Submission
+  ): "Graded" | "Pending" => {
+    // Check if submission has any grade for the selectedModelId
+    const gradeForModel = submission.grades.find(
+      (grade) => grade.model_id === selectedModelId
+    );
 
-    if (submission.grade && submission.grade.model_id === selectedModelId) {
-      return "Graded";
-    }
-
-    return "Pending";
+    return gradeForModel ? "Graded" : "Pending";
   };
 
-  // Get grading statistics for the selected model
-  const getGradingStats = () => {
-    if (!assessment || !selectedModelId) {
+  // 3. Update getAssessmentGradingStats to work with grades array
+  const getAssessmentGradingStats = () => {
+    if (!assessment || !assessment.model_id) {
       return { graded: 0, pending: 0, percentage: 0 };
     }
 
-    const graded = assessment.submissions.filter(
-      (sub) => sub.grade && sub.grade.model_id === selectedModelId
+    // Count submissions that have a grade for the assessment's default model
+    const graded = assessment.submissions.filter((sub) =>
+      sub.grades.some((grade) => grade.model_id === assessment.model_id)
     ).length;
 
     const total = assessment.submissions.length;
@@ -190,7 +188,8 @@ export default function AssessmentPage() {
     return { graded, pending, percentage };
   };
 
-  const stats = getGradingStats();
+  // 2. Update the stats variable to use the assessment stats function
+  const assessmentStats = getAssessmentGradingStats();
 
   // Filter and sort submissions
   const filteredAndSortedSubmissions = useMemo(() => {
@@ -407,7 +406,6 @@ export default function AssessmentPage() {
       setIsProcessingModelAnswer(false);
     }
   };
-
   useEffect(() => {
     if (!moduleId || !assessmentId || !educatorId) {
       setError("Missing required parameters");
@@ -438,7 +436,10 @@ export default function AssessmentPage() {
 
         if (data.evaluation_models && data.evaluation_models.length > 0) {
           setEvaluationModels(data.evaluation_models);
-          setSelectedModelId(data.evaluation_models[0].id);
+          // Set to assessment.model_id if it exists, otherwise use first available model
+          setSelectedModelId(
+            data.assessment.model_id || data.evaluation_models[0].id
+          );
         } else {
           toast.error(
             "No evaluation models available. Please subscribe to a plan."
@@ -769,18 +770,20 @@ export default function AssessmentPage() {
         </div>
 
         {/* Grading Statistics Card - NEW */}
-        {selectedModelId && (
+        {/* {selectedModelId && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 Grading Progress for{" "}
-                {evaluationModels.find((m) => m.id === selectedModelId)
+                {evaluationModels.find((m) => m.id === assessment.model_id)
                   ?.model_name || "Selected Model"}
               </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Total Submissions</div>
+                <div className="text-sm text-gray-600 mb-1">
+                  Total Submissions
+                </div>
                 <div className="text-2xl font-bold text-gray-900">
                   {assessment.submissions.length}
                 </div>
@@ -798,6 +801,42 @@ export default function AssessmentPage() {
                 <div className="text-sm text-gray-600 mb-1">Pending</div>
                 <div className="text-2xl font-bold text-orange-600">
                   {stats.pending}
+                </div>
+              </div>
+            </div>
+          </div>
+        )} */}
+        {assessment?.model_id && (
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Grading Progress for{" "}
+                {evaluationModels.find((m) => m.id === assessment.model_id)
+                  ?.model_name || "Default Model"}
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-sm text-gray-600 mb-1">
+                  Total Submissions
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {assessment.submissions.length}
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-sm text-gray-600 mb-1">Graded</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {assessmentStats.graded}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {assessmentStats.percentage}% complete
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-sm text-gray-600 mb-1">Pending</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {assessmentStats.pending}
                 </div>
               </div>
             </div>
@@ -1206,7 +1245,11 @@ export default function AssessmentPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedSubmissions.map((sub) => {
                   const status = getSubmissionStatus(sub);
-                  const hasGrade = sub.grade && sub.grade.model_id === selectedModelId;
+
+                  // Find the grade for the selected model
+                  const gradeForSelectedModel = sub.grades.find(
+                    (grade) => grade.model_id === selectedModelId
+                  );
 
                   return (
                     <tr
@@ -1275,13 +1318,14 @@ export default function AssessmentPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {hasGrade ? (
+                        {gradeForSelectedModel ? (
                           <div className="text-sm">
                             <span className="font-semibold text-gray-900">
-                              {sub.grade!.score}
+                              {gradeForSelectedModel.score}
                             </span>
                             <span className="text-gray-500">
-                              {" "}/ {sub.grade!.max_marks}
+                              {" "}
+                              / {gradeForSelectedModel.max_marks}
                             </span>
                           </div>
                         ) : (
@@ -1406,21 +1450,29 @@ export default function AssessmentPage() {
                 Select AI Model:
               </label>
               {evaluationModels.length > 0 ? (
-                <Dropdown
-                  options={evaluationModels.map((model) => model.model_name)}
-                  selectedOption={
-                    evaluationModels.find((m) => m.id === selectedModelId)
-                      ?.model_name || ""
-                  }
-                  onSelect={(modelName) => {
-                    const model = evaluationModels.find(
-                      (m) => m.model_name === modelName
-                    );
-                    if (model) {
-                      setSelectedModelId(model.id);
+                <div className="flex items-center gap-2">
+                  <Dropdown
+                    options={evaluationModels.map((model) => model.model_name)}
+                    selectedOption={
+                      evaluationModels.find((m) => m.id === selectedModelId)
+                        ?.model_name || ""
                     }
-                  }}
-                />
+                    onSelect={(modelName) => {
+                      const model = evaluationModels.find(
+                        (m) => m.model_name === modelName
+                      );
+                      if (model) {
+                        setSelectedModelId(model.id);
+                      }
+                    }}
+                  />
+                  {selectedModelId !== assessment?.model_id &&
+                    assessment?.model_id && (
+                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+                        Different from default
+                      </span>
+                    )}
+                </div>
               ) : (
                 <div className="text-sm text-red-600">
                   No models available. Please subscribe to a plan.

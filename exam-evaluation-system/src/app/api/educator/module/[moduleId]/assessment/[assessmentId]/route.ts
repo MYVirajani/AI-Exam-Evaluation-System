@@ -97,9 +97,6 @@ export async function GET(
           },
         },
         marking_scheme: true,
-        questions: {
-          orderBy: { question_number: "asc" },
-        },
         submissions: {
           select: {
             submission_id: true,
@@ -139,37 +136,46 @@ export async function GET(
       );
     }
 
-    // ----------------- 4. FETCH GRADES -----------------
+    // ----------------- 4. FETCH ALL GRADES FOR ALL MODELS -----------------
     const submissionIds = assessment.submissions.map((s) => s.submission_id);
     console.log("Submission IDs:", submissionIds);
 
-    const assessmentGrades = assessment.model_id
-      ? await prisma.assessment_Grade.findMany({
-          where: {
-            assessment_id: assessmentId,
-            submission_id: { in: submissionIds },
-            model_id: assessment.model_id,
-          },
-          select: {
-            submission_id: true,
-            model_id: true,
-            score: true,
-            max_marks: true,
-            updated_on: true,
-          },
-        })
-      : [];
+    // Fetch ALL grades for all submissions (not filtered by model_id)
+    const assessmentGrades = await prisma.assessment_Grade.findMany({
+      where: {
+        assessment_id: assessmentId,
+        submission_id: { in: submissionIds },
+      },
+      select: {
+        submission_id: true,
+        model_id: true,
+        score: true,
+        max_marks: true,
+        updated_on: true,
+      },
+    });
 
     console.log("Fetched Assessment Grades:", assessmentGrades);
 
-    const gradeMap = new Map(assessmentGrades.map((g) => [g.submission_id, g]));
+    // Create a Map that stores arrays of grades per submission
+    const gradesMap = new Map<string, typeof assessmentGrades>();
+    
+    assessmentGrades.forEach((grade) => {
+      const existing = gradesMap.get(grade.submission_id);
+      if (existing) {
+        existing.push(grade);
+      } else {
+        gradesMap.set(grade.submission_id, [grade]);
+      }
+    });
 
+    // Map submissions with their grades array
     const finalSubmissions = assessment.submissions.map((sub) => ({
       ...sub,
-      grade: gradeMap.get(sub.submission_id) || null,
+      grades: gradesMap.get(sub.submission_id) || [],
     }));
 
-    console.log("Final Submissions With Grades:", finalSubmissions);
+    console.log("Final Submissions With All Grades:", finalSubmissions);
 
     // ----------------- 5. FINAL RESPONSE -----------------
     const responsePayload = {

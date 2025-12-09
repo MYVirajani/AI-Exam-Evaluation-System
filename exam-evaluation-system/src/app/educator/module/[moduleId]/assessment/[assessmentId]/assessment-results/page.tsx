@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   PieChart,
@@ -15,7 +15,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface User {
   first_name: string;
@@ -96,6 +95,69 @@ const GRADE_RANGES = [
   { label: "F (0-19)", min: 0, max: 19, color: "#991b1b" },
 ];
 
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
+
+// Dropdown Component
+function Dropdown({ 
+  options, 
+  selectedOption, 
+  onSelect, 
+  className = '' 
+}: { 
+  options: number[], 
+  selectedOption: number, 
+  onSelect: (option: number) => void,
+  className?: string 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      <button
+        type="button"
+        className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {selectedOption}
+        <svg className={`w-5 h-5 ml-2 transition-transform ${isOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 z-10 w-full top-full mt-1 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg">
+          <div className="py-1">
+            {options.map((option) => (
+              <button
+                key={option}
+                className={`block w-full px-4 py-2 text-sm text-left ${selectedOption === option ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
+                onClick={() => {
+                  onSelect(option);
+                  setIsOpen(false);
+                }}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AssessmentResultsPage() {
   const params = useParams();
   const router = useRouter();
@@ -105,6 +167,9 @@ export default function AssessmentResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   useEffect(() => {
     async function fetchData() {
@@ -120,7 +185,6 @@ export default function AssessmentResultsPage() {
         const result = await response.json();
         setData(result);
 
-        // Set first evaluation model as default tab if available
         if (result.evaluation_models.length > 0) {
           setActiveTab(result.evaluation_models[0].id);
         }
@@ -134,26 +198,75 @@ export default function AssessmentResultsPage() {
     fetchData();
   }, [assessmentId]);
 
+  // Reset to page 1 when items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedIndex(0);
+  }, [itemsPerPage]);
+
+  // Arrow key navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!data) return;
+
+      const totalSubmissions = data.submissions.length;
+      const totalPages = Math.ceil(totalSubmissions / itemsPerPage);
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) => {
+          const newIndex = Math.min(prev + 1, totalSubmissions - 1);
+          const newPage = Math.floor(newIndex / itemsPerPage) + 1;
+          if (newPage !== currentPage) {
+            setCurrentPage(newPage);
+          }
+          return newIndex;
+        });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => {
+          const newIndex = Math.max(prev - 1, 0);
+          const newPage = Math.floor(newIndex / itemsPerPage) + 1;
+          if (newPage !== currentPage) {
+            setCurrentPage(newPage);
+          }
+          return newIndex;
+        });
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (data.submissions[selectedIndex]) {
+          handleRowClick(data.submissions[selectedIndex]);
+        }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setCurrentPage((prev) => Math.max(prev - 1, 1));
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [data, selectedIndex, currentPage, itemsPerPage]);
+
   const handleRowClick = (submission: Submission) => {
-    // Determine which model to use for navigation
     const modelId = activeTab === "all" 
       ? (data?.evaluation_models[0]?.id || "") 
       : activeTab;
     
-    // Navigate to submission review page
     const reviewUrl = `/educator/module/${moduleId}/assessment/${assessmentId}/submission/${submission.submission_id}/model/${modelId}`;
     router.push(reviewUrl);
   };
 
   if (loading) {
     return (
-      <LoadingAnimation
-        size="lg"
-        variant="wave"
-        text="Loading assessment results..."
-        fullScreen={true}
-        color="blue"
-      />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading assessment results...</p>
+        </div>
+      </div>
     );
   }
 
@@ -168,7 +281,6 @@ export default function AssessmentResultsPage() {
     );
   }
 
-  // Get score for a submission based on active tab
   const getScore = (submission: Submission): number | null => {
     if (activeTab === "all") {
       return submission.student_score;
@@ -182,7 +294,6 @@ export default function AssessmentResultsPage() {
     return null;
   };
 
-  // Check if submission is graded for active model
   const isGraded = (submission: Submission): boolean => {
     if (activeTab === "all") {
       return submission.is_graded;
@@ -190,15 +301,17 @@ export default function AssessmentResultsPage() {
     return submission.grades_by_model[activeTab] !== undefined;
   };
 
-  // Filter submissions based on active tab
   const filteredSubmissions = data.submissions;
+  const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSubmissions = filteredSubmissions.slice(startIndex, endIndex);
 
   const gradedSubmissions = filteredSubmissions.filter((s) => {
     const score = getScore(s);
     return isGraded(s) && score !== null;
   });
 
-  // Calculate statistics
   const stats = {
     total: filteredSubmissions.length,
     graded: gradedSubmissions.length,
@@ -215,7 +328,6 @@ export default function AssessmentResultsPage() {
         : 0,
   };
 
-  // Prepare grade distribution data for pie chart
   const gradeDistribution = GRADE_RANGES.map((range) => ({
     name: range.label,
     value: gradedSubmissions.filter((s) => {
@@ -225,7 +337,6 @@ export default function AssessmentResultsPage() {
     color: range.color,
   }));
 
-  // Prepare score distribution for bar chart
   const scoreDistribution = Array.from({ length: 10 }, (_, i) => {
     const min = i * 10;
     const max = (i + 1) * 10;
@@ -238,7 +349,6 @@ export default function AssessmentResultsPage() {
     };
   });
 
-  // Prepare pass/fail data
   const passFailData = [
     {
       name: "Pass (≥40)",
@@ -349,7 +459,6 @@ export default function AssessmentResultsPage() {
         {/* Charts */}
         {gradedSubmissions.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Grade Distribution Pie Chart */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Grade Distribution
@@ -377,7 +486,6 @@ export default function AssessmentResultsPage() {
               </ResponsiveContainer>
             </div>
 
-            {/* Pass/Fail Chart */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Pass/Fail Analysis
@@ -393,7 +501,6 @@ export default function AssessmentResultsPage() {
               </ResponsiveContainer>
             </div>
 
-            {/* Score Distribution Bar Chart */}
             <div className="bg-white rounded-lg shadow-sm p-6 lg:col-span-2">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Score Distribution
@@ -419,10 +526,30 @@ export default function AssessmentResultsPage() {
         {/* Results Table */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Student Results
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">Click on any row to view detailed submission</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Student Results
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Use arrow keys to navigate (↑↓ rows, ←→ pages, Enter to view)
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">
+                  Showing {startIndex + 1}-{Math.min(endIndex, filteredSubmissions.length)} of {filteredSubmissions.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Rows per page:</span>
+                  <Dropdown
+                    options={PAGE_SIZE_OPTIONS}
+                    selectedOption={itemsPerPage}
+                    onSelect={setItemsPerPage}
+                    className="w-20"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -452,18 +579,27 @@ export default function AssessmentResultsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredSubmissions.map((submission) => {
+                {paginatedSubmissions.map((submission, index) => {
                   const score = getScore(submission);
                   const graded = isGraded(submission);
                   const grade = GRADE_RANGES.find(
                     (r) => score !== null && score >= r.min && score <= r.max
                   );
+                  const globalIndex = startIndex + index;
+                  const isSelected = globalIndex === selectedIndex;
 
                   return (
                     <tr
                       key={submission.submission_id}
-                      onClick={() => handleRowClick(submission)}
-                      className="hover:bg-blue-50 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setSelectedIndex(globalIndex);
+                        handleRowClick(submission);
+                      }}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected
+                          ? "bg-blue-100 border-l-4 border-blue-600"
+                          : "hover:bg-blue-50"
+                      }`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -471,9 +607,7 @@ export default function AssessmentResultsPage() {
                             {submission.student.user.profile_image_url ? (
                               <img
                                 className="h-10 w-10 rounded-full object-cover"
-                                src={
-                                  submission.student.user.profile_image_url
-                                }
+                                src={submission.student.user.profile_image_url}
                                 alt=""
                               />
                             ) : (
@@ -536,6 +670,56 @@ export default function AssessmentResultsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              
+              <div className="flex items-center gap-2">
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 7) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 4) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 3) {
+                    pageNum = totalPages - 6 + i;
+                  } else {
+                    pageNum = currentPage - 3 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === pageNum
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -140,7 +140,7 @@ export default function SubmissionReviewPage() {
   const handleBackToResults = () => {
     if (moduleId && assessmentId) {
       router.push(
-        `/educator/module/${moduleId}/assessment/${assessmentId}/results`
+        `/educator/module/${moduleId}/assessment/${assessmentId}/assessment-results`
       );
     }
   };

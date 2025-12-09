@@ -39,17 +39,17 @@ export default function AdvancedAssessmentSettings({
     try {
       // Create date object from the string (handles ISO format and other formats)
       const date = new Date(dateString);
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) return "";
-      
+
       // Format to YYYY-MM-DDTHH:mm (required format for datetime-local)
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -65,7 +65,7 @@ export default function AdvancedAssessmentSettings({
 
   // Update formData when currentDeadline changes
   useEffect(() => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       deadline: formatDateForInput(currentDeadline),
     }));
@@ -186,7 +186,10 @@ export default function AdvancedAssessmentSettings({
   // Debug: Log current state
   useEffect(() => {
     console.log("Current formData:", formData);
-    console.log("Formatted currentDeadline:", formatDateForInput(currentDeadline));
+    console.log(
+      "Formatted currentDeadline:",
+      formatDateForInput(currentDeadline)
+    );
   }, [formData, currentDeadline]);
 
   return (
@@ -374,9 +377,8 @@ export default function AdvancedAssessmentSettings({
                 </h4>
                 <ul className="text-sm text-amber-700 space-y-1">
                   <li>
-                    • <strong>Auto Grading:</strong> When enabled, submissions
-                    are automatically graded using the default AI model upon
-                    submission
+                    • <strong>Auto Grading:</strong> When enabled, student will
+                    see grades of the selected model after grading is complete.
                   </li>
                   <li>
                     • <strong>Deadline:</strong> Students cannot submit after

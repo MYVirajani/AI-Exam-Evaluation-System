@@ -3,8 +3,6 @@ from datetime import datetime
 from psycopg2.extras import execute_values
 
 from src.services.database_services.base_vector_db_service import BaseVectorDBService
-from src.services.embedding.openai_embedder import OpenAIEmbedder
-from src.services.embedding.gemini_embedder import GeminiEmbedder
 from src.utils.embedder_factory import get_embedder_for_model
 
 logger = logging.getLogger(__name__)
@@ -56,7 +54,35 @@ class ModelAnswerVectorService(BaseVectorDBService):
             self.conn.rollback()
             raise
 
+    
     # ----------------------------------------------------------------------
+    def get_vectors_for_paper(self, assessment_id: str, model_paper_id: str):
+        try:
+            query = f"""
+                SELECT question_number, question_embedding, answer_embedding, guideline_embedding
+                FROM {self.table_name}
+                WHERE assessment_id = %s AND model_paper_id = %s;
+            """
+
+            self.cursor.execute(query, (assessment_id, model_paper_id))
+            results = self.cursor.fetchall()
+
+            records = []
+            for row in results:
+                records.append({
+                    "question_number": row[0],
+                    "question_embedding": row[1],
+                    "answer_embedding": row[2],
+                    "guideline_embedding": row[3]
+                })
+
+            return records
+
+        except Exception as e:
+            logger.error(f"Failed to fetch vectors: {e}", exc_info=True)
+            self.conn.rollback()
+            return []
+    
     def embed_and_store_model_answers(self, model_paper_id: str, assessment_id: str, db_service):
 
         self._ensure_vector_table()
@@ -105,7 +131,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
             media_concat = " ".join(media_summaries)
             full_answer_text = f"{answer_text} {media_concat}".strip()
 
-            # ============= CASE: INSERT NEW RECORD ==================
             if qnum not in existing_map:
                 q_emb = self.embedder.embed([question_text])[0] if question_text else None
                 a_emb = self.embedder.embed([full_answer_text])[0] if full_answer_text else None
@@ -118,7 +143,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
                 ))
                 continue
 
-            # ============= CASE: UPDATE EXISTING RECORD =============
             existing = existing_map[qnum]
 
             updated_fields = {}
@@ -134,12 +158,10 @@ class ModelAnswerVectorService(BaseVectorDBService):
             if updated_fields:
                 set_clause = ", ".join([f"{col} = %s" for col in updated_fields.keys()])
                 update_values = list(updated_fields.values())
-                # WHERE by composite key
                 update_values.extend([assessment_id, model_paper_id, qnum])
 
                 updates.append((set_clause, update_values))
 
-        # Perform inserts
         if inserts:
             insert_query = f"""
             INSERT INTO {self.table_name} (
@@ -152,7 +174,6 @@ class ModelAnswerVectorService(BaseVectorDBService):
             """
             execute_values(self.cursor, insert_query, inserts)
 
-        # Perform updates one-by-one
         for set_clause, values in updates:
             update_query = f"""
                 UPDATE {self.table_name}

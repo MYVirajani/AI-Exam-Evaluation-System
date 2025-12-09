@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from dataclasses import asdict  # ✅ added
+from dataclasses import asdict  
 
-from src.services.grading_services.rag_grader import RAGGrader
+from src.scripts.rag.pipeline import start_grading_pipeline  
 
 router = APIRouter(prefix="/rag-grader", tags=["RAG Grader"])
 
@@ -22,22 +22,13 @@ class GradeRequest(BaseModel):
 @router.post("/grade")
 async def grade_submissions(request: GradeRequest):
     try:
-        grader = RAGGrader(model_id=request.model_id)
-
-        results = grader.grade_submissions_answers(
-            submission_ids=request.submission_ids,
-            model_paper_id=request.model_paper_id,
-            assessment_id=request.assessment_id,
-            lecturer_id=request.lecturer_id,
-            module_id=request.module_id,
-            top_k=request.top_k,
-            question_numbers=request.question_numbers,
-        )
+        # 🔥 Run full pipeline: validation → embedding → grading
+        results = start_grading_pipeline(request)
 
         return {
             "status": "success",
             "count": len(results),
-            "results": [asdict(r) for r in results]  
+            "results": [asdict(r) for r in results]
         }
 
     except Exception as e:

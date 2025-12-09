@@ -6,7 +6,7 @@ import PricingPlanCard from "@/components/PricingPlanCard";
 import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface EvaluationModel {
-  model_id: string;
+  id: string;
   model_name: string;
   description?: string;
 }

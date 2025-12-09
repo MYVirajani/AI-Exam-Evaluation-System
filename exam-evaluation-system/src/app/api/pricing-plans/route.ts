@@ -7,7 +7,7 @@ export async function GET() {
       include: {
         evaluation_model: { 
           select: {
-            model_id: true,
+            id: true,
             model_name: true,
             description: true,
             created_on: true,

@@ -9,13 +9,16 @@ export async function POST(req: Request) {
   try {
     const { pricing_plan_id, educator_id } = await req.json();
 
-    // 1. Find the plan
+    // 1. Find pricing plan
     const plan = await prisma.pricing_Plan.findUnique({
       where: { pricing_plan_id },
     });
 
-    if (!plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+    if (!plan || !plan.stripe_price_id) {
+      return NextResponse.json(
+        { error: "Pricing plan not found" },
+        { status: 404 }
+      );
     }
 
     // 2. Create Stripe Checkout Session
@@ -28,26 +31,17 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/cancel`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/educator/subscription/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/educator/subscription/cancel`,
       metadata: {
         educator_id,
         pricing_plan_id,
       },
     });
 
-    // 3. Store a pending subscription in DB
-    await prisma.subscription.create({
-      data: {
-        educator_id,
-        pricing_plan_id,
-        status: "INCOMPLETE",
-      },
-    });
-
     return NextResponse.json({ url: session.url });
-  } catch (err) {
-    console.error("Error creating checkout session:", err);
+  } catch (error) {
+    console.error("Stripe checkout error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -393,33 +393,33 @@ export default function AssessmentResultsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Total Submissions</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            <p className="text-xl font-bold text-gray-900">{stats.total}</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Graded</p>
-            <p className="text-2xl font-bold text-green-600">{stats.graded}</p>
+            <p className="text-xl font-bold text-green-600">{stats.graded}</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Pending</p>
-            <p className="text-2xl font-bold text-orange-600">
+            <p className="text-xl font-bold text-orange-600">
               {stats.pending}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Average</p>
-            <p className="text-2xl font-bold text-blue-600">
+            <p className="text-xl font-bold text-blue-600">
               {stats.average.toFixed(1)}%
             </p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Highest</p>
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-xl font-bold text-green-600">
               {stats.highest.toFixed(1)}%
             </p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">Lowest</p>
-            <p className="text-2xl font-bold text-red-600">{stats.lowest.toFixed(1)}%</p>
+            <p className="text-xl font-bold text-red-600">{stats.lowest.toFixed(1)}%</p>
           </div>
         </div>
 
@@ -460,7 +460,7 @@ export default function AssessmentResultsPage() {
         {gradedSubmissions.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">
                 Grade Distribution
               </h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -487,7 +487,7 @@ export default function AssessmentResultsPage() {
             </div>
 
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">
                 Pass/Fail Analysis
               </h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -502,7 +502,7 @@ export default function AssessmentResultsPage() {
             </div>
 
             <div className="bg-white rounded-lg shadow-sm p-6 lg:col-span-2">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">
                 Score Distribution
               </h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -528,7 +528,7 @@ export default function AssessmentResultsPage() {
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-base font-semibold text-gray-900">
                   Student Results
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">

@@ -13,16 +13,22 @@ import {
   Eye,
   Download,
   ArrowLeft,
+  Cpu,
 } from "lucide-react";
 import LoadingAnimation from "@/components/LoadingAnimation";
 
 // Define types for the data structure
 interface User {
-  title: string;
+  user_id: string;
+  title: string | null;
   first_name: string;
   last_name: string;
+  username: string;
   email: string;
-  profile_image_url?: string;
+  phone_number: string | null;
+  country: string | null;
+  city: string | null;
+  profile_image_url: string | null;
 }
 
 interface Student {
@@ -34,52 +40,69 @@ interface Student {
 interface Media {
   id: string;
   media_url: string;
+  media_summary?: string;
 }
 
 interface Question {
+  id: string;
+  question_number: number;
   question_text: string;
+  answer_text: string;
+  guideline_text: string | null;
+  mcq_answer_options: string[];
   max_marks: number;
-  answer_text?: string;
-  guideline_text?: string;
+  type: string;
   media: Media[];
 }
 
 interface StudentAnswer {
   id: string;
+  question_number: number;
   answer_text: string;
   score: number | null;
-  feedback: string;
-  question_number: number;
-  graded_at?: string;
+  feedback: string | null;
+  graded_at: string;
   media: Media[];
+  evaluation_model: {
+    id: string;
+    model_name: string;
+    provider: string;
+  };
   question: Question;
 }
 
 interface Submission {
+  submission_id: string;
+  file_url: string | null;
+  media_extracted_file_url: string | null;
+  is_handwritten: boolean;
+  handwritten_file_url: string | null;
+  is_graded: boolean;
   student: Student;
-  file_url?: string;
-  media_extracted_file_url?: string;
-  handwritten_file_url?: string;
 }
 
 interface Module {
+  module_id: string;
   module_code: string;
   module_name: string;
 }
 
 interface Assessment {
+  assessment_id: string;
   assessment_name: string;
   assessment_type: string;
   deadline: string;
+  model_id: string;
 }
 
 interface EvaluationModel {
+  id: string;
   model_name: string;
   provider: string;
   chat_model: string;
   temperature: number;
-  embedding_model?: string;
-  description?: string;
+  embedding_model: string;
+  description: string | null;
 }
 
 interface SubmissionData {
@@ -87,7 +110,7 @@ interface SubmissionData {
   module: Module;
   assessment: Assessment;
   student_answers: StudentAnswer[];
-  evaluation_model?: EvaluationModel;
+  evaluation_model: EvaluationModel;
 }
 
 export default function SubmissionReviewPage() {
@@ -160,8 +183,7 @@ export default function SubmissionReviewPage() {
   const saveChanges = async (answerId: string) => {
     try {
       setSaving(true);
-      
-      // Use the correct endpoint with PUT method
+
       const response = await fetch(
         `/api/educator/submission/${submissionId}/${answerId}`,
         {
@@ -176,8 +198,7 @@ export default function SubmissionReviewPage() {
 
       if (response.ok) {
         const result = await response.json();
-        
-        // Update local state with the new values
+
         setData((prev) => {
           if (!prev) return null;
           return {
@@ -200,7 +221,11 @@ export default function SubmissionReviewPage() {
       }
     } catch (error) {
       console.error("Error saving changes:", error);
-      alert(`Failed to save changes. ${error instanceof Error ? error.message : 'Please try again.'}`);
+      alert(
+        `Failed to save changes. ${
+          error instanceof Error ? error.message : "Please try again."
+        }`
+      );
     } finally {
       setSaving(false);
     }
@@ -359,15 +384,29 @@ export default function SubmissionReviewPage() {
         {/* Header */}
         <div className="bg-white rounded-xl shadow-md p-8 mb-6 border border-slate-200">
           <div className="flex justify-between items-start mb-6">
-            <div>
+            <div className="flex-1 pr-6">
               <h1 className="text-4xl font-bold text-slate-900 mb-3">
                 {data.assessment.assessment_name}
               </h1>
-              <p className="text-slate-600 text-lg font-medium">
+              <p className="text-slate-600 text-lg font-medium mb-3">
                 {data.module.module_code} - {data.module.module_name}
               </p>
+
+              {/* Display Model Name */}
+              {data.evaluation_model && (
+                <div className="mt-3 flex items-center gap-3 flex-wrap">
+                  <div className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-900 border border-indigo-200 shadow-sm">
+                    <Cpu className="w-4 h-4 mr-2" />
+                    <span className="mr-2">Model:</span>
+                    <span className="font-bold">
+                      {data.evaluation_model.model_name}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="text-right bg-gradient-to-br from-blue-50 to-indigo-50 px-8 py-6 rounded-xl border-2 border-blue-200">
+
+            <div className="text-right bg-gradient-to-br from-blue-50 to-indigo-50 px-8 py-6 rounded-xl border-2 border-blue-200 flex-shrink-0">
               <div className="text-4xl font-bold text-blue-700 mb-1">
                 {formatScore(totalScore)} / {formatScore(maxScore)}
               </div>

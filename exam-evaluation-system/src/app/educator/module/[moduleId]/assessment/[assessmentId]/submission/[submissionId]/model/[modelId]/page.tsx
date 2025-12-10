@@ -14,12 +14,13 @@ import {
   Download,
   ArrowLeft,
   Cpu,
+  Filter,
 } from "lucide-react";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import FormattedContent from "@/components/FormattedContent";
 import FileViewer from "@/components/FilePreview";
+import Dropdown from "@/components/Dropdown";
 
-// Define types for the data structure
 interface User {
   user_id: string;
   title: string | null;
@@ -59,7 +60,7 @@ interface Question {
 
 interface StudentAnswer {
   id: string;
-  question_number: number;
+  question_number: string;
   answer_text: string;
   score: number | null;
   feedback: string | null;
@@ -119,7 +120,6 @@ export default function SubmissionReviewPage() {
   const params = useParams();
   const router = useRouter();
 
-  // Extract params with null checks
   const moduleId = params?.moduleId as string;
   const assessmentId = params?.assessmentId as string;
   const submissionId = params?.submissionId as string;
@@ -135,6 +135,7 @@ export default function SubmissionReviewPage() {
     url: string;
     type: string;
   } | null>(null);
+  const [selectedQuestionFilter, setSelectedQuestionFilter] = useState<string>("All Questions");
 
   useEffect(() => {
     if (moduleId && assessmentId && submissionId && modelId) {
@@ -233,8 +234,6 @@ export default function SubmissionReviewPage() {
     }
   };
 
-
-
   if (loading) {
     return (
       <LoadingAnimation
@@ -291,19 +290,41 @@ export default function SubmissionReviewPage() {
 
   const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
+  // Get unique question numbers and create dropdown options
+// Extract unique string question numbers & sort properly
+const questionNumbers = Array.from(
+  new Set(data.student_answers.map((ans) => ans.question_number))
+).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+
+
+const dropdownOptions = [
+  "All Questions",
+  ...questionNumbers.map((num) => `Question ${num}`)
+];
+
+
+  // Filter answers based on selected question
+ const filteredAnswers =
+  selectedQuestionFilter === "All Questions"
+    ? data.student_answers
+    : data.student_answers.filter((ans) => {
+        const questionNum = selectedQuestionFilter.replace("Question ", "");
+        return ans.question_number === questionNum;
+      });
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {viewingFile && (
-    <FileViewer
-        url={viewingFile.url}
-        type={viewingFile.type}
-        onClose={() => setViewingFile(null)}
-    />
-)}
-
+        <FileViewer
+          url={viewingFile.url}
+          type={viewingFile.type}
+          onClose={() => setViewingFile(null)}
+        />
+      )}
 
       <div className="max-w-7xl mx-auto p-6">
-        {/* Back Button */}
         <button
           onClick={handleBackToResults}
           className="mb-6 flex items-center gap-2 text-slate-700 hover:text-slate-900 transition-colors px-4 py-2.5 rounded-lg hover:bg-white shadow-sm bg-white/70 backdrop-blur-sm font-medium"
@@ -312,7 +333,6 @@ export default function SubmissionReviewPage() {
           <span>Back to Results</span>
         </button>
 
-        {/* Header */}
         <div className="bg-white rounded-xl shadow-md p-8 mb-6 border border-slate-200">
           <div className="flex justify-between items-start mb-6">
             <div className="flex-1 pr-6">
@@ -323,7 +343,6 @@ export default function SubmissionReviewPage() {
                 {data.module.module_code} - {data.module.module_name}
               </p>
 
-              {/* Display Model Name */}
               {data.evaluation_model && (
                 <div className="mt-3 flex items-center gap-3 flex-wrap">
                   <div className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-900 border border-indigo-200 shadow-sm">
@@ -370,7 +389,6 @@ export default function SubmissionReviewPage() {
           </div>
         </div>
 
-        {/* Student Info */}
         <div className="bg-white rounded-xl shadow-md p-8 mb-6 border border-slate-200">
           <h2 className="text-2xl font-bold mb-6 text-slate-900">
             Student Information
@@ -418,7 +436,6 @@ export default function SubmissionReviewPage() {
           </div>
         </div>
 
-        {/* Submission Files */}
         <div className="bg-white rounded-xl shadow-md p-8 mb-6 border border-slate-200">
           <h2 className="text-2xl font-bold mb-6 text-slate-900">
             Submission Files
@@ -493,9 +510,30 @@ export default function SubmissionReviewPage() {
           </div>
         </div>
 
+        {/* Question Filter using Dropdown component */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-slate-200">
+          <div className="flex items-center gap-4">
+            <Filter className="w-5 h-5 text-slate-600" />
+            <label className="text-sm font-semibold text-slate-700">
+              Filter by Question Number:
+            </label>
+            <div className="w-64">
+              <Dropdown
+                options={dropdownOptions}
+                selectedOption={selectedQuestionFilter}
+                onSelect={setSelectedQuestionFilter}
+              />
+            </div>
+            <span className="ml-auto text-sm text-slate-600 font-medium">
+              Showing {filteredAnswers.length} of {data.student_answers.length}{" "}
+              questions
+            </span>
+          </div>
+        </div>
+
         {/* Questions and Answers */}
         <div className="space-y-6">
-          {data.student_answers.map((answer, index) => (
+          {filteredAnswers.map((answer, index) => (
             <div
               key={answer.id}
               className="bg-white rounded-xl shadow-md p-8 border border-slate-200"
@@ -542,16 +580,11 @@ export default function SubmissionReviewPage() {
 
               {answer.question && (
                 <>
-                  {/* Question Block */}
                   <div className="mb-5 p-5 bg-slate-50 rounded-lg border border-slate-200">
                     <p className="font-semibold text-slate-900 mb-3 text-base">
                       Question:
                     </p>
-
-                    {/* Render formatted math / tables / text */}
                     <FormattedContent text={answer.question.question_text} />
-
-                    {/* Media */}
                     {answer.question.media &&
                       answer.question.media.length > 0 && (
                         <div className="mt-3 flex gap-2">
@@ -573,24 +606,20 @@ export default function SubmissionReviewPage() {
                       )}
                   </div>
 
-                  {/* Model Answer */}
                   {answer.question.answer_text && (
                     <div className="mb-5 p-5 bg-green-50 rounded-lg border border-green-200">
                       <p className="font-semibold text-green-900 mb-3 text-base">
                         Model Answer:
                       </p>
-
                       <FormattedContent text={answer.question.answer_text} />
                     </div>
                   )}
 
-                  {/* Grading Guidelines */}
                   {answer.question.guideline_text && (
                     <div className="mb-5 p-5 bg-blue-50 rounded-lg border border-blue-200">
                       <p className="font-semibold text-blue-900 mb-3 text-base">
                         Grading Guidelines:
                       </p>
-
                       <FormattedContent text={answer.question.guideline_text} />
                     </div>
                   )}

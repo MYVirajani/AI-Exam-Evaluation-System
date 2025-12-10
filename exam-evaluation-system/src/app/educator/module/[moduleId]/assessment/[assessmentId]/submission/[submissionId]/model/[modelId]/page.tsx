@@ -16,6 +16,7 @@ import {
   Cpu,
 } from "lucide-react";
 import LoadingAnimation from "@/components/LoadingAnimation";
+import FormattedContent from "@/components/FormattedContent";
 
 // Define types for the data structure
 interface User {
@@ -611,13 +612,16 @@ export default function SubmissionReviewPage() {
 
               {answer.question && (
                 <>
+                  {/* Question Block */}
                   <div className="mb-5 p-5 bg-slate-50 rounded-lg border border-slate-200">
                     <p className="font-semibold text-slate-900 mb-3 text-base">
                       Question:
                     </p>
-                    <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">
-                      {answer.question.question_text}
-                    </p>
+
+                    {/* Render formatted math / tables / text */}
+                    <FormattedContent text={answer.question.question_text} />
+
+                    {/* Media */}
                     {answer.question.media &&
                       answer.question.media.length > 0 && (
                         <div className="mt-3 flex gap-2">
@@ -639,25 +643,25 @@ export default function SubmissionReviewPage() {
                       )}
                   </div>
 
+                  {/* Model Answer */}
                   {answer.question.answer_text && (
                     <div className="mb-5 p-5 bg-green-50 rounded-lg border border-green-200">
                       <p className="font-semibold text-green-900 mb-3 text-base">
                         Model Answer:
                       </p>
-                      <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">
-                        {answer.question.answer_text}
-                      </p>
+
+                      <FormattedContent text={answer.question.answer_text} />
                     </div>
                   )}
 
+                  {/* Grading Guidelines */}
                   {answer.question.guideline_text && (
                     <div className="mb-5 p-5 bg-blue-50 rounded-lg border border-blue-200">
                       <p className="font-semibold text-blue-900 mb-3 text-base">
                         Grading Guidelines:
                       </p>
-                      <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">
-                        {answer.question.guideline_text}
-                      </p>
+
+                      <FormattedContent text={answer.question.guideline_text} />
                     </div>
                   )}
                 </>
@@ -667,9 +671,9 @@ export default function SubmissionReviewPage() {
                 <p className="font-semibold text-purple-900 mb-3 text-base">
                   Student Answer:
                 </p>
-                <p className="text-slate-800 whitespace-pre-wrap leading-relaxed">
-                  {answer.answer_text || "No answer provided"}
-                </p>
+                <FormattedContent
+                  text={answer.answer_text || "No answer provided"}
+                />
                 {answer.media && answer.media.length > 0 && (
                   <div className="mt-3 flex gap-2">
                     {answer.media.map((m) => (

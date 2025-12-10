@@ -216,7 +216,7 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
           onMouseLeave={() => setIsHovered(false)}
         >
           {/* Action Menu Button */}
-          <div
+          {/* <div
             className="absolute top-3 right-3 p-1 rounded-full hover:bg-blue-100 transition-colors"
             onClick={(e) => {
               e.preventDefault();
@@ -231,7 +231,7 @@ const EducatorEventCard: React.FC<EducatorEventCardProps> = ({
             >
               <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
             </svg>
-          </div>
+          </div> */}
 
           {/* Header */}
           <div className="mb-4">

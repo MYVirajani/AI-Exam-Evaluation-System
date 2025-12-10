@@ -652,7 +652,7 @@ export default function SubmissionReviewPage() {
                   Student Answer:
                 </p>
                 <FormattedContent
-                  text={answer.answer_text || "No answer provided"}
+                  text={answer.answer_text}
                 />
                 {answer.media && answer.media.length > 0 && (
                   <div className="mt-3 flex gap-2">

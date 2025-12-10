@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import FormattedContent from "@/components/FormattedContent";
+import FileViewer from "@/components/FilePreview";
 
 // Define types for the data structure
 interface User {
@@ -232,79 +233,7 @@ export default function SubmissionReviewPage() {
     }
   };
 
-  const FileViewer = ({
-    url,
-    type,
-    onClose,
-  }: {
-    url: string;
-    type: string;
-    onClose: () => void;
-  }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl">
-        <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-slate-50 to-slate-100">
-          <h3 className="font-semibold text-xl text-slate-800">File Preview</h3>
-          <div className="flex gap-2">
-            <a
-              href={url}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-              title="Download"
-            >
-              <Download className="w-5 h-5 text-slate-700" />
-            </a>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-              title="Close"
-            >
-              <X className="w-5 h-5 text-slate-700" />
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-auto p-6 bg-slate-50">
-          {type === "pdf" ? (
-            <iframe
-              src={url}
-              className="w-full h-full min-h-[600px] rounded-lg"
-              title="PDF Viewer"
-            />
-          ) : type === "image" ? (
-            <img
-              src={url}
-              alt="Submission"
-              className="max-w-full h-auto mx-auto rounded-lg shadow-md"
-            />
-          ) : type === "video" ? (
-            <video
-              controls
-              className="max-w-full h-auto mx-auto rounded-lg shadow-md"
-            >
-              <source src={url} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          ) : (
-            <div className="text-center p-8">
-              <p className="text-slate-700">
-                Preview not available.{" "}
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-700 underline font-medium"
-                >
-                  Download file
-                </a>
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+
 
   if (loading) {
     return (
@@ -365,12 +294,13 @@ export default function SubmissionReviewPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {viewingFile && (
-        <FileViewer
-          url={viewingFile.url}
-          type={viewingFile.type}
-          onClose={() => setViewingFile(null)}
-        />
-      )}
+    <FileViewer
+        url={viewingFile.url}
+        type={viewingFile.type}
+        onClose={() => setViewingFile(null)}
+    />
+)}
+
 
       <div className="max-w-7xl mx-auto p-6">
         {/* Back Button */}

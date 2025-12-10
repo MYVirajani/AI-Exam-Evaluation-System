@@ -131,11 +131,13 @@ export default function SubmissionReviewPage() {
   const [editingAnswer, setEditingAnswer] = useState<string | null>(null);
   const [editedFeedback, setEditedFeedback] = useState("");
   const [editedScore, setEditedScore] = useState("");
+  const [editedGuideline, setEditedGuideline] = useState("");
   const [viewingFile, setViewingFile] = useState<{
     url: string;
     type: string;
   } | null>(null);
-  const [selectedQuestionFilter, setSelectedQuestionFilter] = useState<string>("All Questions");
+  const [selectedQuestionFilter, setSelectedQuestionFilter] =
+    useState<string>("All Questions");
 
   useEffect(() => {
     if (moduleId && assessmentId && submissionId && modelId) {
@@ -175,12 +177,14 @@ export default function SubmissionReviewPage() {
     setEditingAnswer(answer.id);
     setEditedFeedback(answer.feedback || "");
     setEditedScore(answer.score?.toString() || "");
+    setEditedGuideline(answer.question?.guideline_text || "");
   };
 
   const cancelEditing = () => {
     setEditingAnswer(null);
     setEditedFeedback("");
     setEditedScore("");
+    setEditedGuideline("");
   };
 
   const saveChanges = async (answerId: string) => {
@@ -188,11 +192,12 @@ export default function SubmissionReviewPage() {
       setSaving(true);
 
       const response = await fetch(
-        `/api/educator/submission/${submissionId}/${answerId}`,
+        `/api/educator/assessment/${assessmentId}/${submissionId}/${modelId}/${answerId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            guideline_text: editedGuideline || null,
             feedback: editedFeedback,
             score: editedScore ? parseFloat(editedScore) : null,
           }),
@@ -212,6 +217,10 @@ export default function SubmissionReviewPage() {
                     ...ans,
                     feedback: editedFeedback,
                     score: editedScore ? parseFloat(editedScore) : null,
+                    question: {
+                      ...ans.question,
+                      guideline_text: editedGuideline || null,
+                    },
                   }
                 : ans
             ),
@@ -290,29 +299,23 @@ export default function SubmissionReviewPage() {
 
   const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
-  // Get unique question numbers and create dropdown options
-// Extract unique string question numbers & sort properly
-const questionNumbers = Array.from(
-  new Set(data.student_answers.map((ans) => ans.question_number))
-).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const questionNumbers = Array.from(
+    new Set(data.student_answers.map((ans) => ans.question_number))
+  ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-
-
-const dropdownOptions = [
-  "All Questions",
-  ...questionNumbers.map((num) => `Question ${num}`)
-];
-
+  const dropdownOptions = [
+    "All Questions",
+    ...questionNumbers.map((num) => `Question ${num}`),
+  ];
 
   // Filter answers based on selected question
- const filteredAnswers =
-  selectedQuestionFilter === "All Questions"
-    ? data.student_answers
-    : data.student_answers.filter((ans) => {
-        const questionNum = selectedQuestionFilter.replace("Question ", "");
-        return ans.question_number === questionNum;
-      });
-
+  const filteredAnswers =
+    selectedQuestionFilter === "All Questions"
+      ? data.student_answers
+      : data.student_answers.filter((ans) => {
+          const questionNum = selectedQuestionFilter.replace("Question ", "");
+          return ans.question_number === questionNum;
+        });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
@@ -615,14 +618,32 @@ const dropdownOptions = [
                     </div>
                   )}
 
-                  {answer.question.guideline_text && (
-                    <div className="mb-5 p-5 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="font-semibold text-blue-900 mb-3 text-base">
-                        Grading Guidelines:
-                      </p>
-                      <FormattedContent text={answer.question.guideline_text} />
-                    </div>
-                  )}
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-blue-900 mb-3">
+                      Grading Guidelines:
+                    </label>
+                    {editingAnswer === answer.id ? (
+                      <textarea
+                        value={editedGuideline}
+                        onChange={(e) => setEditedGuideline(e.target.value)}
+                        rows={4}
+                        className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 bg-blue-50"
+                        placeholder="Enter grading guidelines..."
+                      />
+                    ) : (
+                      <div className="p-5 bg-blue-50 rounded-lg border border-blue-200">
+                        {answer.question.guideline_text ? (
+                          <FormattedContent
+                            text={answer.question.guideline_text}
+                          />
+                        ) : (
+                          <p className="text-slate-500 italic">
+                            No grading guidelines provided
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 

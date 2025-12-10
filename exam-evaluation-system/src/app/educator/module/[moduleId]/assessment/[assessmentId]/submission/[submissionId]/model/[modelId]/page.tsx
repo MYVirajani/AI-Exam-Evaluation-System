@@ -160,16 +160,24 @@ export default function SubmissionReviewPage() {
   const saveChanges = async (answerId: string) => {
     try {
       setSaving(true);
-      const response = await fetch(`/api/educator/student-answer/${answerId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          feedback: editedFeedback,
-          score: editedScore ? parseFloat(editedScore) : null,
-        }),
-      });
+      
+      // Use the correct endpoint with PUT method
+      const response = await fetch(
+        `/api/educator/submission/${submissionId}/${answerId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            feedback: editedFeedback,
+            score: editedScore ? parseFloat(editedScore) : null,
+          }),
+        }
+      );
 
       if (response.ok) {
+        const result = await response.json();
+        
+        // Update local state with the new values
         setData((prev) => {
           if (!prev) return null;
           return {
@@ -187,11 +195,12 @@ export default function SubmissionReviewPage() {
         });
         cancelEditing();
       } else {
-        throw new Error("Failed to save changes");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save changes");
       }
     } catch (error) {
       console.error("Error saving changes:", error);
-      alert("Failed to save changes. Please try again.");
+      alert(`Failed to save changes. ${error instanceof Error ? error.message : 'Please try again.'}`);
     } finally {
       setSaving(false);
     }
@@ -514,46 +523,6 @@ export default function SubmissionReviewPage() {
           </div>
         </div>
 
-        {/* Evaluation Model
-        {data.evaluation_model && (
-          <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-slate-200">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-5">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse shadow-lg"></div>
-                <h2 className="text-white font-bold text-xl">
-                  Evaluation Model: {data.evaluation_model.model_name}
-                </h2>
-              </div>
-            </div>
-            <div className="p-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-                <div>
-                  <p className="text-sm text-slate-500 font-medium mb-1">Provider</p>
-                  <p className="font-semibold text-slate-800 text-base">{data.evaluation_model.provider}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 font-medium mb-1">Chat Model</p>
-                  <p className="font-semibold text-slate-800 text-base">{data.evaluation_model.chat_model}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 font-medium mb-1">Temperature</p>
-                  <p className="font-semibold text-slate-800 text-base">{data.evaluation_model.temperature}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 font-medium mb-1">Embedding Model</p>
-                  <p className="font-semibold text-slate-800 text-base">{data.evaluation_model.embedding_model || 'N/A'}</p>
-                </div>
-              </div>
-              {data.evaluation_model.description && (
-                <div className="pt-6 border-t border-slate-200">
-                  <p className="text-sm text-slate-500 font-medium mb-2">Description</p>
-                  <p className="text-slate-700 leading-relaxed">{data.evaluation_model.description}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )} */}
-
         {/* Questions and Answers */}
         <div className="space-y-6">
           {data.student_answers.map((answer, index) => (
@@ -578,11 +547,15 @@ export default function SubmissionReviewPage() {
                       </button>
                       <button
                         onClick={() => saveChanges(answer.id)}
-                        className="p-2.5 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm"
+                        className="p-2.5 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled={saving}
                         title="Save"
                       >
-                        <Check className="w-5 h-5" />
+                        {saving ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Check className="w-5 h-5" />
+                        )}
                       </button>
                     </>
                   ) : (

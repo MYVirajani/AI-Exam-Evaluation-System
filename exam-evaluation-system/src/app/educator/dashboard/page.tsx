@@ -387,7 +387,7 @@ export default function EducatorHomePage() {
       {/* Main Content Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Hero Section */}
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden relative z-0">
           <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 rounded-3xl p-8 md:p-12 text-white relative">
             <div className="absolute inset-0 bg-black/10 rounded-3xl"></div>
             <div className="relative z-10">

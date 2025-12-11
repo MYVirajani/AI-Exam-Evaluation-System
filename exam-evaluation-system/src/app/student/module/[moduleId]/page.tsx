@@ -157,7 +157,7 @@ const StudentModulePage = () => {
     return (
       <LoadingAnimation
         size="lg"
-        variant="pulse"
+        variant="wave"
         text="Loading module data..."
         fullScreen={true}
         color="blue"
@@ -228,7 +228,7 @@ const StudentModulePage = () => {
                       </svg>
                       {module.module_code}
                     </div>
-                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-purple-800 bg-clip-text text-transparent leading-tight">
+                    <h1 className="text-3xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-purple-800 bg-clip-text text-transparent leading-tight">
                       {module.module_name}
                     </h1>
                     <div className="flex flex-wrap items-center gap-4 text-slate-600">
@@ -342,10 +342,11 @@ const StudentModulePage = () => {
                     />
                   </svg>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-800 to-purple-800 bg-clip-text text-transparent">
-                  Upcoming Assessments
+                <h2 className="text-2xl sm:text-2xl font-bold bg-gradient-to-r from-blue-800 to-purple-800 bg-clip-text text-transparent">
+                  Upcoming Events
                 </h2>
               </div>
+              
 
               {/* Mobile: Grid, Desktop: Horizontal scroll */}
               <div className="block sm:hidden">
@@ -415,7 +416,7 @@ const StudentModulePage = () => {
                     />
                   </svg>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-800 to-purple-800 bg-clip-text text-transparent">
+                <h2 className="text-2xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-800 to-purple-800 bg-clip-text text-transparent">
                   Lecture Materials
                 </h2>
               </div>

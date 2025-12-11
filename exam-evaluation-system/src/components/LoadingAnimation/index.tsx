@@ -128,6 +128,7 @@ const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
         return renderBounce();
       case 'wave':
         return renderWave();
+          
       default:
         return renderSpinner();
     }

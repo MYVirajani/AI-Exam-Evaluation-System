@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import FormattedContent from "@/components/FormattedContent";
-import FileViewer from "@/components/FilePreview";
 import Dropdown from "@/components/Dropdown";
 import DocumentViewer from "@/components/DocumentViewer";
 

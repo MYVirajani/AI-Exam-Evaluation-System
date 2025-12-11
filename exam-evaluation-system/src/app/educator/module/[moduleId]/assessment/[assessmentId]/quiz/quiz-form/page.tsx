@@ -28,6 +28,7 @@ import { formatDuration, formatOpenCloseTime } from "@/utils/date-time";
 import QuizSection from "./QuizSection";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface Question {
   question_id: string;
@@ -599,23 +600,36 @@ export default function QuizFormPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="bg-white p-10 rounded-2xl shadow-xl border border-blue-100">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-            <p className="text-lg font-medium text-gray-700">
-              Loading quiz data...
-            </p>
-            <p className="text-sm text-gray-500">
-              Please wait while we fetch your assessment
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+  //       <div className="bg-white p-10 rounded-2xl shadow-xl border border-blue-100">
+  //         <div className="flex flex-col items-center space-y-4">
+  //           <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+  //           <p className="text-lg font-medium text-gray-700">
+  //             Loading quiz data...
+  //           </p>
+  //           <p className="text-sm text-gray-500">
+  //             Please wait while we fetch your assessment
+  //           </p>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+     if (loading) {
+        return (
+          <LoadingAnimation
+            size="lg"
+            variant="wave"
+            text="Loading quiz data..."
+            fullScreen={true}
+            color="blue"
+          />
+        );
+      }
+    
 
   if (error && !assessment) {
     return (

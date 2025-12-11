@@ -2,11 +2,34 @@
 
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ArrowLeft, Download, RefreshCw, Users, TrendingUp, Award, Clock, Eye, BarChart3 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import {
+  ArrowLeft,
+  Download,
+  RefreshCw,
+  Users,
+  TrendingUp,
+  Award,
+  Clock,
+  Eye,
+  BarChart3,
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface GradeRow {
   submission_id: string;
@@ -80,9 +103,7 @@ export default function QuizResultsPage() {
           module: assessmentData.module,
         });
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch data"
-        );
+        setError(err instanceof Error ? err.message : "Failed to fetch data");
       } finally {
         setLoading(false);
       }
@@ -103,9 +124,9 @@ export default function QuizResultsPage() {
       assessmentId,
       studentId,
       educatorId: educatorId || "",
-      moduleId
+      moduleId,
     });
-    
+
     router.push(
       `/educator/module/${moduleId}/assessment/${assessmentId}/quiz/results/student?${queryParams.toString()}`
     );
@@ -121,21 +142,23 @@ export default function QuizResultsPage() {
       "Max Marks",
       "Percentage",
       "Graded At",
-      "Auto Graded"
+      "Auto Graded",
     ];
-    
+
     const csvContent = [
       headers.join(","),
-      ...grades.map(row => [
-        row.registration_number || "",
-        `"${row.student_name || ""}"`,
-        row.email || "",
-        row.marks_awarded || "",
-        row.max_marks || "",
-        row.percentage ? `${row.percentage}%` : "",
-        row.graded_at ? new Date(row.graded_at).toLocaleDateString() : "",
-        row.auto_graded ? "Yes" : "No"
-      ].join(","))
+      ...grades.map((row) =>
+        [
+          row.registration_number || "",
+          `"${row.student_name || ""}"`,
+          row.email || "",
+          row.marks_awarded || "",
+          row.max_marks || "",
+          row.percentage ? `${row.percentage}%` : "",
+          row.graded_at ? new Date(row.graded_at).toLocaleDateString() : "",
+          row.auto_graded ? "Yes" : "No",
+        ].join(",")
+      ),
     ].join("\n");
 
     // Download CSV
@@ -143,7 +166,9 @@ export default function QuizResultsPage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `quiz-results-${assessment?.title.replace(/\s+/g, "-").toLowerCase()}.csv`;
+    a.download = `quiz-results-${assessment?.title
+      .replace(/\s+/g, "-")
+      .toLowerCase()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -151,24 +176,28 @@ export default function QuizResultsPage() {
   };
 
   const getStatistics = () => {
-    const gradedSubmissions = grades.filter(g => g.marks_awarded !== null);
+    const gradedSubmissions = grades.filter((g) => g.marks_awarded !== null);
     const totalSubmissions = grades.length;
-    const avgPercentage = gradedSubmissions.length > 0 
-      ? gradedSubmissions.reduce((sum, g) => sum + (g.percentage || 0), 0) / gradedSubmissions.length
-      : 0;
-    const highestPercentage = Math.max(...gradedSubmissions.map(g => g.percentage || 0));
-    
+    const avgPercentage =
+      gradedSubmissions.length > 0
+        ? gradedSubmissions.reduce((sum, g) => sum + (g.percentage || 0), 0) /
+          gradedSubmissions.length
+        : 0;
+    const highestPercentage = Math.max(
+      ...gradedSubmissions.map((g) => g.percentage || 0)
+    );
+
     return {
       totalSubmissions,
       gradedSubmissions: gradedSubmissions.length,
       avgPercentage: Math.round(avgPercentage * 100) / 100,
-      highestPercentage: gradedSubmissions.length > 0 ? highestPercentage : 0
+      highestPercentage: gradedSubmissions.length > 0 ? highestPercentage : 0,
     };
   };
 
   const getDistributionData = () => {
-    const gradedSubmissions = grades.filter(g => g.percentage !== null);
-    
+    const gradedSubmissions = grades.filter((g) => g.percentage !== null);
+
     const bins = [
       { label: "0-10%", range: [0, 10], color: "#dc2626", count: 0 },
       { label: "11-20%", range: [11, 20], color: "#ea580c", count: 0 },
@@ -182,37 +211,51 @@ export default function QuizResultsPage() {
       { label: "91-100%", range: [91, 100], color: "#7c3aed", count: 0 },
     ];
 
-    gradedSubmissions.forEach(grade => {
+    gradedSubmissions.forEach((grade) => {
       const percentage = grade.percentage!;
-      const bin = bins.find(b => percentage >= b.range[0] && percentage <= b.range[1]);
+      const bin = bins.find(
+        (b) => percentage >= b.range[0] && percentage <= b.range[1]
+      );
       if (bin) bin.count++;
     });
 
-    return bins.filter(bin => bin.count > 0 || gradedSubmissions.length === 0);
+    return bins.filter(
+      (bin) => bin.count > 0 || gradedSubmissions.length === 0
+    );
   };
 
   const getGradeBandsData = () => {
-    const gradedSubmissions = grades.filter(g => g.percentage !== null);
-    
+    const gradedSubmissions = grades.filter((g) => g.percentage !== null);
+
     const bands = [
       { name: "Excellent (80-100%)", range: [80, 100], color: "#10b981" },
       { name: "Good (60-79%)", range: [60, 79], color: "#3b82f6" },
       { name: "Average (40-59%)", range: [40, 59], color: "#f59e0b" },
-      { name: "Below Average (<40%)", range: [0, 39], color: "#ef4444" }
+      { name: "Below Average (<40%)", range: [0, 39], color: "#ef4444" },
     ];
 
-    return bands.map(band => ({
-      name: band.name,
-      value: gradedSubmissions.filter(g => 
-        g.percentage! >= band.range[0] && g.percentage! <= band.range[1]
-      ).length,
-      color: band.color,
-      percentage: gradedSubmissions.length > 0 
-        ? Math.round((gradedSubmissions.filter(g => 
+    return bands
+      .map((band) => ({
+        name: band.name,
+        value: gradedSubmissions.filter(
+          (g) =>
             g.percentage! >= band.range[0] && g.percentage! <= band.range[1]
-          ).length / gradedSubmissions.length) * 100)
-        : 0
-    })).filter(band => band.value > 0);
+        ).length,
+        color: band.color,
+        percentage:
+          gradedSubmissions.length > 0
+            ? Math.round(
+                (gradedSubmissions.filter(
+                  (g) =>
+                    g.percentage! >= band.range[0] &&
+                    g.percentage! <= band.range[1]
+                ).length /
+                  gradedSubmissions.length) *
+                  100
+              )
+            : 0,
+      }))
+      .filter((band) => band.value > 0);
   };
 
   const getGradeColor = (percentage: number | null) => {
@@ -231,14 +274,25 @@ export default function QuizResultsPage() {
     return "bg-red-100 text-red-800";
   };
 
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  //       <div className="bg-white p-8 rounded-lg shadow-sm">
+  //         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+  //         <p className="mt-4 text-gray-600">Loading quiz results...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-sm">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading quiz results...</p>
-        </div>
-      </div>
+      <LoadingAnimation
+        size="lg"
+        variant="wave"
+        text="Loading quiz results..."
+        fullScreen={true}
+        color="blue"
+      />
     );
   }
 
@@ -258,24 +312,27 @@ export default function QuizResultsPage() {
   const stats = getStatistics();
   const distributionData = getDistributionData();
   const gradeBandsData = getGradeBandsData();
-  
+
   // Generate breadcrumbs
-  const breadcrumbs = assessment 
+  const breadcrumbs = assessment
     ? [
         ...getAssessmentBreadcrumbs(
-          assessment.module.module_code, 
-          moduleId, 
-          assessment.title, 
-          assessmentId, 
-          'educator'
+          assessment.module.module_code,
+          moduleId,
+          assessment.title,
+          assessmentId,
+          "educator"
         ),
-        { label: 'Results', current: true }
+        { label: "Results", current: true },
       ]
     : [
-        { label: 'Dashboard', href: '/educator/dashboard' }, 
-        { label: 'Module', href: `/educator/module/${moduleId}` }, 
-        { label: 'Assessment', href: `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}` },
-        { label: 'Results', current: true }
+        { label: "Dashboard", href: "/educator/dashboard" },
+        { label: "Module", href: `/educator/module/${moduleId}` },
+        {
+          label: "Assessment",
+          href: `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`,
+        },
+        { label: "Results", current: true },
       ];
 
   return (
@@ -305,7 +362,9 @@ export default function QuizResultsPage() {
               </div>
               {assessment && (
                 <div className="text-sm text-gray-600">
-                  <span className="font-medium">{assessment.module.module_code}</span>
+                  <span className="font-medium">
+                    {assessment.module.module_code}
+                  </span>
                   <span className="mx-2">•</span>
                   <span>{assessment.title}</span>
                 </div>
@@ -413,25 +472,24 @@ export default function QuizResultsPage() {
               </div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={distributionData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <BarChart
+                    data={distributionData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="label" 
+                    <XAxis
+                      dataKey="label"
                       fontSize={12}
                       angle={-45}
                       textAnchor="end"
                       height={60}
                     />
                     <YAxis fontSize={12} />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value) => [`${value} students`, "Count"]}
                       labelFormatter={(label) => `Score Range: ${label}`}
                     />
-                    <Bar 
-                      dataKey="count" 
-                      fill="#3b82f6"
-                      radius={[2, 2, 0, 0]}
-                    />
+                    <Bar dataKey="count" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -461,13 +519,13 @@ export default function QuizResultsPage() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value, name, props) => [
-                        `${value} students (${props.payload.percentage}%)`, 
-                        "Count"
+                        `${value} students (${props.payload.percentage}%)`,
+                        "Count",
                       ]}
                     />
-                    <Legend 
+                    <Legend
                       formatter={(value, entry) => (
                         <span style={{ color: entry.color }}>
                           {value} ({entry.payload.percentage}%)
@@ -488,7 +546,8 @@ export default function QuizResultsPage() {
               Student Results
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              {grades.length} submission{grades.length !== 1 ? 's' : ''} found • Click on a student to view detailed results
+              {grades.length} submission{grades.length !== 1 ? "s" : ""} found •
+              Click on a student to view detailed results
             </p>
           </div>
 
@@ -522,10 +581,10 @@ export default function QuizResultsPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {grades.map((grade, index) => (
-                    <tr 
+                    <tr
                       key={grade.submission_id}
                       className={`hover:bg-blue-50 transition-colors duration-200 cursor-pointer ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50/30"
                       }`}
                       onClick={() => handleStudentClick(grade.student_id)}
                       title="Click to view detailed student results"
@@ -547,10 +606,10 @@ export default function QuizResultsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {grade.marks_awarded !== null && grade.max_marks !== null
+                          {grade.marks_awarded !== null &&
+                          grade.max_marks !== null
                             ? `${grade.marks_awarded} / ${grade.max_marks}`
-                            : "Not graded"
-                          }
+                            : "Not graded"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -588,15 +647,17 @@ export default function QuizResultsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {grade.graded_at
-                          ? new Date(grade.graded_at).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })
-                          : "-"
-                        }
+                          ? new Date(grade.graded_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )
+                          : "-"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
@@ -639,33 +700,51 @@ export default function QuizResultsPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[
-                { label: "Excellent (80-100%)", range: [80, 100], color: "bg-green-500" },
-                { label: "Good (60-79%)", range: [60, 79], color: "bg-blue-500" },
-                { label: "Average (40-59%)", range: [40, 59], color: "bg-yellow-500" },
-                { label: "Below Average (<40%)", range: [0, 39], color: "bg-red-500" }
+                {
+                  label: "Excellent (80-100%)",
+                  range: [80, 100],
+                  color: "bg-green-500",
+                },
+                {
+                  label: "Good (60-79%)",
+                  range: [60, 79],
+                  color: "bg-blue-500",
+                },
+                {
+                  label: "Average (40-59%)",
+                  range: [40, 59],
+                  color: "bg-yellow-500",
+                },
+                {
+                  label: "Below Average (<40%)",
+                  range: [0, 39],
+                  color: "bg-red-500",
+                },
               ].map((band) => {
-                const count = grades.filter(g => 
-                  g.percentage !== null && 
-                  g.percentage >= band.range[0] && 
-                  g.percentage <= band.range[1]
+                const count = grades.filter(
+                  (g) =>
+                    g.percentage !== null &&
+                    g.percentage >= band.range[0] &&
+                    g.percentage <= band.range[1]
                 ).length;
-                const percentage = stats.gradedSubmissions > 0 
-                  ? Math.round((count / stats.gradedSubmissions) * 100)
-                  : 0;
+                const percentage =
+                  stats.gradedSubmissions > 0
+                    ? Math.round((count / stats.gradedSubmissions) * 100)
+                    : 0;
 
                 return (
                   <div key={band.label} className="text-center">
                     <div className="mb-2">
-                      <div className={`w-12 h-12 ${band.color} rounded-lg mx-auto flex items-center justify-center text-white font-bold text-lg`}>
+                      <div
+                        className={`w-12 h-12 ${band.color} rounded-lg mx-auto flex items-center justify-center text-white font-bold text-lg`}
+                      >
                         {count}
                       </div>
                     </div>
                     <div className="text-sm font-medium text-gray-900">
                       {percentage}%
                     </div>
-                    <div className="text-xs text-gray-600">
-                      {band.label}
-                    </div>
+                    <div className="text-xs text-gray-600">{band.label}</div>
                   </div>
                 );
               })}

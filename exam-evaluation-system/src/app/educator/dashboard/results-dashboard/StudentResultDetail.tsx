@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save, FileText, Edit2, X, Check, User, BookOpen, Calendar, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import DocumentViewer from './DocumentViewer';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 interface GradedAnswer {
   id: number;
@@ -184,14 +185,26 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = ({
     return 'bg-red-50 border-red-200';
   };
 
-  if (loading) {
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-12 w-12 border-2 border-slate-300 border-t-slate-600 mx-auto mb-4"></div>
+  //         <p className="text-slate-600">Loading student details...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-slate-300 border-t-slate-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading student details...</p>
-        </div>
-      </div>
+      <LoadingAnimation
+        size="lg"
+        variant="wave"
+        text="Loading student details..."
+        fullScreen={true}
+        color="blue"
+      />
     );
   }
 

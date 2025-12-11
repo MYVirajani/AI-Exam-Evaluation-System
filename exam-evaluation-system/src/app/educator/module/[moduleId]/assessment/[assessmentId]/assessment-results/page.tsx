@@ -15,6 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 interface User {
   first_name: string;
@@ -259,16 +260,29 @@ export default function AssessmentResultsPage() {
     router.push(reviewUrl);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading assessment results...</p>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+  //         <p className="mt-4 text-gray-600">Loading assessment results...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+     if (loading) {
+      return (
+        <LoadingAnimation
+          size="lg"
+          variant="wave"
+          text="Loading assessment results..."
+          fullScreen={true}
+          color="blue"
+        />
+      );
+    }
+  
 
   if (error || !data) {
     return (

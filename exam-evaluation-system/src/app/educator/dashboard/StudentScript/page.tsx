@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save, Edit3, Check, X, User, BookOpen, Calendar, Award, AlertCircle } from 'lucide-react';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 // Types
 interface StudentAnswer {
@@ -211,16 +212,30 @@ const StudentScriptViewer: React.FC<StudentScriptViewerProps> = ({
     return 'text-red-600 bg-red-50';
   };
 
-  if (loading) {
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+  //       <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+  //         <p className="text-gray-600">Loading student answer script...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading student answer script...</p>
-        </div>
-      </div>
+      <LoadingAnimation
+        size="md"
+        variant="wave"
+        text="Loading student answer script..."
+        fullScreen={true}
+        color="blue"
+      />
     );
   }
+
+  
 
   if (error) {
     return (

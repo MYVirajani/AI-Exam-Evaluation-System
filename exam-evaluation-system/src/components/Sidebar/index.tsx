@@ -355,7 +355,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             <div className="text-center">
               <LoadingAnimation
                 size="sm"
-                variant="spinner"
+                variant="pulse"
                 text="Loading sidebar menu..."
                 fullScreen={false}
               />

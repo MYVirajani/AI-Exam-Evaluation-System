@@ -3,23 +3,24 @@
 import React, { ReactElement } from "react";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  User, 
-  BookOpen, 
-  Calendar, 
-  Clock, 
-  Monitor, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle, 
+import {
+  ChevronDown,
+  ChevronRight,
+  User,
+  BookOpen,
+  Calendar,
+  Clock,
+  Monitor,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
   ArrowLeft,
-  Award
+  Award,
 } from "lucide-react";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
+import LoadingAnimation from "@/components/LoadingAnimation";
 
 // TypeScript interfaces
 interface Question {
@@ -85,7 +86,9 @@ const StudentAssessmentSummaryPage: React.FC = () => {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedSubmissions, setExpandedSubmissions] = useState<Set<string>>(new Set());
+  const [expandedSubmissions, setExpandedSubmissions] = useState<Set<string>>(
+    new Set()
+  );
 
   useEffect(() => {
     if (!assessmentId || !studentId) {
@@ -99,15 +102,19 @@ const StudentAssessmentSummaryPage: React.FC = () => {
         const response = await fetch(
           `/api/educator/assessment/quiz/results/student?assessmentId=${assessmentId}&studentId=${studentId}`
         );
-        
+
         if (!response.ok) {
-          throw new Error(`Failed to fetch student summary: ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch student summary: ${response.statusText}`
+          );
         }
-        
+
         const result: ApiResponse = await response.json();
         setData(result);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch student summary");
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch student summary"
+        );
       } finally {
         setLoading(false);
       }
@@ -133,16 +140,25 @@ const StudentAssessmentSummaryPage: React.FC = () => {
 
   const calculateSubmissionScore = (submission: Submission): ScoreResult => {
     // Use assessment-level grade if available, otherwise calculate from individual questions
-    if (submission.assessment_grade.marks_awarded !== null && submission.assessment_grade.max_marks !== null) {
+    if (
+      submission.assessment_grade.marks_awarded !== null &&
+      submission.assessment_grade.max_marks !== null
+    ) {
       return {
         awarded: submission.assessment_grade.marks_awarded,
-        total: submission.assessment_grade.max_marks
+        total: submission.assessment_grade.max_marks,
       };
     }
-    
+
     // Fallback to question-level calculation
-    const totalMarks = submission.questions.reduce((sum, q) => sum + q.marks_allowed, 0);
-    const awardedMarks = submission.questions.reduce((sum, q) => sum + (q.marks_awarded || 0), 0);
+    const totalMarks = submission.questions.reduce(
+      (sum, q) => sum + q.marks_allowed,
+      0
+    );
+    const awardedMarks = submission.questions.reduce(
+      (sum, q) => sum + (q.marks_awarded || 0),
+      0
+    );
     return { awarded: awardedMarks, total: totalMarks };
   };
 
@@ -171,37 +187,50 @@ const StudentAssessmentSummaryPage: React.FC = () => {
     );
   };
 
-  const getGradingStatus = (submission: Submission): { status: string; color: string; icon: ReactElement } => {
+  const getGradingStatus = (
+    submission: Submission
+  ): { status: string; color: string; icon: ReactElement } => {
     if (submission.assessment_grade.graded_at) {
       return {
         status: "Graded",
         color: "text-green-600 bg-green-50 border-green-200",
-        icon: <CheckCircle className="w-4 h-4" />
+        icon: <CheckCircle className="w-4 h-4" />,
       };
     } else if (submission.assessment_grade.marks_awarded !== null) {
       return {
         status: "Auto-graded",
         color: "text-blue-600 bg-blue-50 border-blue-200",
-        icon: <Award className="w-4 h-4" />
+        icon: <Award className="w-4 h-4" />,
       };
     } else {
       return {
         status: "Pending",
         color: "text-yellow-600 bg-yellow-50 border-yellow-200",
-        icon: <AlertCircle className="w-4 h-4" />
+        icon: <AlertCircle className="w-4 h-4" />,
       };
     }
   };
 
   // Loading state
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  //       <div className="bg-white p-8 rounded-lg shadow-sm">
+  //         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+  //         <p className="mt-4 text-gray-600">Loading student assessment summary...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-sm">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading student assessment summary...</p>
-        </div>
-      </div>
+      <LoadingAnimation
+        size="lg"
+        variant="wave"
+        text="Loading student assessment summary..."
+        fullScreen={true}
+        color="blue"
+      />
     );
   }
 
@@ -229,8 +258,12 @@ const StudentAssessmentSummaryPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-sm">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2 text-center">No Data Found</h3>
-          <p className="text-gray-600 text-center mb-4">No assessment data found for this student.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2 text-center">
+            No Data Found
+          </h3>
+          <p className="text-gray-600 text-center mb-4">
+            No assessment data found for this student.
+          </p>
           <div className="text-center">
             <Button onClick={handleGoBack} variant="outline">
               Go Back
@@ -247,9 +280,15 @@ const StudentAssessmentSummaryPage: React.FC = () => {
   const breadcrumbs = [
     { label: "Dashboard", href: "/educator/dashboard" },
     { label: summary.module_code, href: `/educator/module/${moduleId}` },
-    { label: summary.assessment_title, href: `/educator/module/${moduleId}/assessment/${params.assessmentId}` },
-    { label: "Results", href: `/educator/module/${moduleId}/assessment/${params.assessmentId}/quiz/results?educatorId=${educatorId}` },
-    { label: summary.student_registration_number, current: true }
+    {
+      label: summary.assessment_title,
+      href: `/educator/module/${moduleId}/assessment/${params.assessmentId}`,
+    },
+    {
+      label: "Results",
+      href: `/educator/module/${moduleId}/assessment/${params.assessmentId}/quiz/results?educatorId=${educatorId}`,
+    },
+    { label: summary.student_registration_number, current: true },
   ];
 
   return (
@@ -274,11 +313,15 @@ const StudentAssessmentSummaryPage: React.FC = () => {
                   Back to Results
                 </Button>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{summary.assessment_title}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                {summary.assessment_title}
+              </h1>
               <div className="flex items-center space-x-6 text-sm text-gray-600">
                 <div className="flex items-center">
                   <BookOpen className="w-4 h-4 mr-1" />
-                  <span>{summary.module_code} - {summary.module_name}</span>
+                  <span>
+                    {summary.module_code} - {summary.module_name}
+                  </span>
                 </div>
                 <div className="flex items-center">
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium uppercase">
@@ -302,8 +345,12 @@ const StudentAssessmentSummaryPage: React.FC = () => {
               <p className="text-sm text-gray-900">{summary.student_name}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Registration Number</p>
-              <p className="text-sm text-gray-900">{summary.student_registration_number}</p>
+              <p className="text-sm font-medium text-gray-500">
+                Registration Number
+              </p>
+              <p className="text-sm text-gray-900">
+                {summary.student_registration_number}
+              </p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Email</p>
@@ -316,10 +363,11 @@ const StudentAssessmentSummaryPage: React.FC = () => {
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
-              Submission History ({summary.submissions.length} submission{summary.submissions.length !== 1 ? 's' : ''})
+              Submission History ({summary.submissions.length} submission
+              {summary.submissions.length !== 1 ? "s" : ""})
             </h2>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -350,19 +398,29 @@ const StudentAssessmentSummaryPage: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {summary.submissions.map((submission, index) => {
                   const score = calculateSubmissionScore(submission);
-                  
+
                   // Calculate duration only if both timestamps are not null
                   let durationDisplay = "Information not found";
-                  if (submission.submission_end_at && submission.submission_start_at) {
-                    const duration = new Date(submission.submission_end_at).getTime() - new Date(submission.submission_start_at).getTime();
+                  if (
+                    submission.submission_end_at &&
+                    submission.submission_start_at
+                  ) {
+                    const duration =
+                      new Date(submission.submission_end_at).getTime() -
+                      new Date(submission.submission_start_at).getTime();
                     const durationMinutes = Math.round(duration / (1000 * 60));
                     durationDisplay = `${durationMinutes} minutes`;
                   }
-                  
-                  const isExpanded = expandedSubmissions.has(submission.submission_id);
-                  const percentage = score.total > 0 ? Math.round((score.awarded / score.total) * 100) : 0;
+
+                  const isExpanded = expandedSubmissions.has(
+                    submission.submission_id
+                  );
+                  const percentage =
+                    score.total > 0
+                      ? Math.round((score.awarded / score.total) * 100)
+                      : 0;
                   const gradingStatus = getGradingStatus(submission);
-                  
+
                   return (
                     <React.Fragment key={submission.submission_id}>
                       <tr className="hover:bg-gray-50">
@@ -394,25 +452,37 @@ const StudentAssessmentSummaryPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center text-sm text-gray-900">
                             <Monitor className="w-4 h-4 mr-1 text-gray-400" />
-                            <span className="truncate max-w-32" title={submission.device_info}>
+                            <span
+                              className="truncate max-w-32"
+                              title={submission.device_info}
+                            >
                               {submission.device_info}
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className={`text-sm font-semibold ${getScoreColor(score.awarded, score.total)}`}>
+                          <div
+                            className={`text-sm font-semibold ${getScoreColor(
+                              score.awarded,
+                              score.total
+                            )}`}
+                          >
                             {score.awarded}/{score.total} ({percentage}%)
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${gradingStatus.color}`}>
+                          <div
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${gradingStatus.color}`}
+                          >
                             {gradingStatus.icon}
                             <span className="ml-1">{gradingStatus.status}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
-                            onClick={() => toggleSubmission(submission.submission_id)}
+                            onClick={() =>
+                              toggleSubmission(submission.submission_id)
+                            }
                             className="flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors duration-200"
                             type="button"
                           >
@@ -430,11 +500,14 @@ const StudentAssessmentSummaryPage: React.FC = () => {
                           </button>
                         </td>
                       </tr>
-                      
+
                       {/* Expanded Details */}
                       {isExpanded && (
                         <tr>
-                          <td colSpan={7} className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                          <td
+                            colSpan={7}
+                            className="px-6 py-4 bg-gray-50 border-t border-gray-200"
+                          >
                             <div className="space-y-6">
                               {/* Assessment Grade Info */}
                               {submission.assessment_grade.graded_at && (
@@ -445,18 +518,40 @@ const StudentAssessmentSummaryPage: React.FC = () => {
                                   </h4>
                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                     <div>
-                                      <p className="font-medium text-gray-500">Total Score</p>
-                                      <p className={`${getScoreColor(score.awarded, score.total)} font-semibold`}>
-                                        {score.awarded}/{score.total} ({Math.round((score.awarded/score.total)*100)}%)
+                                      <p className="font-medium text-gray-500">
+                                        Total Score
+                                      </p>
+                                      <p
+                                        className={`${getScoreColor(
+                                          score.awarded,
+                                          score.total
+                                        )} font-semibold`}
+                                      >
+                                        {score.awarded}/{score.total} (
+                                        {Math.round(
+                                          (score.awarded / score.total) * 100
+                                        )}
+                                        %)
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="font-medium text-gray-500">Graded At</p>
-                                      <p className="text-gray-900">{formatDate(submission.assessment_grade.graded_at)}</p>
+                                      <p className="font-medium text-gray-500">
+                                        Graded At
+                                      </p>
+                                      <p className="text-gray-900">
+                                        {formatDate(
+                                          submission.assessment_grade.graded_at
+                                        )}
+                                      </p>
                                     </div>
                                     <div>
-                                      <p className="font-medium text-gray-500">Overall Feedback</p>
-                                      <p className="text-gray-700">{submission.assessment_grade.feedback || "No feedback provided"}</p>
+                                      <p className="font-medium text-gray-500">
+                                        Overall Feedback
+                                      </p>
+                                      <p className="text-gray-700">
+                                        {submission.assessment_grade.feedback ||
+                                          "No feedback provided"}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
@@ -464,7 +559,9 @@ const StudentAssessmentSummaryPage: React.FC = () => {
 
                               {/* Question Details */}
                               <div>
-                                <h4 className="font-medium text-gray-900 mb-3">Question Details</h4>
+                                <h4 className="font-medium text-gray-900 mb-3">
+                                  Question Details
+                                </h4>
                                 <div className="overflow-x-auto">
                                   <table className="w-full bg-white rounded border">
                                     <thead className="bg-gray-100">
@@ -485,7 +582,10 @@ const StudentAssessmentSummaryPage: React.FC = () => {
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                       {submission.questions.map((question) => (
-                                        <tr key={question.question_id} className="hover:bg-gray-50">
+                                        <tr
+                                          key={question.question_id}
+                                          className="hover:bg-gray-50"
+                                        >
                                           <td className="px-4 py-3 text-sm">
                                             <div className="max-w-xs">
                                               <p className="text-gray-900 font-medium mb-1">
@@ -496,19 +596,27 @@ const StudentAssessmentSummaryPage: React.FC = () => {
                                           <td className="px-4 py-3 text-sm">
                                             <div className="max-w-xs">
                                               <p className="text-gray-700">
-                                                {question.student_answer || "No answer provided"}
+                                                {question.student_answer ||
+                                                  "No answer provided"}
                                               </p>
                                             </div>
                                           </td>
                                           <td className="px-4 py-3 text-sm">
-                                            <div className={`font-semibold ${getScoreColor(question.marks_awarded || 0, question.marks_allowed)}`}>
-                                              {question.marks_awarded ?? 0}/{question.marks_allowed}
+                                            <div
+                                              className={`font-semibold ${getScoreColor(
+                                                question.marks_awarded || 0,
+                                                question.marks_allowed
+                                              )}`}
+                                            >
+                                              {question.marks_awarded ?? 0}/
+                                              {question.marks_allowed}
                                             </div>
                                           </td>
                                           <td className="px-4 py-3 text-sm">
                                             <div className="max-w-xs">
                                               <p className="text-gray-600 italic">
-                                                {question.feedback || "No feedback provided"}
+                                                {question.feedback ||
+                                                  "No feedback provided"}
                                               </p>
                                             </div>
                                           </td>

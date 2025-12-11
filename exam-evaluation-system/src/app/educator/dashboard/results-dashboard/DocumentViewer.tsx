@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 interface DocumentViewerProps {
   fileUrl: string;
@@ -86,13 +87,18 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ fileUrl }) => {
   };
 
   const renderViewer = () => {
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900"></div>
-        </div>
-      );
-    }
+
+     if (loading) {
+    return (
+      <LoadingAnimation
+        size="lg"
+        variant="wave"
+        text=""
+        fullScreen={true}
+        color="blue"
+      />
+    );
+  }
 
     if (error) {
       return (

@@ -8,6 +8,7 @@ import GradedAnswersTable from './GradedAnswersTable';
 import { GradedAnswer, Result } from './types';
 import { FiArrowLeft, FiInfo } from 'react-icons/fi';
 import Link from 'next/link';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 type ModelType = 'chatgpt' | 'gemini';
 
@@ -124,23 +125,37 @@ const StudentResultsDashboard = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
-        <div className="max-w-7xl mx-auto p-6">
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <div className="flex items-center justify-center space-x-2">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <p className="text-gray-700">
-                Loading {assessmentId ? `results for ${assessmentTitle || 'assessment'}` : 'dashboard'} 
-                {' '}for {getModelDisplayName(selectedModel)}...
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
+  //       <div className="max-w-7xl mx-auto p-6">
+  //         <div className="bg-white rounded-xl shadow-lg p-8">
+  //           <div className="flex items-center justify-center space-x-2">
+  //             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+  //             <p className="text-gray-700">
+  //               Loading {assessmentId ? `results for ${assessmentTitle || 'assessment'}` : 'dashboard'} 
+  //               {' '}for {getModelDisplayName(selectedModel)}...
+  //             </p>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+ if (loading) {
+  return (
+    <LoadingAnimation
+      size="lg"
+      variant="wave"
+      text={`Loading ${
+        assessmentId ? `results for ${assessmentTitle || "assessment"}` : "dashboard"
+      } for ${getModelDisplayName(selectedModel)}...`}
+      fullScreen={true}
+      color="blue"
+    />
+  );
+}
+
 
   if (error) {
     return (

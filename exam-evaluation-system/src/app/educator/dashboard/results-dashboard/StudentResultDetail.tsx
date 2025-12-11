@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save, FileText, Edit2, X, Check, User, BookOpen, Calendar, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import DocumentViewer from './DocumentViewer';
+import DocumentViewer from '../../../../components/DocumentViewer';
 import LoadingAnimation from '@/components/LoadingAnimation';
 
 interface GradedAnswer {

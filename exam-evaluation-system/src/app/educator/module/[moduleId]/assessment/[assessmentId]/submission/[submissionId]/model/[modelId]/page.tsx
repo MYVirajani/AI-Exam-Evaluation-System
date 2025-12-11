@@ -20,6 +20,7 @@ import LoadingAnimation from "@/components/LoadingAnimation";
 import FormattedContent from "@/components/FormattedContent";
 import FileViewer from "@/components/FilePreview";
 import Dropdown from "@/components/Dropdown";
+import DocumentViewer from "@/components/DocumentViewer";
 
 interface User {
   user_id: string;
@@ -132,10 +133,7 @@ export default function SubmissionReviewPage() {
   const [editedFeedback, setEditedFeedback] = useState("");
   const [editedScore, setEditedScore] = useState("");
   const [editedGuideline, setEditedGuideline] = useState("");
-  const [viewingFile, setViewingFile] = useState<{
-    url: string;
-    type: string;
-  } | null>(null);
+  const [viewingFile, setViewingFile] = useState<string | null>(null);
   const [selectedQuestionFilter, setSelectedQuestionFilter] =
     useState<string>("All Questions");
 
@@ -319,12 +317,24 @@ export default function SubmissionReviewPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
+      {/* Document Viewer Modal */}
       {viewingFile && (
-        <FileViewer
-          url={viewingFile.url}
-          type={viewingFile.type}
-          onClose={() => setViewingFile(null)}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="text-xl font-bold text-slate-900">Document Viewer</h3>
+              <button
+                onClick={() => setViewingFile(null)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-slate-600" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <DocumentViewer fileUrl={viewingFile} />
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="max-w-7xl mx-auto p-6">
@@ -446,12 +456,7 @@ export default function SubmissionReviewPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {data.submission.file_url && (
               <button
-                onClick={() =>
-                  setViewingFile({
-                    url: data.submission.file_url!,
-                    type: "pdf",
-                  })
-                }
+                onClick={() => setViewingFile(data.submission.file_url!)}
                 className="flex items-center gap-4 p-5 border-2 border-blue-200 rounded-xl hover:bg-blue-50 transition-all hover:shadow-md group"
               >
                 <div className="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
@@ -468,12 +473,7 @@ export default function SubmissionReviewPage() {
             )}
             {data.submission.media_extracted_file_url && (
               <button
-                onClick={() =>
-                  setViewingFile({
-                    url: data.submission.media_extracted_file_url!,
-                    type: "pdf",
-                  })
-                }
+                onClick={() => setViewingFile(data.submission.media_extracted_file_url!)}
                 className="flex items-center gap-4 p-5 border-2 border-green-200 rounded-xl hover:bg-green-50 transition-all hover:shadow-md group"
               >
                 <div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
@@ -490,12 +490,7 @@ export default function SubmissionReviewPage() {
             )}
             {data.submission.handwritten_file_url && (
               <button
-                onClick={() =>
-                  setViewingFile({
-                    url: data.submission.handwritten_file_url!,
-                    type: "pdf",
-                  })
-                }
+                onClick={() => setViewingFile(data.submission.handwritten_file_url!)}
                 className="flex items-center gap-4 p-5 border-2 border-purple-200 rounded-xl hover:bg-purple-50 transition-all hover:shadow-md group"
               >
                 <div className="p-3 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
@@ -594,14 +589,10 @@ export default function SubmissionReviewPage() {
                           {answer.question.media.map((m) => (
                             <button
                               key={m.id}
-                              onClick={() =>
-                                setViewingFile({
-                                  url: m.media_url,
-                                  type: "image",
-                                })
-                              }
-                              className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                              onClick={() => setViewingFile(m.media_url)}
+                              className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium flex items-center gap-1"
                             >
+                              <Eye className="w-4 h-4" />
                               View Media
                             </button>
                           ))}
@@ -651,19 +642,16 @@ export default function SubmissionReviewPage() {
                 <p className="font-semibold text-purple-900 mb-3 text-base">
                   Student Answer:
                 </p>
-                <FormattedContent
-                  text={answer.answer_text}
-                />
+                <FormattedContent text={answer.answer_text} />
                 {answer.media && answer.media.length > 0 && (
                   <div className="mt-3 flex gap-2">
                     {answer.media.map((m) => (
                       <button
                         key={m.id}
-                        onClick={() =>
-                          setViewingFile({ url: m.media_url, type: "image" })
-                        }
-                        className="text-sm text-purple-600 hover:text-purple-700 hover:underline font-medium"
+                        onClick={() => setViewingFile(m.media_url)}
+                        className="text-sm text-purple-600 hover:text-purple-700 hover:underline font-medium flex items-center gap-1"
                       >
+                        <Eye className="w-4 h-4" />
                         View Media
                       </button>
                     ))}

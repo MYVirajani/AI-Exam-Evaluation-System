@@ -32,7 +32,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToSignIn }: Signu
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [title, setTitle] = useState("");
-  const [role, setRole] = useState<"student" | "educator" | "admin">("student");
+  const [role, setRole] = useState<"student" | "educator" >("student");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -281,7 +281,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToSignIn }: Signu
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-700 block">Register as *</label>
                       <div className="flex space-x-1">
-                        {(["student", "educator", "admin"] as const).map((opt) => (
+                        {(["student", "educator"] as const).map((opt) => (
                           <button
                             key={opt}
                             type="button"

@@ -63,10 +63,11 @@ export async function GET(req: NextRequest, { params }: { params: { moduleId: st
         created_on: true,
         materials: {
           select: {
-            material_id: true,
+            id: true,
             file_name: true,
             file_url: true,
-            uploaded_on: true,
+            created_on: true,
+            updated_on: true,
             description: true,
           },
         },

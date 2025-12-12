@@ -51,7 +51,7 @@ export default function PricingPlanCard({
   };
 
   return (
-    <div className="border rounded-2xl shadow-md p-6 flex flex-col hover:shadow-lg transition relative">
+    <div className="border rounded-2xl shadow-md p-6 flex flex-col hover:shadow-lg transition relative h-full w-full">
       {processing && (
         <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center rounded-2xl z-10">
           <LoadingAnimation 
@@ -77,7 +77,7 @@ export default function PricingPlanCard({
       )}
 
       {plan.features?.length > 0 && (
-        <ul className="mt-4 space-y-2 text-sm text-gray-700">
+        <ul className="mt-4 space-y-2 text-sm text-gray-700 flex-grow">
           {plan.features.map((f, i) => (
             <li key={i} className="flex items-center">
               <span className="mr-2 text-green-500">✔</span>

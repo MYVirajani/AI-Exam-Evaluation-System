@@ -1,10 +1,20 @@
 // api/educator/module/[moduleId]/assessment/[assessmentId]/submission/[submissionId]/model/[modelId]/route.ts
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: Request,
-  { params }: { params: { moduleId: string; assessmentId: string; submissionId: string; modelId: string } }
+  {
+    params,
+  }: {
+    params: {
+      moduleId: string;
+      assessmentId: string;
+      submissionId: string;
+      modelId: string;
+    };
+  }
 ) {
   try {
     console.log("📥 Incoming Params:", params);
@@ -37,11 +47,14 @@ export async function GET(
 
     if (!assessment) {
       console.warn("❌ Assessment not found:", assessmentId);
-      return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
     }
 
     // ---------------------------------------------------------
-    // 2. Fetch submission + student profile
+    // 2. Fetch submission + student details
     // ---------------------------------------------------------
     console.log("🔍 Fetching submission...");
     const submission = await prisma.submission.findUnique({
@@ -80,11 +93,14 @@ export async function GET(
 
     if (!submission) {
       console.warn("❌ Submission not found:", submissionId);
-      return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Submission not found" },
+        { status: 404 }
+      );
     }
 
     // ---------------------------------------------------------
-    // 3. Fetch student answers for this submission + model
+    // 3. Fetch student answers
     // ---------------------------------------------------------
     console.log("🔍 Fetching raw student answers...");
     const rawStudentAnswers = await prisma.student_Answer.findMany({
@@ -122,12 +138,15 @@ export async function GET(
     console.log("📄 Raw Student Answers:", rawStudentAnswers);
 
     // ---------------------------------------------------------
-    // 4. Fetch questions for each student answer
+    // 4. Fetch the question for each student answer + deep logs
     // ---------------------------------------------------------
     console.log("🔍 Fetching questions for each student answer...");
+
     const studentAnswersWithQuestions = await Promise.all(
       rawStudentAnswers.map(async (ans) => {
-        console.log(`🔎 Fetching question for Q${ans.question_number}`);
+        console.log(
+          `\n\n==============================\n🔎 Fetching Question for Q${ans.question_number}\n==============================`
+        );
 
         const question = await prisma.question.findFirst({
           where: {
@@ -153,12 +172,27 @@ export async function GET(
           },
         });
 
-        console.log(`📘 Result for Q${ans.question_number}:`, question);
+        console.log(`📘 Raw Question Result for Q${ans.question_number}:`, question);
 
-        return {
+        if (question) {
+          console.log("📝 Question Text:", question.question_text);
+          console.log("📘 Guideline Text:", question.guideline_text);
+          console.log("⭐ Max Marks:", question.max_marks);
+          console.log("📚 MCQ Options:", question.mcq_answer_options);
+          console.log("🖼 Question Media:", question.media);
+          console.log("🧪 Question Type:", question.type);
+        } else {
+          console.log(`⚠️ No question found for Q${ans.question_number}`);
+        }
+
+        const merged = {
           ...ans,
           question: question || null,
         };
+
+        console.log("🔗 Merged Answer + Question:", merged);
+
+        return merged;
       })
     );
 
@@ -182,7 +216,7 @@ export async function GET(
     console.log("🤖 Evaluation Model:", evaluationModel);
 
     // ---------------------------------------------------------
-    // 6. Final response
+    // 6. Build final response
     // ---------------------------------------------------------
     const responseData = {
       module: assessment.module,
@@ -198,13 +232,16 @@ export async function GET(
       student_answers: studentAnswersWithQuestions,
     };
 
-    console.log("✅ Final Response:", responseData);
+    console.log("✅ Final Response Object:", responseData);
 
     return NextResponse.json(responseData);
   } catch (error) {
     console.error("🔥 Error in endpoint:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: String(error) },
+      {
+        error: "Internal server error",
+        details: String(error),
+      },
       { status: 500 }
     );
   }

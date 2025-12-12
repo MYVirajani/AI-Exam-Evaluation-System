@@ -59,7 +59,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
   const watchedFields = watch([
     "moduleCode",
     "moduleName",
-    "educationInstitute",
+    // "educationInstitute",
   ]);
 
   const isFormValid = watchedFields.every((field) =>

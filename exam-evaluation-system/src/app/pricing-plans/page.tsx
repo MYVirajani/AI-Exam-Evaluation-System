@@ -131,16 +131,26 @@ export default function PricingPlansPage() {
         Our Pricing Plans
       </h1>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {plans.map((plan) => (
-          <PricingPlanCard
-            key={plan.pricing_plan_id}
-            plan={plan}
-            billingPeriodLabels={BILLING_PERIOD_LABELS}
-            educatorId={educatorId}
-            onSubscribe={handleSubscribe}
-          />
-        ))}
+      <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+        <div className="flex gap-6 pb-4 min-w-max">
+          {plans.map((plan, index) => (
+            <div 
+              key={plan.pricing_plan_id} 
+              className="w-80 flex-shrink-0 animate-scale-in transition-all duration-300 ease-out hover:scale-105 hover:-translate-y-2 hover:shadow-2xl cursor-pointer flex"
+              style={{ 
+                animationDelay: `${index * 100}ms`,
+                animationFillMode: 'backwards'
+              }}
+            >
+              <PricingPlanCard
+                plan={plan}
+                billingPeriodLabels={BILLING_PERIOD_LABELS}
+                educatorId={educatorId}
+                onSubscribe={handleSubscribe}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ✅ Login popup */}

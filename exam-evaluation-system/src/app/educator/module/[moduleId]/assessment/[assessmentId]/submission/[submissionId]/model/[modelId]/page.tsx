@@ -282,17 +282,19 @@ export default function SubmissionReviewPage() {
   const maxScore = data.student_answers.reduce((sum, ans) => {
     const maxMarks =
       ans.question?.max_marks !== undefined
-        ? Number(ans.question.max_marks)
+        ? Number(ans.question.max_marks) // Keep as number, don't convert to integer
         : 0;
     return sum + maxMarks;
   }, 0);
 
-  const formatScore = (score: number) => {
-    if (Number.isInteger(score)) {
-      return score.toString();
-    }
-    return score.toFixed(2);
-  };
+ const formatScore = (score: number) => {
+  // Check if the number has decimal places
+  if (score % 1 === 0) {
+    return score.toString();
+  }
+  // For decimals, show up to 2 decimal places, but remove trailing zeros
+  return parseFloat(score.toFixed(2)).toString();
+};
 
   const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
@@ -321,7 +323,9 @@ export default function SubmissionReviewPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="text-xl font-bold text-slate-900">Document Viewer</h3>
+              <h3 className="text-xl font-bold text-slate-900">
+                Document Viewer
+              </h3>
               <button
                 onClick={() => setViewingFile(null)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -472,7 +476,9 @@ export default function SubmissionReviewPage() {
             )}
             {data.submission.media_extracted_file_url && (
               <button
-                onClick={() => setViewingFile(data.submission.media_extracted_file_url!)}
+                onClick={() =>
+                  setViewingFile(data.submission.media_extracted_file_url!)
+                }
                 className="flex items-center gap-4 p-5 border-2 border-green-200 rounded-xl hover:bg-green-50 transition-all hover:shadow-md group"
               >
                 <div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
@@ -489,7 +495,9 @@ export default function SubmissionReviewPage() {
             )}
             {data.submission.handwritten_file_url && (
               <button
-                onClick={() => setViewingFile(data.submission.handwritten_file_url!)}
+                onClick={() =>
+                  setViewingFile(data.submission.handwritten_file_url!)
+                }
                 className="flex items-center gap-4 p-5 border-2 border-purple-200 rounded-xl hover:bg-purple-50 transition-all hover:shadow-md group"
               >
                 <div className="p-3 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">

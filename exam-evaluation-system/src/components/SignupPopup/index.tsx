@@ -458,7 +458,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToSignIn }: Signu
                           />
                         </div>
                       </div>
-                      <div className="space-y-2">
+                      {/* <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700 block">Education Institute *</label>
                         <div className="relative">
                           <FaBuilding className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -471,7 +471,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToSignIn }: Signu
                             disabled={submitting}
                           />
                         </div>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 )}

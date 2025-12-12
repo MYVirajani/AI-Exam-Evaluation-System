@@ -279,7 +279,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                 </div>
 
                 {/* Education Institute */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <label className="block text-sm font-semibold text-gray-700">
                     Education Institute <span className="text-red-500">*</span>
                   </label>
@@ -309,7 +309,7 @@ const ModuleCreationForm: React.FC<ModuleCreationFormProps> = ({
                       {errors.educationInstitute.message}
                     </p>
                   )}
-                </div>
+                </div> */}
 
                 {/* Maximum Students */}
                 <div className="space-y-2">

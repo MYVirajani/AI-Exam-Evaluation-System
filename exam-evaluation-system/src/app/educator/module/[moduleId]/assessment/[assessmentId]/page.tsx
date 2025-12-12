@@ -647,7 +647,7 @@ export default function AssessmentPage() {
 
       setEvaluationStatus(statusMessage);
       toast.success(
-        `Evaluation completed successfully! Graded ${data.count} submissions.`
+        `Evaluation completed successfully!`
       );
 
       await refetchAssessment();

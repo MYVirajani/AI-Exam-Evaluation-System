@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       totalMarks,
       maxMarks,
       password,
-      questionCount,       // <-- API field in camelCase
+      questionCount,
       autoGrade,
       shuffleQuestions,
       backNavigation,
@@ -47,31 +47,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ---- Find existing questions for this assessment
+    // Fetch existing questions
     const existingQuestions = await prisma.question.findMany({
       where: { assessment_id: assessmentId },
-      select: { question_id: true, marks_allowed: true },
+      select: { id: true, max_marks: true },
     });
-    const existingQuestionIds = existingQuestions.map((q) => q.question_id);
 
-    // ---- Detect if questions are "locked" by foreign key usage
-    // Any grades or student answers linked to these questions?
+    const existingQuestionIds = existingQuestions.map((q) => q.id);
+
+    // ----------------------------------------------------
+    // 🔥 NEW: Check if questions are locked by dependencies
+    // ----------------------------------------------------
     const [gradesCount, studentAnswersCount] = await Promise.all([
       existingQuestionIds.length
-        ? prisma.question_Grade.count({
+        ? prisma.grading_Results.count({
             where: { question_id: { in: existingQuestionIds } },
           })
         : Promise.resolve(0),
+
       existingQuestionIds.length
         ? prisma.student_Answer.count({
-            where: { question_id: { in: existingQuestionIds } },
+            where: { question_number: { in: existingQuestionIds } },
           })
         : Promise.resolve(0),
     ]);
 
     const questionsLocked = gradesCount > 0 || studentAnswersCount > 0;
 
-    // ---- Parse incoming questions only if we are allowed to replace them
+    // ----------------------------------------------------
+    // Parse new questions if not locked
+    // ----------------------------------------------------
     const parsedQuestions = !questionsLocked
       ? questions.map((q: any, index: number) => {
           const cleanMarks = new Decimal(
@@ -91,27 +96,33 @@ export async function POST(req: NextRequest) {
             assessment_id: assessmentId,
             type: q.questionType,
             question_number: (index + 1).toString(),
-            question: String(q.questionText ?? "").trim(),
-            model_answer: modelAnswer,
+            question_text: String(q.questionText ?? "").trim(),
+            answer_text: modelAnswer,
             mcq_answer_options: Array.isArray(q.options) ? q.options : [],
-            marks_allowed: cleanMarks,
+            max_marks: cleanMarks,
+            model_id: existingAssessment.model_id!,
+            model_answer_paper_id: existingAssessment.model_id!,
           };
         })
       : [];
 
-    // ---- Decide total marks
-    const providedTotal = totalMarks != null ? new Decimal(totalMarks.toString()) : null;
+    // ----------------------------------------------------
+    // Compute final total marks
+    // ----------------------------------------------------
+    const providedTotal = totalMarks
+      ? new Decimal(totalMarks.toString())
+      : null;
 
     const calculatedTotalFromParsed = !questionsLocked
       ? parsedQuestions.reduce(
-          (sum: Decimal, q) => sum.plus(q.marks_allowed),
+          (sum: Decimal, q) => sum.plus(q.max_marks),
           new Decimal("0.00")
         )
       : null;
 
     const existingTotalFromDb = questionsLocked
       ? existingQuestions.reduce(
-          (sum: Decimal, q) => sum.plus(q.marks_allowed),
+          (sum: Decimal, q) => sum.plus(q.max_marks),
           new Decimal("0.00")
         )
       : null;
@@ -123,77 +134,81 @@ export async function POST(req: NextRequest) {
       existingAssessment.total_marks ??
       new Decimal("0.00");
 
-    // ---- Decide question count
+    // ----------------------------------------------------
+    // Final question count
+    // ----------------------------------------------------
     const finalQuestionCount = questionsLocked
       ? existingQuestions.length
-      : (typeof questionCount === "number" ? questionCount : parsedQuestions.length);
+      : (typeof questionCount === "number"
+          ? questionCount
+          : parsedQuestions.length);
 
-    // ---- Normalize instructions
+    // ----------------------------------------------------
+    // Normalize instructions
+    // ----------------------------------------------------
     const normalizedInstructions = Array.isArray(instructions)
       ? instructions.map((line: string) => line.trim())
       : typeof instructions === "string"
       ? instructions.split("\n").map((line: string) => line.trim())
       : existingAssessment.instructions;
 
-    // ---- Update assessment fields (never recreating the assessment)
-const updatedAssessment = await prisma.assessment.update({
-  where: { assessment_id: assessmentId },
-  data: {
-    title: title ?? existingAssessment.title,
-    duration: duration ?? existingAssessment.duration,
-    description: description ?? existingAssessment.description,
-    instructions: normalizedInstructions,
-    type: "quiz",
-    deadline: deadline ? new Date(deadline) : existingAssessment.deadline,
-    total_marks: finalTotalMarks,
-    max_marks:
-      maxMarks != null
-        ? new Decimal(maxMarks.toString())
-        : existingAssessment.max_marks,
-    password: password ? await bcrypt.hash(password, 10) : existingAssessment.password,
-    // question_count: finalQuestionCount,
-    auto_grade: typeof autoGrade === "boolean" ? autoGrade : existingAssessment.auto_grade,
-    shuffle_questions:
-      typeof shuffleQuestions === "boolean"
-        ? shuffleQuestions
-        : existingAssessment.shuffle_questions,
-    max_attempts:
-      typeof maxAttempts === "number" ? maxAttempts : existingAssessment.max_attempts,
-    open_at: openAt ? new Date(openAt) : existingAssessment.open_at,
-    close_at: closeAt ? new Date(closeAt) : existingAssessment.close_at,
+    // ----------------------------------------------------
+    // Update assessment
+    // ----------------------------------------------------
+    const updatedAssessment = await prisma.assessment.update({
+      where: { assessment_id: assessmentId },
+      data: {
+        title: title ?? existingAssessment.title,
+        duration: duration ?? existingAssessment.duration,
+        description: description ?? existingAssessment.description,
+        instructions: normalizedInstructions,
+        type: "quiz",
+        deadline: deadline ? new Date(deadline) : existingAssessment.deadline,
+        total_marks: finalTotalMarks,
+        max_marks:
+          maxMarks != null
+            ? new Decimal(maxMarks.toString())
+            : existingAssessment.max_marks,
+        password: password
+          ? await bcrypt.hash(password, 10)
+          : existingAssessment.password,
+        auto_grade: autoGrade ?? existingAssessment.auto_grade,
+        shuffle_questions:
+          shuffleQuestions ?? existingAssessment.shuffle_questions,
+        max_attempts: maxAttempts ?? existingAssessment.max_attempts,
+        open_at: openAt ? new Date(openAt) : existingAssessment.open_at,
+        close_at: closeAt ? new Date(closeAt) : existingAssessment.close_at,
+        back_navigation:
+          backNavigation ?? existingAssessment.back_navigation,
+        case_sensitive_evaluation:
+          caseSensitive ?? existingAssessment.case_sensitive_evaluation,
+      },
+    });
 
-    // ---- New fields added
-    back_navigation:
-      typeof backNavigation === "boolean"
-        ? backNavigation
-        : existingAssessment.back_navigation,
-    case_sensitive_evaluation:
-      typeof caseSensitive === "boolean"
-        ? caseSensitive
-        : existingAssessment.case_sensitive_evaluation,
-  },
-});
-
-    // ---- If locked, do not touch questions; just return with a friendly notice
+    // ----------------------------------------------------
+    // If locked: Do NOT modify questions
+    // ----------------------------------------------------
     if (questionsLocked) {
       return NextResponse.json({
         success: true,
         message:
-          "Assessment updated. Existing questions were not modified because they are already linked to student answers or grades.",
-        info:
-          "You can still change assessment details (title, duration, deadlines, attempts, etc.). If you need to change questions, create a new assessment or remove the dependent records first.",
+          "Assessment updated. Questions were NOT modified because they are already linked to grading results or student answers.",
         assessment: updatedAssessment,
         questionsAffected: 0,
         questionsLocked: true,
       });
     }
 
-    // ---- Otherwise replace questions safely in a transaction
+    // ----------------------------------------------------
+    // Replace questions inside transaction
+    // ----------------------------------------------------
     const createdQuestions = await prisma.$transaction(async (tx) => {
       await tx.question.deleteMany({ where: { assessment_id: assessmentId } });
+
       const created = await Promise.all(
         parsedQuestions.map((q) => tx.question.create({ data: q }))
       );
+
       return created;
     });
 

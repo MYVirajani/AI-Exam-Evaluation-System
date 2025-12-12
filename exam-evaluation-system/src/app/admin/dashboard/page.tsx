@@ -30,7 +30,7 @@ export const AdminDashboard: React.FC = () => {
   const userTabs: { key: UserRole; label: string; icon: React.ElementType }[] = [
     { key: "student", label: "Students", icon: GraduationCap },
     { key: "educator", label: "Educators", icon: Presentation },
-    { key: "admin", label: "Admins", icon: Settings },
+    // { key: "admin", label: "Admins", icon: Settings },
   ];
 
   const mainTabs: { key: MainTab; label: string }[] = [
@@ -186,7 +186,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="overflow-hidden">
                 {userRoleTab === "student" && <StudentsTable />}
                 {userRoleTab === "educator" && <EducatorsTable />}
-                {userRoleTab === "admin" && <AdminsTable />}
+                {/* {userRoleTab === "admin" && <AdminsTable />} */}
               </div>
             </>
           )}

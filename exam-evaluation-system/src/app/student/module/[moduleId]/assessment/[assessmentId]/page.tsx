@@ -93,7 +93,7 @@ const StudentAssessmentPage = () => {
             {mod.module_name} ({mod.module_code})
           </h2>
           <p className="text-sm text-gray-600 mb-2">
-            Semester: {mod.semester} | Institute: {mod.education_institute}
+            Semester: {mod.semester} 
           </p>
 
           {mod.assessments.length === 0 ? (

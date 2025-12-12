@@ -139,10 +139,9 @@ export async function PUT(
           model_id: modelId,
           assessment_id: assessmentId,
         },
-        _sum: { max_marks: true },
       });
 
-      const totalMaxMarks = totalMaxObj._sum.max_marks || 0;
+      // const totalMaxMarks = totalMaxObj._sum.max_marks || 0;
 
       // ----------------------------------------------------------
       // 8️⃣ Upsert Assessment_Grade
@@ -157,7 +156,7 @@ export async function PUT(
         },
         update: {
           score: totalScore,
-          max_marks: totalMaxMarks,
+          // max_marks: totalMaxMarks,
           updated_on: now,
         },
         create: {
@@ -165,7 +164,7 @@ export async function PUT(
           submission_id: submissionId,
           assessment_id: assessmentId,
           score: totalScore,
-          max_marks: totalMaxMarks,
+          // max_marks: totalMaxMarks,
           created_on: now,
           updated_on: now,
         },

@@ -436,14 +436,14 @@ export default function SubmissionReviewPage() {
                   {data.submission.student.user.email}
                 </p>
               </div>
-              <div>
+              {/* <div>
                 <p className="text-sm text-slate-500 font-medium mb-1">
                   Institute
                 </p>
                 <p className="font-semibold text-slate-800 text-lg">
                   {data.submission.student.education_institute}
                 </p>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

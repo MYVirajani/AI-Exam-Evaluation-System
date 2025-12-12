@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Fixed and improved RAG-based grading script.
+Fixed and improved RAG-based grading script (updated to always save max_marks
+from model_answer even for empty answers / missing embeddings).
 
 Notes:
 - Make sure environment variables OPENAI_API_KEY, GOOGLE_API_KEY or ANTHROPIC_API_KEY are set depending on provider.
@@ -114,6 +115,35 @@ class RAGGrader:
         # unify llm_model label
         self.llm_model = self.provider
 
+    # ---------------------------------------------------------------------
+    def _update_student_score_feedback(self, student_answer_id: str, score: float, feedback: str, max_marks: float):
+        """
+        Compatibility wrapper for updating student answer score & feedback.
+        Try to call update_score_and_feedback with max_marks, otherwise fallback.
+        """
+        try:
+            # prefer signature with max_marks if present
+            return self.student_db_service.update_score_and_feedback(
+                student_answer_id=student_answer_id,
+                score=score,
+                feedback=feedback,
+                max_marks=max_marks
+            )
+        except TypeError:
+            # fallback: older signature without max_marks
+            try:
+                return self.student_db_service.update_score_and_feedback(
+                    student_answer_id=student_answer_id,
+                    score=score,
+                    feedback=feedback
+                )
+            except Exception as e:
+                log.warning(f"Failed to update student score (fallback) for {student_answer_id}: {e}")
+                return False
+        except Exception as e:
+            log.warning(f"Failed to update student score for {student_answer_id}: {e}")
+            return False
+
     # =======================================================================
     def grade_submissions_answers(self, submission_ids: List[str], model_paper_id: str,
                                   assessment_id: str, lecturer_id: str, module_id: str,
@@ -161,35 +191,6 @@ class RAGGrader:
                                 # we don't download external images here; store the url as summary instead
                                 media_summaries.append(f"(external image) {media_url}")
 
-                    # Handle empty answer
-                    if not student_answer_text and not base64_images and not media_summaries:
-                        record = GradingResultRecord(
-                            submission_id=submission_id,
-                            question_number=question_number,
-                            question_id=None,
-                            student_answer_id=student_answer_id,
-                            model_id=self.model_id,
-                            score=0.0,
-                            max_marks=0.0,
-                            feedback="Student hasn't provided the answer.",
-                            answer_source="No answer",
-                            grading_method=GradingMethod.RAG.value,
-                            similarity_score=0.0,
-                            context_used="No answer provided."
-                        )
-                        self.result_db.save_result(record=record)
-                        graded_records.append(record)
-                        updated = self.student_db_service.update_score_and_feedback(
-                            student_answer_id=student_answer_id,
-                            score=0.0,
-                            feedback="Student hasn't provided the answer."
-                        )
-                        if updated:
-                            log.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
-                        else:
-                            log.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")
-                        continue
-
                     # Build answer description
                     student_answer_description = student_answer_text or ""
                     if media_summaries:
@@ -197,7 +198,66 @@ class RAGGrader:
                             f"- {s}" for s in media_summaries
                         )
 
-                    # Embeddings
+                    # --- IMPORTANT CHANGE: fetch model_answer EARLY so we can always obtain max_marks ---
+                    model_data = self.model_answer_db.get_model_answer(
+                        model_answer_paper_id=model_paper_id,
+                        assessment_id=assessment_id,
+                        question_number=question_number
+                    )
+                    if not model_data:
+                        log.warning(f"No model answer found for question {question_number}, paper {model_paper_id}")
+                        # we continue but ensure max_marks = 0 in that case
+                        max_marks = 0.0
+                        question_id = None
+                        question_text = ""
+                        guideline_text = ""
+                        model_answer_text = ""
+                    else:
+                        question_id = model_data.get("model_answer_id", None)
+                        question_text = model_data.get("question_text", "")
+                        guideline_text = model_data.get("guideline_text", "")
+                        max_marks = float(model_data.get("max_marks", 0.0) or 0.0)
+                        model_answer_text = model_data.get("model_answer", {}).get("answer_text", "")
+
+                    # Handle empty answer (no text, no images, no summaries)
+                    if not student_answer_text and not base64_images and not media_summaries:
+                        # Save grading result with max_marks from model_data (even if 0)
+                        record = GradingResultRecord(
+                            submission_id=submission_id,
+                            question_number=question_number,
+                            question_id=question_id,
+                            student_answer_id=student_answer_id,
+                            model_id=self.model_id,
+                            score=0.0,
+                            max_marks=max_marks,
+                            feedback="Student hasn't provided the answer.",
+                            answer_source="No answer",
+                            grading_method=GradingMethod.RAG.value,
+                            similarity_score=0.0,
+                            context_used="No answer provided."
+                        )
+                        try:
+                            self.result_db.save_result(record=record)
+                        except Exception as e:
+                            log.error(f"Failed saving grading result (empty answer) for {submission_id}/{question_number}: {e}", exc_info=True)
+                            self.result_db.rollback()
+                            continue
+
+                        graded_records.append(record)
+                        updated = self._update_student_score_feedback(
+                            student_answer_id=student_answer_id,
+                            score=0.0,
+                            feedback="Student hasn't provided the answer.",
+                            max_marks=max_marks
+                        )
+                        if updated:
+                            log.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id} (max_marks={max_marks})")
+                        else:
+                            log.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")
+                        # proceed to next answer
+                        continue
+
+                    # Embeddings (we attempt to pull embeddings next)
                     model_emb = self.model_vector_service.get_embeddings_by_question(
                         assessment_id, model_paper_id, question_number
                     )
@@ -211,34 +271,43 @@ class RAGGrader:
 
                     if not model_emb or not stud_emb:
                         log.warning(f"Missing embeddings for submission {submission_id}, question {question_number}")
-                        # Save minimal record indicating failure to compute
+
+                        # Save minimal record indicating failure to compute embeddings but save max_marks from model_data
                         record = GradingResultRecord(
                             submission_id=submission_id,
                             question_number=question_number,
-                            question_id=None,
+                            question_id=question_id,
                             student_answer_id=student_answer_id,
                             model_id=self.model_id,
                             score=0.0,
-                            max_marks=0.0,
+                            max_marks=max_marks,
                             feedback="Missing embeddings; skipping automatic grading.",
                             answer_source="no-embedding",
                             grading_method=GradingMethod.RAG.value,
                             similarity_score=0.0,
                             context_used="No embedding available."
                         )
-                        self.result_db.save_result(record)
+                        try:
+                            self.result_db.save_result(record)
+                        except Exception as e:
+                            log.error(f"Failed saving grading result (no embeddings) for {submission_id}/{question_number}: {e}", exc_info=True)
+                            self.result_db.rollback()
+                            continue
+
                         graded_records.append(record)
-                        updated = self.student_db_service.update_score_and_feedback(
+                        updated = self._update_student_score_feedback(
                             student_answer_id=student_answer_id,
                             score=0.0,
-                            feedback="Missing embeddings; skipping automatic grading."
+                            feedback="Missing embeddings; skipping automatic grading.",
+                            max_marks=max_marks
                         )
                         if updated:
-                            log.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
+                            log.info(f"[GRADE] Updated student answer with 0 score (no embeddings): {student_answer_id} (max_marks={max_marks})")
                         else:
                             log.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")
                         continue
 
+                    # Compute similarity and lecture context
                     sim_score = self._compute_cosine_similarity(
                         np.array(model_emb), np.array(stud_emb)
                     )
@@ -253,22 +322,6 @@ class RAGGrader:
                         top_k=top_k
                     )
                     context_text = "\n\n".join([c.get("content", "") for c in lecture_chunks])
-
-                    # Model Answer
-                    model_data = self.model_answer_db.get_model_answer(
-                        model_answer_paper_id=model_paper_id,
-                        assessment_id=assessment_id,
-                        question_number=question_number
-                    )
-                    if not model_data:
-                        log.warning(f"No model answer found for question {question_number}, paper {model_paper_id}")
-                        continue
-
-                    question_id = model_data.get("model_answer_id", None)
-                    question_text = model_data.get("question_text", "")
-                    guideline_text = model_data.get("guideline_text", "")
-                    max_marks = float(model_data.get("max_marks", 0.0) or 0.0)
-                    model_answer_text = model_data.get("model_answer", {}).get("answer_text", "")
 
                     context_full = (
                         f"Question:\n{question_text}\n\n"
@@ -310,7 +363,7 @@ class RAGGrader:
                             student_answer_id=student_answer_id,
                             model_id=self.model_id,
                             score=float(score),
-                            max_marks=float(max_marks),
+                            max_marks=max_marks,
                             feedback=feedback,
                             answer_source=source,
                             grading_method=GradingMethod.RAG.value,
@@ -319,18 +372,22 @@ class RAGGrader:
                         )
                         self.result_db.save_result(record)
                         graded_records.append(record)
-                        updated = self.student_db_service.update_score_and_feedback(
+                        updated = self._update_student_score_feedback(
                             student_answer_id=student_answer_id,
                             score=float(score),
-                            feedback=feedback
+                            feedback=feedback,
+                            max_marks=max_marks
                         )
                         if updated:
-                            log.info(f"[GRADE] Updated student answer with 0 score: {student_answer_id}")
+                            log.info(f"[GRADE] Updated student answer: {student_answer_id} score={score} max_marks={max_marks}")
                         else:
                             log.warning(f"[GRADE] Failed to update student score for: {student_answer_id}")
                     except Exception as e:
                         log.error(f"Error saving grading result for {submission_id}/{question_number}: {e}", exc_info=True)
-                        self.result_db.rollback()
+                        try:
+                            self.result_db.rollback()
+                        except Exception:
+                            pass
 
             except Exception as e:
                 log.error(f"Error grading submission {submission_id}: {e}", exc_info=True)

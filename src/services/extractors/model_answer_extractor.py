@@ -5,6 +5,7 @@ from typing import List
 from dotenv import load_dotenv
 from openai import OpenAI as OpenAIClient
 import google.generativeai as genai
+from decimal import Decimal, InvalidOperation
 
 from src.models.model_answer_with_media import ModelAnswer
 from src.prompts.extract_model_answers_prompt import EXTRACT_MODEL_ANSWERS_PROMPT
@@ -22,21 +23,17 @@ class ModelAnswerExtractor:
         Only API keys are loaded from .env.
         """
 
-        # Load configuration from DB
         model_service = EvaluationModelService()
         model_config = model_service.get_model_config(model_id)
 
         if not model_config:
             raise ValueError(f"No model config found for id={model_id}")
 
-        # Core fields
         self.provider = model_config["provider"].lower()
         self.temperature = float(model_config.get("temperature", 0.2))
-        self.chat_model = model_config.get("chat_model")  
+        self.chat_model = model_config.get("chat_model")
 
-        # -----------------------------
-        # Provider-specific initialization
-        # -----------------------------
+        # Provider setup
         if self.provider == "openai":
             self.api_key = os.getenv("OPENAI_API_KEY")
             self.model = self.chat_model
@@ -63,26 +60,21 @@ class ModelAnswerExtractor:
         )
 
     # ----------------------------------------------------------
-    # Extract structured answers from raw text
+    # Extract structured answers
     # ----------------------------------------------------------
     def extract(self, raw_text: str) -> List[ModelAnswer]:
-        """
-        Extracts LLM-structured answers and flattens into ModelAnswer objects.
-        """
         json_obj = self._call_llm(raw_text)
         answers_h = json_obj.get("answers", {})
         if not isinstance(answers_h, dict):
-            logger.error("LLM output missing 'answers' dict. Received: %r", answers_h)
+            logger.error("LLM output missing 'answers': %r", answers_h)
             return []
 
         return self._flatten(answers_h)
 
     # ----------------------------------------------------------
-    # Call LLM and parse JSON
+    # Call LLM
     # ----------------------------------------------------------
     def _call_llm(self, raw_text: str) -> dict:
-        """Send text + extraction prompt to LLM and return parsed JSON."""
-
         if self.provider in ["openai", "deepseek"]:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -90,8 +82,8 @@ class ModelAnswerExtractor:
                 max_tokens=4000,
                 messages=[
                     {"role": "system", "content": EXTRACT_MODEL_ANSWERS_PROMPT},
-                    {"role": "user", "content": raw_text}
-                ]
+                    {"role": "user", "content": raw_text},
+                ],
             )
             content = response.choices[0].message.content.strip()
 
@@ -99,63 +91,70 @@ class ModelAnswerExtractor:
             response = self.client.generate_content(
                 contents=[{
                     "role": "user",
-                    "parts": [f"{EXTRACT_MODEL_ANSWERS_PROMPT}\n\n{raw_text}"]
+                    "parts": [f"{EXTRACT_MODEL_ANSWERS_PROMPT}\n\n{raw_text}"],
                 }],
-                generation_config={"temperature": self.temperature}
+                generation_config={"temperature": self.temperature},
             )
             content = response.text.strip()
 
-        # Clean up ```json blocks
+        # Remove ```json wrapper if exists
         if content.startswith("```"):
             content = content.strip("`").replace("json", "").strip()
-
+            
         print("\n===== LLM RAW RESPONSE START =====\n")
         print(content)
-        print("\n===== LLM RAW RESPONSE END =====\n")
+        print("\n===== LLM RAW RESPONSE END =====\n")    
 
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM output: {e}\nContent was:\n{content}")
+            logger.error(f"JSON parse error: {e}\nContent:\n{content}")
             raise
 
     # ----------------------------------------------------------
-    # Flatten nested dict → List[ModelAnswer]
+    # FIXED VERSION — Flatten with Decimal marks
     # ----------------------------------------------------------
     def _flatten(self, nested: dict) -> List[ModelAnswer]:
-        """
-        Flatten deeply nested dict of questions/sub-questions/sub-sub-questions into ModelAnswer entries.
-        Handles both:
-          - media: [{url/media_url, summary}]
-          - media_urls: [list of URLs]
-        """
         flat: List[ModelAnswer] = []
 
+        def to_decimal(val):
+            """Safely convert marks to Decimal without losing precision."""
+            if val is None:
+                return None
+            try:
+                return Decimal(str(val))
+            except (InvalidOperation, TypeError, ValueError):
+                logger.warning(f"⚠️ Invalid marks value: {val}. Forcing None.")
+                return None
+
         def recurse(keys: list[str], node):
-            # Case 1: This node is a complete answer block
+            # Case 1: Fully structured answer block
             if isinstance(node, dict) and {"question", "answer", "guideline", "marks"}.issubset(node):
+
+                # --- FIX: Convert marks → Decimal ---
+                raw_marks = node.get("marks")
+                max_marks = to_decimal(raw_marks)
+
                 media_urls = []
                 media_summary = {}
 
-                # --- Case A: media = [ {url/summary}, ... ]
+                # media: [{url, summary}]
                 if "media" in node and isinstance(node["media"], list):
                     for m in node["media"]:
                         if not isinstance(m, dict):
                             continue
-
                         url = m.get("url") or m.get("media_url")
                         if url:
                             media_urls.append(url)
                             if "summary" in m:
                                 media_summary[url] = m["summary"]
 
-                # --- Case B: media_urls = [strings]
+                # media_urls: ["url1","url2"]
                 elif "media_urls" in node:
                     raw_urls = node.get("media_urls", [])
                     if isinstance(raw_urls, list):
                         media_urls = [u for u in raw_urls if isinstance(u, str)]
 
-                # Build flattened answer
                 flat.append(
                     ModelAnswer(
                         question_id=keys[0] if len(keys) > 0 else None,
@@ -165,7 +164,7 @@ class ModelAnswerExtractor:
                         question_text=node.get("question", "").strip(),
                         answer_text=node.get("answer", "").strip(),
                         guideline_text=node.get("guideline", "").strip(),
-                        max_marks=node.get("marks"),
+                        max_marks=max_marks,  
                         question_type=node.get("type"),
                         media_urls=media_urls,
                         media_summary=media_summary,
@@ -173,16 +172,15 @@ class ModelAnswerExtractor:
                 )
                 return
 
-            # Case 2: Keep traversing deeper levels
+            # Case 2: Traverse children
             elif isinstance(node, dict):
                 for k, v in node.items():
                     recurse(keys + [k], v)
 
             else:
-                # Unexpected non-dict structure
-                logger.warning("Unexpected node type under %s: %r", "_".join(keys), node)
+                logger.warning("Unexpected node under %s: %r", "_".join(keys), node)
 
-        # Start recursion from top-level (Q1, Q2, ...)
+        # Start recursion
         for main_q, subtree in nested.items():
             recurse([main_q], subtree)
 

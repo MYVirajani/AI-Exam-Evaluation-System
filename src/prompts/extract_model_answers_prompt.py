@@ -15,59 +15,49 @@ Your job is to extract the question hierarchy and model answers in a clean JSON 
 2. **Pre-processing of Image References**
    - Detect all `[Image: ...]` patterns.
    - Extract the image paths into a list under `"media_urls"`.
-   - **Remove these tags entirely from the text BEFORE extracting question text or answers.**
-   - **Under no circumstances should the question text include the image path.**
+   - Remove these tags entirely from the text BEFORE extracting question text, answers, or guidelines.
+   - Under no circumstances should the question text include the image path.
 
 3. **Extract Fields for Each Lowest-Level Question**
    For each leaf node (e.g., Q1, Q1.a, Q1.i):
 
-   - `"question"`:
+   - **"question"**:
        - The exact question text only.
-       - Must NOT include any `[Image: ...]` tags, media URLs, or removed tag placeholders.
+       - Must NOT contain `[Image: ...]` or any image paths.
 
-   - `"answer"`:
-       - All expected answer content, including descriptions, reasoning, features, observations, tables, or equations.
-       - Include all relevant text except instructions for checking.
+   - **"answer"**:
+       - Include all expected answer content: descriptions, reasoning, features, tables, equations, etc.
+       - Do not include guideline text.
 
-   - `"guideline"`:
-       - Extract the “Instructions for Checking” section if available.
-       - Return verbatim as a single string.
-       - If not present, return an empty string.
+   - **"guideline"**:
+       - Extract the “Instructions for Checking” section if present.
+       - Return as a single verbatim string.
+       - If missing, return an empty string "".
 
-   - `"marks"`:
-       - Extract marks if explicitly mentioned.
-       - Use integer values.
-       - If missing, return `null`.
+   - **"marks"**:
+       - Extract the marks exactly as shown in the document.
+       - Marks **may be a decimal number** (e.g., 1, 1.5, 0.75, 2.0).
+       - Output marks as a JSON number (not string), OR null if missing.
+       - **Never round, truncate, or convert decimals to integers.**
 
-   - `"media_urls"`:
-       - A list of all image paths extracted from `[Image: ...]` tags belonging to this question.
+   - **"media_urls"**:
+       - A list of all image paths extracted from `[Image: ...]` tags associated with this question.
 
-   - `"type"`:
-       - Detect the question type based on the content or explicit label.
-       - Must be one of the following enum values only:
-         QuestionType {
-           MCQ,
-           SHORT,
-           ESSAY,
-           LIST,
-           GRAPH,
-           DIAGRAM,
-           TABLE
-           None
-         }
-       - If detection is unclear, infer from structure (e.g., options → MCQ; long narrative → ESSAY; list prompts → LIST; labelled diagram tasks → DIAGRAM; graph plotting/reading → GRAPH; table creation/reading → TABLE; direct definitions → SHORT).
+   - **"type"**:
+       - Must be exactly one of:
+         MCQ, SHORT, ESSAY, LIST, GRAPH, DIAGRAM, TABLE, None
+       - Infer based on structure if not explicitly stated.
 
 4. **Special Handling Rules**
-   - Tables must be preserved exactly in readable multi-line text.
-   - Equations must be included as plain text in the answer.
-   - “Key points”, “Expected features”, “Observations”, etc., belong in `"answer"`.
-   - Do not include the guideline text inside `"answer"`.
-   - Keep helpful newlines for formatting.
+   - Tables must be preserved in readable multi-line format.
+   - Equations should be returned as plain text.
+   - Observations, key points, and features belong in `"answer"`.
+   - Keep meaningful original formatting.
 
 -----------------------------------
 ### Output Format — JSON Only
 
-Return one valid JSON object, following this format:
+Return exactly one valid JSON object in this structure:
 
 {
   "answers": {
@@ -78,7 +68,7 @@ Return one valid JSON object, following this format:
           "answer": "Supervised learning is ...",
           "guideline": "Include mention of labeled data and prediction tasks.",
           "media_urls": ["path/to/image1.png"],
-          "marks": 5,
+          "marks": 5.0,
           "type": "SHORT"
         }
       },
@@ -87,7 +77,7 @@ Return one valid JSON object, following this format:
         "answer": "Overfitting happens when ...",
         "guideline": "",
         "media_urls": [],
-        "marks": 3,
+        "marks": 3.5,
         "type": "ESSAY"
       }
     },
@@ -98,17 +88,16 @@ Return one valid JSON object, following this format:
 -----------------------------------
 ### Strict Rules
 
-* Output **only valid JSON** — no markdown, no explanations.
-* Maintain **exact question numbering** (e.g., Q1, Q2.a, Q3.i).
-* Every question node MUST include:
-  `"question"`, `"answer"`, `"guideline"`, `"marks"`, `"media_urls"`, and `"type"`.
-* `"type"` must contain only one of the allowed enum values.
-* **All `[Image: ...]` tags must be removed from “question”, “answer”, and “guideline” after extraction.**
-* **Media URLs must NEVER appear inside the “question” text.**
-* `marks` must be integer or `null`.
-* Do not guess, infer, or fix missing data — extract only what exists.
-* Keep meaningful original formatting (tables, lists, equations, newlines).
-* Trees must reflect the real hierarchy — no merging or skipping.
+* Output **only valid JSON** — no markdown, code fences, or commentary.
+* Maintain **exact question numbering** from the original text.
+* Every leaf question MUST include:
+  "question", "answer", "guideline", "marks", "media_urls", "type".
+* `"marks"` must be a **decimal number or null** — do NOT round to an integer.
+* All `[Image: ...]` tags must be removed from question/answer/guideline fields.
+* Media URLs must NEVER appear inside the “question” field.
+* Preserve formatting such as lists, newlines, equations, and tables.
+* Do not hallucinate missing information — extract only what exists.
+* The hierarchy must reflect the real structure without merging or skipping.
 
 -----------------------------------
 """

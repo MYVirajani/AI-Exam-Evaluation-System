@@ -20,10 +20,10 @@ interface Question {
   assessment_id: string;
   type: "MCQ" | "SHORT";
   question_number: string;
-  question: string;
-  model_answer: string;
+  question_text: string;
+  answer_text: string;
   mcq_answer_options: string[];
-  marks_allowed: string;
+  max_marks: string;
 }
 
 interface QuizSectionProps {
@@ -87,8 +87,8 @@ export default function QuizSection({
   // Helper function to check if a single question is complete
   const isQuestionComplete = (question: Question): boolean => {
     // Check basic requirements
-    if (!question.question.trim()) return false;
-    if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0)
+    if (!question.question_text.trim()) return false;
+    if (!question.max_marks || parseFloat(question.max_marks) <= 0)
       return false;
 
     if (question.type === "MCQ") {
@@ -97,15 +97,15 @@ export default function QuizSection({
       );
       if (validOptions.length < 2) return false;
       if (
-        !question.model_answer.trim() ||
+        !question.answer_text.trim() ||
         !question.mcq_answer_options.some(
-          (opt) => opt.trim() === question.model_answer.trim()
+          (opt) => opt.trim() === question.answer_text.trim()
         )
       ) {
         return false;
       }
     } else if (question.type === "SHORT") {
-      if (!question.model_answer.trim()) return false;
+      if (!question.answer_text.trim()) return false;
     }
 
     return true;
@@ -115,11 +115,11 @@ export default function QuizSection({
   const getQuestionValidationIssues = (question: Question): string[] => {
     const issues: string[] = [];
 
-    if (!question.question.trim()) {
+    if (!question.question_text.trim()) {
       issues.push("Question text required");
     }
 
-    if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) {
+    if (!question.max_marks || parseFloat(question.max_marks) <= 0) {
       issues.push("Valid marks required");
     }
 
@@ -132,15 +132,15 @@ export default function QuizSection({
       }
       if (
         validOptions.length >= 2 &&
-        (!question.model_answer.trim() ||
+        (!question.answer_text.trim() ||
           !question.mcq_answer_options.some(
-            (opt) => opt.trim() === question.model_answer.trim()
+            (opt) => opt.trim() === question.answer_text.trim()
           ))
       ) {
         issues.push("Please select the correct answer");
       }
     } else if (question.type === "SHORT") {
-      if (!question.model_answer.trim()) {
+      if (!question.answer_text) {
         issues.push("Model answer required");
       }
     }
@@ -159,8 +159,8 @@ export default function QuizSection({
 
   // Helper function to calculate similarity between two questions
   const calculateSimilarity = (question1: Question, question2: any): number => {
-    const q1Text = normalizeText(question1.question);
-    const q2Text = normalizeText(question2.question || "");
+    const q1Text = normalizeText(question1.question_text);
+    const q2Text = normalizeText(question2.question_text || "");
 
     if (q1Text === q2Text) return 1.0; // Exact match
 
@@ -234,10 +234,10 @@ export default function QuizSection({
       assessment_id: assessmentId,
       type: q.type === "MCQ" ? "MCQ" : ("SHORT" as "MCQ" | "SHORT"),
       question_number: String(questions.length + i + 1),
-      question: q.question || "",
-      model_answer: q.correctAnswer || "",
+      question_text: q.question || "",
+      answer_text: q.correctAnswer || "",
       mcq_answer_options: q.options || (q.type === "MCQ" ? ["", ""] : []),
-      marks_allowed: String(q.marks || 1),
+      max_marks: String(q.marks || 1),
     }));
 
     // Show confirmation dialog for duplicates and similar questions
@@ -275,10 +275,10 @@ export default function QuizSection({
             assessment_id: assessmentId,
             type: q.type === "MCQ" ? "MCQ" : ("SHORT" as "MCQ" | "SHORT"),
             question_number: String(questions.length + unique.length + i + 1),
-            question: `${q.question || ""} (Copy)`,
-            model_answer: q.correctAnswer || "",
+            question_text: `${q.question || ""} (Copy)`,
+            answer_text: q.correctAnswer || "",
             mcq_answer_options: q.options || (q.type === "MCQ" ? ["", ""] : []),
-            marks_allowed: String(q.marks || 1),
+            max_marks: String(q.marks || 1),
           }));
 
           newQuestions.push(...similarQuestions);
@@ -380,16 +380,16 @@ export default function QuizSection({
                     "question_number",
                     q.question_number
                   );
-                  onUpdateQuestion(questionIndex, "question", q.question);
+                  onUpdateQuestion(questionIndex, "question_text", q.question_text);
                   onUpdateQuestion(
                     questionIndex,
-                    "model_answer",
-                    q.model_answer
+                    "answer_text",
+                    q.answer_text
                   );
                   onUpdateQuestion(
                     questionIndex,
-                    "marks_allowed",
-                    q.marks_allowed
+                    "max_marks",
+                    q.max_marks
                   );
 
                   if (q.type === "MCQ" && q.mcq_answer_options.length > 0) {
@@ -573,11 +573,11 @@ export default function QuizSection({
                           </label>
                           <input
                             type="number"
-                            value={question.marks_allowed}
+                            value={question.max_marks}
                             onChange={(e) =>
                               onUpdateQuestion(
                                 questionIndex,
-                                "marks_allowed",
+                                "max_marks",
                                 e.target.value
                               )
                             }
@@ -614,11 +614,11 @@ export default function QuizSection({
                         Question Text <span className="text-red-500">*</span>
                       </label>
                       <textarea
-                        value={question.question}
+                        value={question.question_text}
                         onChange={(e) =>
                           onUpdateQuestion(
                             questionIndex,
-                            "question",
+                            "question_text",
                             e.target.value
                           )
                         }
@@ -648,13 +648,13 @@ export default function QuizSection({
                                     type="radio"
                                     name={`correct_answer_${questionIndex}`}
                                     checked={
-                                      question.model_answer === option &&
+                                      question.answer_text === option &&
                                       option.trim() !== ""
                                     }
                                     onChange={() =>
                                       onUpdateQuestion(
                                         questionIndex,
-                                        "model_answer",
+                                        "answer_text",
                                         option
                                       )
                                     }
@@ -730,11 +730,11 @@ export default function QuizSection({
                           Model Answer <span className="text-red-500">*</span>
                         </label>
                         <textarea
-                          value={question.model_answer}
+                          value={question.answer_text}
                           onChange={(e) =>
                             onUpdateQuestion(
                               questionIndex,
-                              "model_answer",
+                              "answer_text",
                               e.target.value
                             )
                           }

@@ -114,7 +114,7 @@ export async function POST(request: Request) {
       await prisma.model_Answer_Paper.create({
         data: {
           assessment_id: assessmentId,
-          model_answer_paper_id: mapr.id,
+          id: mapr.id ,
           file_url: mapr.url,
           created_on: new Date(),
         },

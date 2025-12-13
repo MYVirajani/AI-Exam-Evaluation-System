@@ -20,6 +20,7 @@ import {
   Target,
   Lock,
   Type,
+  Sparkles,
 } from "lucide-react";
 import Button from "@/components/Button";
 import PasswordInput from "@/components/PasswordInput";
@@ -29,16 +30,17 @@ import QuizSection from "./QuizSection";
 import { getAssessmentBreadcrumbs } from "@/utils/breadcrumbs";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import LoadingAnimation from "@/components/LoadingAnimation";
+import Dropdown from "@/components/Dropdown";
 
 interface Question {
   question_id: string;
   assessment_id: string;
   type: "MCQ" | "SHORT";
   question_number: string;
-  question: string;
-  model_answer: string;
+  question_text: string;
+  answer_text: string;
   mcq_answer_options: string[];
-  marks_allowed: string;
+  max_marks: string;
 }
 
 interface Assessment {
@@ -49,6 +51,7 @@ interface Assessment {
   deadline: string;
   duration?: number;
   total_marks?: number;
+  model_id?: string;
   max_marks?: number;
   instructions?: string[];
   questions?: Question[];
@@ -86,6 +89,14 @@ interface QuizFormData {
   closeAt: string;
   maxAttempts: number;
 }
+interface EvaluationModel {
+  id: string;
+  model_name: string;
+  provider: string;
+  chat_model?: string;
+  temperature?: number;
+  description?: string;
+}
 
 export default function QuizFormPage() {
   const searchParams = useSearchParams();
@@ -104,6 +115,10 @@ export default function QuizFormPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const actionBarRef = useRef<HTMLDivElement | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
+  const [evaluationModels, setEvaluationModels] = useState<EvaluationModel[]>(
+    []
+  );
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
 
   const [formData, setFormData] = useState<QuizFormData>({
     title: "",
@@ -163,6 +178,17 @@ export default function QuizFormPage() {
         };
 
         setAssessment(enrichedAssessment);
+        if (data.evaluation_models && data.evaluation_models.length > 0) {
+          setEvaluationModels(data.evaluation_models);
+          // Set to assessment.model_id if it exists, otherwise use first available model
+          setSelectedModelId(
+            data.assessment.model_id || data.evaluation_models[0].id
+          );
+        } else {
+          toast.error(
+            "No evaluation models available. Please subscribe to a plan."
+          );
+        }
 
         // Populate form data
         setFormData({
@@ -259,10 +285,10 @@ export default function QuizFormPage() {
       assessment_id: assessmentId,
       type: "MCQ",
       question_number: String(formData.questions.length + 1),
-      question: "",
-      model_answer: "",
+      question_text: "",
+      answer_text: "",
       mcq_answer_options: ["", ""],
-      marks_allowed: "1",
+      max_marks: "1",
     };
 
     setFormData((prev) => ({
@@ -334,7 +360,7 @@ export default function QuizFormPage() {
           );
           const removedOption = q.mcq_answer_options[optionIndex];
           const newModelAnswer =
-            q.model_answer === removedOption ? "" : q.model_answer;
+            q.answer_text === removedOption ? "" : q.answer_text;
 
           return {
             ...q,
@@ -361,7 +387,7 @@ export default function QuizFormPage() {
 
   const calculateTotalMarks = () => {
     const total = formData.questions.reduce(
-      (sum, q) => sum + parseFloat(q.marks_allowed || "0"),
+      (sum, q) => sum + parseFloat(q.max_marks || "0"),
       0
     );
     return parseFloat(total.toFixed(2));
@@ -387,9 +413,9 @@ export default function QuizFormPage() {
         }
 
         if (
-          !question.model_answer.trim() ||
+          !question.answer_text.trim() ||
           !question.mcq_answer_options.some(
-            (opt) => opt.trim() === question.model_answer.trim()
+            (opt) => opt.trim() === question.answer_text.trim()
           )
         ) {
           missingAnswers.push(
@@ -397,20 +423,20 @@ export default function QuizFormPage() {
           );
         }
       } else if (question.type === "SHORT") {
-        if (!question.model_answer.trim()) {
+        if (!question.answer_text) {
           missingAnswers.push(
             `Question ${questionNumber}: Model answer required`
           );
         }
       }
 
-      if (!question.question.trim()) {
+      if (!question.question_text) {
         missingAnswers.push(
           `Question ${questionNumber}: Question text required`
         );
       }
 
-      if (!question.marks_allowed || parseFloat(question.marks_allowed) <= 0) {
+      if (!question.max_marks || parseFloat(question.max_marks) <= 0) {
         missingAnswers.push(`Question ${questionNumber}: Valid marks required`);
       }
     });
@@ -422,7 +448,7 @@ export default function QuizFormPage() {
   };
 
   const validateForm = () => {
-    if (!formData.title.trim()) return "Quiz title is required";
+    if (!formData.title) return "Quiz title is required";
 
     const { isComplete, missingAnswers } = checkAllQuestionsComplete();
     if (!isComplete) {
@@ -487,118 +513,119 @@ export default function QuizFormPage() {
     return false;
   };
 
-  const handleSave = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      toast.error(validationError, { duration: 5000, icon: "⚠️" });
-      actionBarRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-      return;
-    }
+ const handleSave = async () => {
+  const validationError = validateForm();
+  if (validationError) {
+    setError(validationError);
+    toast.error(validationError, { duration: 5000, icon: "⚠️" });
+    actionBarRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    return;
+  }
 
-    if (!moduleId || !assessmentId || !educatorId) {
-      const msg = "Missing required identifiers";
+  if (!moduleId || !assessmentId || !educatorId) {
+    const msg = "Missing required identifiers";
+    setError(msg);
+    toast.error(msg);
+    actionBarRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    return;
+  }
+
+  setSaving(true);
+  setError(null);
+  setSaveMessage(null);
+
+  try {
+    const sanitizedQuestions = formData.questions.map((question) => ({
+      questionId: question.question_id,
+      questionType: question.type,
+      questionText: question.question_text,
+      options:
+        question.type === "MCQ"
+          ? question.mcq_answer_options.filter((opt) => opt.trim())
+          : [],
+      correctAnswerIndex:
+        question.type === "MCQ"
+          ? question.mcq_answer_options.findIndex(
+              (opt) =>
+                opt.trim().toLowerCase() ===
+                question.answer_text.trim().toLowerCase()
+            )
+          : 0,
+      marks: parseFloat(question.max_marks) || 0,
+      expectedAnswer:
+        question.type === "SHORT" ? question.answer_text : undefined,
+    }));
+
+    const quiz = {
+      moduleId,
+      type: "quiz",
+      assessmentId,
+      title: formData.title.trim(),
+      duration: formData.duration,
+      description: formData.description.trim(),
+      instructions: formData.instructions.filter((inst) => inst.trim()),
+      deadline: formData.deadline || null,
+      questions: sanitizedQuestions,
+      createdBy: educatorId,
+      totalQuestions: formData.questions.length,
+      password: formData.password?.trim() ? formData.password.trim() : null,
+      autoGrade: formData.autoGrade,
+      shuffleQuestions: formData.shuffleQuestions,
+      backNavigation: formData.backNavigation,
+      caseSensitive: formData.caseSensitive,
+      maxMarks: formData.maxMarks,
+      maxAttempts: formData.maxAttempts,
+      openAt: formData.openAt || null,
+      closeAt: formData.closeAt || null,
+      totalMarks: calculateTotalMarks(),
+      modelId: selectedModelId, 
+    };
+
+    const res = await fetch("/api/educator/assessment/quiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(quiz),
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      setSaveMessage("Quiz updated successfully!");
+      toast.success("Quiz updated successfully!");
+      setTimeout(() => {
+        router.push(
+          `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
+        );
+      }, 1200);
+    } else {
+      const msg = `Failed to save quiz: ${result.message}`;
       setError(msg);
       toast.error(msg);
       actionBarRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
-      return;
     }
-
-    setSaving(true);
-    setError(null);
-    setSaveMessage(null);
-
-    try {
-      const sanitizedQuestions = formData.questions.map((question) => ({
-        questionId: question.question_id,
-        questionType: question.type,
-        questionText: question.question,
-        options:
-          question.type === "MCQ"
-            ? question.mcq_answer_options.filter((opt) => opt.trim())
-            : [],
-        correctAnswerIndex:
-          question.type === "MCQ"
-            ? question.mcq_answer_options.findIndex(
-                (opt) =>
-                  opt.trim().toLowerCase() ===
-                  question.model_answer.trim().toLowerCase()
-              )
-            : 0,
-        marks: parseFloat(question.marks_allowed) || 0,
-        expectedAnswer:
-          question.type === "SHORT" ? question.model_answer : undefined,
-      }));
-
-      const quiz = {
-        moduleId,
-        type: "quiz",
-        assessmentId,
-        title: formData.title.trim(),
-        duration: formData.duration,
-        description: formData.description.trim(),
-        instructions: formData.instructions.filter((inst) => inst.trim()),
-        deadline: formData.deadline || null,
-        questions: sanitizedQuestions,
-        createdBy: educatorId,
-        totalQuestions: formData.questions.length,
-        password: formData.password?.trim() ? formData.password.trim() : null,
-        autoGrade: formData.autoGrade,
-        shuffleQuestions: formData.shuffleQuestions,
-        backNavigation: formData.backNavigation,
-        caseSensitive: formData.caseSensitive,
-        maxMarks: formData.maxMarks,
-        maxAttempts: formData.maxAttempts,
-        openAt: formData.openAt || null,
-        closeAt: formData.closeAt || null,
-        totalMarks: calculateTotalMarks(),
-      };
-
-      const res = await fetch("/api/educator/assessment/quiz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(quiz),
-      });
-
-      const result = await res.json();
-
-      if (result.success) {
-        setSaveMessage("Quiz updated successfully!");
-        toast.success("Quiz updated successfully!");
-        setTimeout(() => {
-          router.push(
-            `/educator/module/${moduleId}/assessment/${assessmentId}/quiz?educatorId=${educatorId}`
-          );
-        }, 1200);
-      } else {
-        const msg = `Failed to save quiz: ${result.message}`;
-        setError(msg);
-        toast.error(msg);
-        actionBarRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }
-    } catch (err) {
-      console.error("Error saving quiz:", err);
-      const msg =
-        "Something went wrong. Please check your connection and try again.";
-      setError(msg);
-      toast.error(msg);
-      actionBarRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+  } catch (err) {
+    console.error("Error saving quiz:", err);
+    const msg =
+      "Something went wrong. Please check your connection and try again.";
+    setError(msg);
+    toast.error(msg);
+    actionBarRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  } finally {
+    setSaving(false);
+  }
+};
 
   // if (loading) {
   //   return (
@@ -618,18 +645,17 @@ export default function QuizFormPage() {
   //   );
   // }
 
-     if (loading) {
-        return (
-          <LoadingAnimation
-            size="lg"
-            variant="wave"
-            text="Loading quiz data..."
-            fullScreen={true}
-            color="blue"
-          />
-        );
-      }
-    
+  if (loading) {
+    return (
+      <LoadingAnimation
+        size="lg"
+        variant="wave"
+        text="Loading quiz data..."
+        fullScreen={true}
+        color="blue"
+      />
+    );
+  }
 
   if (error && !assessment) {
     return (
@@ -1233,8 +1259,70 @@ export default function QuizFormPage() {
                 </p>
               </div>
 
+              {/* NEW: Evaluation Model Dropdown */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <Sparkles className="w-4 h-4 inline mr-2 text-gray-600" />
+                  Evaluation Model
+                </label>
+                {evaluationModels.length > 0 ? (
+                  <div>
+                    <Dropdown
+                      options={evaluationModels.map(
+                        (model) => `${model.model_name} (${model.provider})`
+                      )}
+                      selectedOption={
+                        evaluationModels.find((m) => m.id === selectedModelId)
+                          ? `${
+                              evaluationModels.find(
+                                (m) => m.id === selectedModelId
+                              )?.model_name
+                            } (${
+                              evaluationModels.find(
+                                (m) => m.id === selectedModelId
+                              )?.provider
+                            })`
+                          : evaluationModels.length > 0
+                          ? `${evaluationModels[0].model_name} (${evaluationModels[0].provider})`
+                          : "Select Model"
+                      }
+                      onSelect={(optionDisplay) => {
+                        // Extract model name from display string (remove provider part)
+                        const modelName = optionDisplay.split(" (")[0];
+                        const model = evaluationModels.find(
+                          (m) => m.model_name === modelName
+                        );
+                        if (model) {
+                          setSelectedModelId(model.id);
+                        }
+                      }}
+                      className="w-full"
+                    />
+                    {selectedModelId !== assessment?.model_id &&
+                      assessment?.model_id && (
+                        <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          <span className="text-xs text-amber-700 font-medium">
+                            Different from assessment default
+                          </span>
+                        </div>
+                      )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Model used to evaluate short answer questions
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-red-200 bg-red-50">
+                    <p className="text-sm text-red-600 font-medium">
+                      No evaluation models available. Please subscribe to a
+                      plan.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Password Input */}
-              <div className="lg:col-span-2">
+              <div>
                 <PasswordInput
                   label="Quiz Password (Optional)"
                   value={passwordInput}
@@ -1285,13 +1373,16 @@ export default function QuizFormPage() {
                       • <strong>Open/Close Times:</strong> Control when students
                       can access the quiz
                     </li>
+                    <li>
+                      • <strong>Evaluation Model:</strong> AI model used to
+                      grade short answer questions automatically
+                    </li>
                   </ul>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
         {/* Questions Section */}
         <QuizSection
           questions={formData.questions}

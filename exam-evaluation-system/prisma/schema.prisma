@@ -212,6 +212,7 @@ model Assessment {
   questions          Question[]
   Assessment_Grading Assessment_Grading[]
   Assessment_Grade   Assessment_Grade[]
+  Question_Online    Question_Online[]
 }
 
 model Question_Paper {
@@ -240,21 +241,21 @@ model Question {
   id                    String       @id @default(uuid())
   model_id              String
   assessment_id         String
-  model_answer_paper_id String
+  model_answer_paper_id String?
   type                  QuestionType
   question_number       String
   question_text         String
   answer_text           String?
   mcq_answer_options    String[]     @default([])
-  guideline_text        String
-  max_marks             Decimal?           @db.Decimal(5, 2)
+  guideline_text        String?
+  max_marks             Decimal?     @db.Decimal(5, 2)
   created_on            DateTime     @default(now()) @db.Timestamptz(6)
   updated_on            DateTime     @default(now()) @db.Timestamptz(6)
 
   // Relations
-  evaluation_model   Evaluation_Model   @relation(fields: [model_id], references: [id])
-  model_answer_paper Model_Answer_Paper @relation(fields: [model_answer_paper_id], references: [id])
-  assessment         Assessment?        @relation(fields: [assessment_id], references: [assessment_id])
+  evaluation_model   Evaluation_Model?   @relation(fields: [model_id], references: [id])
+  model_answer_paper Model_Answer_Paper? @relation(fields: [model_answer_paper_id], references: [id])
+  assessment         Assessment?         @relation(fields: [assessment_id], references: [assessment_id])
   media              Question_Media[]
   grading_results    Grading_Results[]
 
@@ -273,12 +274,13 @@ model Question_Media {
   updated_on    DateTime @default(now()) @db.Timestamptz(6)
 
   // Relations
-  question         Question         @relation(fields: [question_id], references: [id])
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id])
+  question         Question          @relation(fields: [question_id], references: [id])
+  evaluation_model Evaluation_Model? @relation(fields: [model_id], references: [id])
 
   @@index([question_id])
   @@index([model_id])
 }
+
 
 model Marking_Scheme {
   marking_scheme_id String     @id @default(uuid())
@@ -399,6 +401,8 @@ model Evaluation_Model {
   grading_results        Grading_Results[]
   assessment_grade       Assessment_Grade[]
   Assessment             Assessment[]
+  Question_Online        Question_Online[]
+  Question_Online_Media  Question_Online_Media[]
 }
 
 model Pricing_Plan {
@@ -458,10 +462,12 @@ model Grading_Results {
   created_on        DateTime @default(now()) @db.Timestamptz(6)
   updated_on        DateTime @default(now()) @db.Timestamptz(6)
 
-  evaluation_model Evaluation_Model @relation(fields: [model_id], references: [id], onDelete: Cascade)
-  submission       Submission       @relation(fields: [submission_id], references: [submission_id], onDelete: Cascade)
-  student_answer   Student_Answer   @relation(fields: [student_answer_id], references: [id], onDelete: Cascade)
-  Question         Question?        @relation(fields: [question_id], references: [id], onDelete: SetNull)
+  evaluation_model  Evaluation_Model @relation(fields: [model_id], references: [id], onDelete: Cascade)
+  submission        Submission       @relation(fields: [submission_id], references: [submission_id], onDelete: Cascade)
+  student_answer    Student_Answer   @relation(fields: [student_answer_id], references: [id], onDelete: Cascade)
+  Question          Question?        @relation(fields: [question_id], references: [id], onDelete: SetNull)
+  Question_Online   Question_Online? @relation(fields: [question_OnlineId], references: [id])
+  question_OnlineId String?
 
   @@id([model_id, submission_id, student_answer_id]) // ← composite PK
   @@index([model_id])

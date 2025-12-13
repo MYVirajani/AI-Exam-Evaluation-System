@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       backNavigation,
       caseSensitive,
       maxAttempts,
+      modelId,
     } = body;
 
     if (!moduleId || !assessmentId || !Array.isArray(questions)) {
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
             mcq_answer_options: Array.isArray(q.options) ? q.options : [],
             max_marks: cleanMarks,
             model_id: existingAssessment.model_id!,
-            model_answer_paper_id: existingAssessment.model_id!,
+            guideline_text: q.guidelines ? String(q.guidelines).trim() : "",
           };
         })
       : [];
@@ -162,6 +163,7 @@ export async function POST(req: NextRequest) {
         duration: duration ?? existingAssessment.duration,
         description: description ?? existingAssessment.description,
         instructions: normalizedInstructions,
+        model_id: modelId ?? existingAssessment.model_id,
         type: "quiz",
         deadline: deadline ? new Date(deadline) : existingAssessment.deadline,
         total_marks: finalTotalMarks,

@@ -35,14 +35,10 @@ export async function GET(
       },
     });
 
-    console.log("Active Subscriptions:", activeSubscriptions);
-
     const evaluationModels =
       activeSubscriptions
         .map((sub) => sub.pricing_plan?.evaluation_model)
         .filter(Boolean) || [];
-
-    console.log("Evaluation Models:", evaluationModels);
 
     // ----------------- 2. MODULE DATA -----------------
     const moduleData = await prisma.module.findUnique({
@@ -54,8 +50,6 @@ export async function GET(
       },
     });
 
-    console.log("Module Data:", moduleData);
-
     if (!moduleData) {
       return NextResponse.json(
         { success: false, message: "Module not found" },
@@ -66,8 +60,6 @@ export async function GET(
     const enrollmentCount = await prisma.enrollment.count({
       where: { module_id: moduleId },
     });
-
-    console.log("Enrollment Count:", enrollmentCount);
 
     // ----------------- 3. ASSESSMENT -----------------
     const assessment = await prisma.assessment.findFirst({
@@ -127,8 +119,6 @@ export async function GET(
       },
     });
 
-    console.log("Assessment Data:", assessment);
-
     if (!assessment) {
       return NextResponse.json(
         { success: false, message: "Assessment not found or access denied" },
@@ -136,11 +126,24 @@ export async function GET(
       );
     }
 
-    // ----------------- 4. FETCH ALL GRADES FOR ALL MODELS -----------------
-    const submissionIds = assessment.submissions.map((s) => s.submission_id);
-    console.log("Submission IDs:", submissionIds);
+    // ----------------- 4. FETCH QUESTIONS + MEDIA -----------------
+    const questions = await prisma.question.findMany({
+      where: {
+        assessment_id: assessmentId,
+      },
+      include: {
+        media: true, // ← fetch media for each question
+      },
+      orderBy: {
+        question_number: "asc",
+      },
+    });
 
-    // Fetch ALL grades for all submissions (not filtered by model_id)
+    console.log("Fetched Questions:", questions);
+
+    // ----------------- 5. FETCH ALL GRADES FOR ALL MODELS -----------------
+    const submissionIds = assessment.submissions.map((s) => s.submission_id);
+
     const assessmentGrades = await prisma.assessment_Grade.findMany({
       where: {
         assessment_id: assessmentId,
@@ -155,11 +158,8 @@ export async function GET(
       },
     });
 
-    console.log("Fetched Assessment Grades:", assessmentGrades);
-
-    // Create a Map that stores arrays of grades per submission
     const gradesMap = new Map<string, typeof assessmentGrades>();
-    
+
     assessmentGrades.forEach((grade) => {
       const existing = gradesMap.get(grade.submission_id);
       if (existing) {
@@ -169,15 +169,12 @@ export async function GET(
       }
     });
 
-    // Map submissions with their grades array
     const finalSubmissions = assessment.submissions.map((sub) => ({
       ...sub,
       grades: gradesMap.get(sub.submission_id) || [],
     }));
 
-    console.log("Final Submissions With All Grades:", finalSubmissions);
-
-    // ----------------- 5. FINAL RESPONSE -----------------
+    // ----------------- 6. FINAL RESPONSE -----------------
     const responsePayload = {
       module: moduleData,
       enrollmentCount,
@@ -191,6 +188,7 @@ export async function GET(
       assessment: {
         ...assessment,
         submissions: finalSubmissions,
+        questions, // ← added questions + media here
       },
     };
 
@@ -205,6 +203,7 @@ export async function GET(
     );
   }
 }
+
 
 // ---------------------------------------------------------
 // PATCH

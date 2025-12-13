@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Type,
   Download,
+  Image as ImageIcon,
 } from "lucide-react";
 import Button from "@/components/Button";
 import Breadcrumbs from "@/components/Breadcrumbs";
@@ -28,15 +29,30 @@ interface User {
   email: string;
 }
 
-interface Question {
+interface QuestionMedia {
+  id: string;
+  model_id: string;
   question_id: string;
+  media_url: string;
+  media_summary?: string;
+  created_on: string;
+  updated_on: string;
+}
+
+interface Question {
+  id: string;
+  question_id?: string;
   assessment_id: string;
   type: "MCQ" | "SHORT";
   question_number: string;
-  question: string;
-  model_answer: string;
+  question_text: string;
+  answer_text: string;
+  guideline_text?: string;
   mcq_answer_options: string[];
-  marks_allowed: string;
+  max_marks: string;
+  created_on: string;
+  updated_on: string;
+  media?: QuestionMedia[];
 }
 
 interface Assessment {
@@ -177,7 +193,7 @@ export default function QuizAssessmentPage() {
     return (
       assessment?.total_marks ??
       assessment?.questions?.reduce(
-        (total, q) => total + parseInt(q.marks_allowed || "0"),
+        (total, q) => total + parseFloat(q.max_marks || "0"),
         0
       ) ??
       0
@@ -203,7 +219,7 @@ export default function QuizAssessmentPage() {
       return question.mcq_answer_options.findIndex(
         (option) =>
           option.trim().toLowerCase() ===
-          question.model_answer.trim().toLowerCase()
+          question.answer_text?.trim().toLowerCase()
       );
     }
     return -1;
@@ -261,7 +277,6 @@ export default function QuizAssessmentPage() {
     assessment.submissions && assessment.submissions.length > 0;
   const hasQuestions = assessment.questions && assessment.questions.length > 0;
 
-  // Generate breadcrumbs
   const breadcrumbs = assessment
     ? getAssessmentBreadcrumbs(
         assessment.module.module_code,
@@ -279,10 +294,10 @@ export default function QuizAssessmentPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-8">
-        {/* Breadcrumbs */}
         <div className="mb-6">
           <Breadcrumbs items={breadcrumbs} className="" />
         </div>
+
         {/* Header Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="border-b border-gray-100 pb-4 mb-4">
@@ -325,7 +340,6 @@ export default function QuizAssessmentPage() {
             </p>
           )}
 
-          {/* Quiz Details */}
           {assessment.open_at && assessment.close_at && (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm mb-4">
               <div>
@@ -344,7 +358,6 @@ export default function QuizAssessmentPage() {
             </div>
           )}
 
-          {/* Assessment Features */}
           <div className="mt-4 flex flex-wrap gap-2">
             {assessment.auto_grade && (
               <div className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
@@ -386,7 +399,6 @@ export default function QuizAssessmentPage() {
               Quiz Questions
             </h2>
             <div className="flex flex-wrap gap-3 items-center">
-              {/* Download Question Paper Section */}
               {hasQuestions && (
                 <div className="flex items-center gap-2">
                   <Dropdown
@@ -506,13 +518,13 @@ export default function QuizAssessmentPage() {
                         parseInt(a.question_number) -
                         parseInt(b.question_number)
                     )
-                    .map((question, index) => {
+                    .map((question) => {
                       const correctAnswerIndex =
                         getCorrectAnswerIndex(question);
 
                       return (
                         <div
-                          key={question.question_id}
+                          key={question.id || question.question_id}
                           className="border border-gray-200 rounded-lg overflow-hidden"
                         >
                           {/* Question Header */}
@@ -533,13 +545,19 @@ export default function QuizAssessmentPage() {
                                     ? "Multiple Choice"
                                     : "Short Answer"}
                                 </span>
+                                {question.media && question.media.length > 0 && (
+                                  <span className="flex items-center gap-1 bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs font-medium">
+                                    <ImageIcon className="w-3 h-3" />
+                                    {question.media.length} Media
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm text-gray-600">
                                   Marks:
                                 </span>
                                 <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm font-semibold">
-                                  {question.marks_allowed}
+                                  {question.max_marks}
                                 </span>
                               </div>
                             </div>
@@ -548,8 +566,42 @@ export default function QuizAssessmentPage() {
                           {/* Question Content */}
                           <div className="p-6">
                             <p className="text-gray-900 text-lg mb-4 leading-relaxed">
-                              {question.question}
+                              {question.question_text}
                             </p>
+
+                            {/* Display Question Media */}
+                            {question.media && question.media.length > 0 && (
+                              <div className="mb-4 space-y-3">
+                                <h4 className="font-medium text-gray-700 text-sm">
+                                  Question Media:
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {question.media.map((media) => (
+                                    <div
+                                      key={media.id}
+                                      className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50"
+                                    >
+                                      <img
+                                        src={media.media_url}
+                                        alt={media.media_summary || "Question media"}
+                                        className="w-full h-48 object-contain bg-white"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%23f3f4f6' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'%3EImage unavailable%3C/text%3E%3C/svg%3E";
+                                        }}
+                                      />
+                                      {media.media_summary && (
+                                        <div className="p-3 border-t border-gray-200">
+                                          <p className="text-xs text-gray-600">
+                                            {media.media_summary}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
                             {question.type === "MCQ" &&
                               question.mcq_answer_options.length > 0 && (
@@ -565,7 +617,7 @@ export default function QuizAssessmentPage() {
                                         return (
                                           option.trim() && (
                                             <div
-                                              key={`option-${question.question_id}-${optIndex}`}
+                                              key={`option-${question.id || question.question_id}-${optIndex}`}
                                               className={`flex items-center p-3 rounded-lg border transition-colors ${
                                                 isCorrect
                                                   ? "bg-green-50 border-green-200 shadow-sm"
@@ -617,7 +669,7 @@ export default function QuizAssessmentPage() {
                                 </div>
                               )}
 
-                            {question.type === "SHORT" && (
+                            {question.type === "SHORT" && question.answer_text && (
                               <div className="mt-4">
                                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                   <div className="flex items-start gap-2">
@@ -637,7 +689,36 @@ export default function QuizAssessmentPage() {
                                         Correct Answer:
                                       </span>
                                       <p className="text-sm text-green-700 mt-1 font-medium">
-                                        {question.model_answer}
+                                        {question.answer_text}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Display Guideline if available */}
+                            {question.guideline_text && (
+                              <div className="mt-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                  <div className="flex items-start gap-2">
+                                    <svg
+                                      className="w-5 h-5 text-blue-600 mt-0.5"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                    <div>
+                                      <span className="text-sm font-semibold text-blue-800">
+                                        Grading Guideline:
+                                      </span>
+                                      <p className="text-sm text-blue-700 mt-1">
+                                        {question.guideline_text}
                                       </p>
                                     </div>
                                   </div>

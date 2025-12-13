@@ -445,7 +445,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToSignIn }: Signu
                     <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">Educator Information</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700 block">Official Email *</label>
+                        <label className="text-sm font-medium text-gray-700 block">Official Email</label>
                         <div className="relative">
                           <FaEnvelope className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <input

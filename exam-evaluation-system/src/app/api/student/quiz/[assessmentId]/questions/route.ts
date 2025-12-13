@@ -1,5 +1,3 @@
-// src/app/api/educator/module/[moduleId]/assessment/[assessmentId]/questions/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -48,18 +46,18 @@ export async function GET(req: NextRequest, { params }: { params: { assessmentId
     const questions = await prisma.question.findMany({
       where: { assessment_id: assessmentId },
       select: {
-        question_id: true,
+        id: true,
         type: true,
         question_number: true,
-        question: true,
+        question_text: true,
         mcq_answer_options: true,
-        marks_allowed: true, // Decimal(5,2)
+        max_marks: true, // Decimal(5,2)
       },
     });
 
     // Normalize with cents
     const normalized = normalizeWithCents(
-      questions.map(q => ({ ...q, marks_allowed: Number(q.marks_allowed ?? 0) }))
+      questions.map(q => ({ ...q, marks_allowed: Number(q.max_marks ?? 0) }))
     );
 
     const hasMax = assessment.max_marks !== null && assessment.max_marks !== undefined;

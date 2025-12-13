@@ -9,9 +9,9 @@ interface Question {
   question_id: string;
   type: "MCQ" | "SHORT";
   question_number: string;
-  question: string;
+  question_text: string;
   mcq_answer_options: string[];
-  marks_allowed: number;
+  max_marks: number;
 }
 
 interface QuizData {
@@ -669,7 +669,7 @@ const QuizAttemptPage = () => {
                   </span>
 
                   <h2 className="text-xl font-semibold text-slate-800 leading-relaxed">
-                    {currentQuestion.question}
+                    {currentQuestion.question_text}
                   </h2>
                 </div>
               </div>
@@ -688,8 +688,8 @@ const QuizAttemptPage = () => {
                 </span>
 
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                  {currentQuestion.marks_allowed}{" "}
-                  {currentQuestion.marks_allowed === 1 ? "mark" : "marks"}
+                  {currentQuestion.max_marks}{" "}
+                  {currentQuestion.max_marks === 1 ? "mark" : "marks"}
                 </span>
               </div>
             </div>

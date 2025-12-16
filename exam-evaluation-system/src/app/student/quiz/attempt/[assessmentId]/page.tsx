@@ -243,7 +243,7 @@ const QuizAttemptPage = () => {
    * - For MCQ: a selected option (non-empty string)
    * - For SHORT: non-empty non-whitespace
    */
-  const autoSave = async (questionId: string, answer: string) => {
+  const autoSave = async (questionId: string,questionNumber:string, answer: string ) => {
     if (!submissionId || isSubmitted) return;
 
     // skip empty/whitespace answers
@@ -257,6 +257,7 @@ const QuizAttemptPage = () => {
         body: JSON.stringify({
           submissionId,
           questionId,
+          questionNumber:question_number,
           studentAnswer: answer,
         }),
       });
@@ -276,6 +277,7 @@ const QuizAttemptPage = () => {
     if (!currentQuestion) return;
     await autoSave(
       currentQuestion.question_id,
+      currentQuestion.question_number,
       answers[currentQuestion.question_id] || ""
     );
     if (currentIndex < (quizData?.questions.length || 0) - 1) {
@@ -298,6 +300,7 @@ const QuizAttemptPage = () => {
     if (!currentQuestion) return;
     await autoSave(
       currentQuestion.question_id,
+      currentQuestion.question_number,
       answers[currentQuestion.question_id] || ""
     );
     if (currentIndex > 0) setCurrentIndex((prev) => prev - 1);
@@ -347,7 +350,7 @@ const QuizAttemptPage = () => {
   const currentQuestion = quizData.questions[currentIndex];
   if (currentQuestion) {
     const latestAnswer = answers[currentQuestion.question_id] || "";
-    await autoSave(currentQuestion.question_id, latestAnswer);
+    await autoSave(currentQuestion.question_id,currentQuestion.question_number, latestAnswer);
   }
 
   try {

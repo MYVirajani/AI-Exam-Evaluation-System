@@ -212,7 +212,6 @@ model Assessment {
   questions          Question[]
   Assessment_Grading Assessment_Grading[]
   Assessment_Grade   Assessment_Grade[]
-  Question_Online    Question_Online[]
 }
 
 model Question_Paper {
@@ -258,6 +257,7 @@ model Question {
   assessment         Assessment?         @relation(fields: [assessment_id], references: [assessment_id])
   media              Question_Media[]
   grading_results    Grading_Results[]
+  Student_Answer     Student_Answer[]
 
   @@index([assessment_id])
   @@index([model_answer_paper_id])
@@ -280,7 +280,6 @@ model Question_Media {
   @@index([question_id])
   @@index([model_id])
 }
-
 
 model Marking_Scheme {
   marking_scheme_id String     @id @default(uuid())
@@ -326,7 +325,8 @@ model Submission {
 model Student_Answer {
   id              String    @id @default(uuid())
   submission_id   String
-  model_id        String
+  model_id        String?
+  question_id     String? // for MCQ / question-based evaluation
   question_number String
   answer_text     String
   created_on      DateTime  @default(now()) @db.Timestamptz(6)
@@ -337,12 +337,14 @@ model Student_Answer {
 
   // Relations
   submission       Submission             @relation(fields: [submission_id], references: [submission_id])
-  evaluation_model Evaluation_Model       @relation(fields: [model_id], references: [id])
+  evaluation_model Evaluation_Model?      @relation(fields: [model_id], references: [id])
+  question         Question?              @relation(fields: [question_id], references: [id])
   media            Student_Answer_Media[]
   Grading_Results  Grading_Results[]
 
   @@index([submission_id])
   @@index([model_id])
+  @@index([question_id])
 }
 
 model Student_Answer_Media {
@@ -401,8 +403,6 @@ model Evaluation_Model {
   grading_results        Grading_Results[]
   assessment_grade       Assessment_Grade[]
   Assessment             Assessment[]
-  Question_Online        Question_Online[]
-  Question_Online_Media  Question_Online_Media[]
 }
 
 model Pricing_Plan {
@@ -466,7 +466,6 @@ model Grading_Results {
   submission        Submission       @relation(fields: [submission_id], references: [submission_id], onDelete: Cascade)
   student_answer    Student_Answer   @relation(fields: [student_answer_id], references: [id], onDelete: Cascade)
   Question          Question?        @relation(fields: [question_id], references: [id], onDelete: SetNull)
-  Question_Online   Question_Online? @relation(fields: [question_OnlineId], references: [id])
   question_OnlineId String?
 
   @@id([model_id, submission_id, student_answer_id]) // ← composite PK

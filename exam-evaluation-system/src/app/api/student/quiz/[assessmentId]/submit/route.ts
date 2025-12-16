@@ -1,116 +1,130 @@
 // src/app/api/student/quiz/submit/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { Decimal } from '@prisma/client/runtime/library';
-import { v4 as uuidv4 } from 'uuid';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("📥 Incoming quiz submission for auto-grading...");
-
-    // ⬇️ Extract ip_address and device_info as well
     const { submissionId, ip_address, device_info } = await req.json();
-    console.log("🔍 Received submissionId:", submissionId, "📡 IP:", ip_address, "💻 Device:", device_info);
 
     if (!submissionId) {
-      console.warn("❌ Missing submissionId in request.");
-      return NextResponse.json({ message: 'Missing submissionId' }, { status: 400 });
+      return NextResponse.json({ message: "Missing submissionId" }, { status: 400 });
     }
 
+    /* -------------------------------------------------------
+       1. Get SYSTEM evaluation model
+    ------------------------------------------------------- */
+    const systemModel = await prisma.evaluation_Model.findUnique({
+      where: { model_name: "System Grading" },
+    });
+
+    if (!systemModel) {
+      return NextResponse.json(
+        { message: "SYSTEM evaluation model not found" },
+        { status: 500 }
+      );
+    }
+
+    const modelId = systemModel.id;
+    const now = new Date();
+
+    /* -------------------------------------------------------
+       2. Fetch submission + student answers + questions
+    ------------------------------------------------------- */
     const submission = await prisma.submission.findUnique({
       where: { submission_id: submissionId },
       include: {
-        answers: true,
+        answers: {
+          include: {
+            question: true,
+          },
+        },
         assessment: {
           select: {
+            assessment_id: true,
             max_marks: true,
-            questions: {
-              select: {
-                question_id: true,
-                model_answer: true,
-                marks_allowed: true,
-              },
-            },
           },
         },
       },
     });
 
     if (!submission) {
-      console.warn("❌ Submission not found for ID:", submissionId);
-      return NextResponse.json({ message: 'Submission not found' }, { status: 404 });
+      return NextResponse.json({ message: "Submission not found" }, { status: 404 });
     }
 
-    console.log("✅ Fetched submission:", submissionId);
+    let totalScore = new Decimal(0);
 
-    const questionMap = new Map(
-      submission.assessment.questions.map((q) => [q.question_id, q])
-    );
+    /* -------------------------------------------------------
+       3. Grade each student answer
+    ------------------------------------------------------- */
+    for (const ans of submission.answers) {
+      if (!ans.question) continue;
 
-    let totalMarksAwarded = new Decimal(0);
-    const now = new Date();
+      const correctAnswer = ans.question.answer_text?.trim().toLowerCase();
+      const studentAnswer = ans.answer_text.trim().toLowerCase();
 
-    const questionGrades = await Promise.all(
-      submission.answers.map(async (ans, index) => {
-        const question = questionMap.get(ans.question_id);
-        if (!question) {
-          console.warn(`⚠️ No matching question found for answer ${index + 1} (ID: ${ans.question_id})`);
-          return null;
-        }
+      const isCorrect = correctAnswer === studentAnswer;
+      const score = isCorrect
+        ? ans.question.max_marks ?? new Decimal(0)
+        : new Decimal(0);
 
-        const isCorrect =
-          question.model_answer.trim().toLowerCase() ===
-          ans.student_answer.trim().toLowerCase();
+      totalScore = totalScore.plus(score);
 
-        const marks_awarded = isCorrect ? question.marks_allowed : new Decimal(0);
-        totalMarksAwarded = totalMarksAwarded.plus(marks_awarded);
-
-        await prisma.student_Answer.update({
-          where: {
-            submission_id_question_id: {
-              submission_id: submissionId,
-              question_id: ans.question_id,
-            },
-          },
-          data: {
-            is_correct: isCorrect,
-            marks_awarded,
-            graded_at: now,
-          },
-        });
-
-        return {
-          question_id: ans.question_id,
-          submission_id: submissionId,
-          marks_awarded,
-          max_marks: question.marks_allowed,
+      /* ---- Update Student_Answer ---- */
+      await prisma.student_Answer.update({
+        where: { id: ans.id },
+        data: {
+          model_id: modelId,
+          score,
+          feedback: isCorrect ? "Correct answer" : "Incorrect answer",
           graded_at: now,
-          grading_duration: new Decimal(0.1),
-          auto_graded: true,
-          feedback: isCorrect ? 'Correct' : 'Incorrect',
-        };
-      })
-    );
+        },
+      });
 
-    const validGrades = questionGrades.filter((g) => g !== null);
+      /* ---- Create Grading_Results ---- */
+      await prisma.grading_Results.create({
+        data: {
+          model_id: modelId,
+          submission_id: submissionId,
+          student_answer_id: ans.id,
+          question_id: ans.question_id,
+          question_number: ans.question_number,
+          score,
+          max_marks: ans.question.max_marks,
+          feedback: isCorrect ? "Correct answer" : "Incorrect answer",
+          grading_method: "SYSTEM_RULE_BASED",
+        },
+      });
+    }
 
-    await prisma.question_Grade.createMany({
-      data: validGrades as any[],
-    });
-
-    await prisma.assessment_Grade.create({
-      data: {
-        grade_id: uuidv4(),
+    /* -------------------------------------------------------
+       4. Upsert Assessment_Grade (composite PK)
+    ------------------------------------------------------- */
+    await prisma.assessment_Grade.upsert({
+      where: {
+        model_id_submission_id_assessment_id: {
+          model_id: modelId,
+          submission_id: submissionId,
+          assessment_id: submission.assessment.assessment_id,
+        },
+      },
+      update: {
+        score: totalScore,
+        updated_on: now,
+      },
+      create: {
+        model_id: modelId,
         submission_id: submissionId,
-        max_marks: submission.assessment.max_marks ?? new Decimal(0),
-        marks_awarded: totalMarksAwarded,
-        feedback: "Auto-graded from saved responses against model answers and the marking scheme.",
-        graded_at: now,
-        auto_graded: true,
+        assessment_id: submission.assessment.assessment_id,
+        score: totalScore,
+        max_marks: submission.assessment.max_marks,
+        created_on: now,
       },
     });
 
-    // ⬇️ Update with ip_address + device_info
+    /* -------------------------------------------------------
+       5. Update submission meta
+    ------------------------------------------------------- */
     await prisma.submission.update({
       where: { submission_id: submissionId },
       data: {
@@ -120,13 +134,15 @@ export async function POST(req: NextRequest) {
         device_info: device_info ?? "unknown",
       },
     });
-    console.log("✅ Submission status updated with IP & device info");
 
-    return NextResponse.json({ message: 'Quiz submitted and auto-graded successfully.' });
+    return NextResponse.json({
+      message: "Quiz submitted and graded successfully",
+      totalScore: totalScore.toString(),
+    });
   } catch (error) {
-    console.error('❌ Auto-grading error:', error);
+    console.error("❌ Auto-grading error:", error);
     return NextResponse.json(
-      { message: 'Failed to submit and grade quiz.' },
+      { message: "Failed to submit and grade quiz" },
       { status: 500 }
     );
   }

@@ -84,7 +84,9 @@ export default function ModulePage({ params }: ModulePageProps) {
     type: "success" | "error" | null;
     message: string;
   }>({ type: null, message: "" });
-  const [evaluationModels, setEvaluationModels] = useState<EvaluationModel[]>([]);
+  const [evaluationModels, setEvaluationModels] = useState<EvaluationModel[]>(
+    []
+  );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -275,20 +277,33 @@ export default function ModulePage({ params }: ModulePageProps) {
         type: "error",
         message: "No lecture materials available to process.",
       });
-      setTimeout(() => {
-        setKnowledgeBaseStatus({ type: null, message: "" });
-      }, 5000);
+      setTimeout(
+        () => setKnowledgeBaseStatus({ type: null, message: "" }),
+        5000
+      );
       return;
     }
 
     if (evaluationModels.length === 0) {
       setKnowledgeBaseStatus({
         type: "error",
-        message: "No evaluation models found. Please ensure you have an active subscription.",
+        message:
+          "No evaluation models found. Please ensure you have an active subscription.",
       });
-      setTimeout(() => {
-        setKnowledgeBaseStatus({ type: null, message: "" });
-      }, 5000);
+      setTimeout(
+        () => setKnowledgeBaseStatus({ type: null, message: "" }),
+        5000
+      );
+      return;
+    }
+
+    const MODEL_SERVER_URL = process.env.NEXT_PUBLIC_MODEL_SERVER_URL;
+
+    if (!MODEL_SERVER_URL) {
+      setKnowledgeBaseStatus({
+        type: "error",
+        message: "Model server URL is not configured.",
+      });
       return;
     }
 
@@ -296,16 +311,18 @@ export default function ModulePage({ params }: ModulePageProps) {
       setUpdatingKnowledgeBase(true);
       setKnowledgeBaseStatus({ type: null, message: "" });
 
-      const lesson_ids: string[] = moduleData.lessons.map(lesson => lesson.lesson_id);
-      const model_ids: string[] = evaluationModels.map(model => model.id);
+      const lesson_ids: string[] = moduleData.lessons.map(
+        (lesson) => lesson.lesson_id
+      );
+      const model_ids: string[] = evaluationModels.map((model) => model.id);
 
       const requestBody = {
-        lesson_ids: lesson_ids,
-        model_ids: model_ids,
+        lesson_ids,
+        model_ids,
       };
 
       const response = await fetch(
-        "http://localhost:8000/lecture-material/process-extract-embed",
+        `${MODEL_SERVER_URL}/lecture-material/process-extract-embed`,
         {
           method: "POST",
           headers: {
@@ -326,26 +343,31 @@ export default function ModulePage({ params }: ModulePageProps) {
 
       setKnowledgeBaseStatus({
         type: "success",
-        message: `Successfully updated knowledge base for ${lesson_ids.length} lesson${
-          lesson_ids.length !== 1 ? "s" : ""
-        } across ${model_ids.length} model${
+        message: `Successfully updated knowledge base for ${
+          lesson_ids.length
+        } lesson${lesson_ids.length !== 1 ? "s" : ""} across ${
+          model_ids.length
+        } model${
           model_ids.length !== 1 ? "s" : ""
         }. Embeddings created and stored.`,
       });
 
-      setTimeout(() => {
-        setKnowledgeBaseStatus({ type: null, message: "" });
-      }, 7000);
+      setTimeout(
+        () => setKnowledgeBaseStatus({ type: null, message: "" }),
+        7000
+      );
     } catch (err: any) {
       console.error("❌ Knowledge Base Update Error:", err);
       setKnowledgeBaseStatus({
         type: "error",
         message:
-          err.message || "An unexpected error occurred while updating knowledge base.",
+          err.message ||
+          "An unexpected error occurred while updating knowledge base.",
       });
-      setTimeout(() => {
-        setKnowledgeBaseStatus({ type: null, message: "" });
-      }, 7000);
+      setTimeout(
+        () => setKnowledgeBaseStatus({ type: null, message: "" }),
+        7000
+      );
     } finally {
       setUpdatingKnowledgeBase(false);
     }
@@ -435,7 +457,8 @@ export default function ModulePage({ params }: ModulePageProps) {
               Module Not Found
             </h3>
             <p className="text-gray-600 mb-6">
-              The requested module could not be found or you don't have access to it.
+              The requested module could not be found or you don't have access
+              to it.
             </p>
             <Button onClick={() => router.back()} variant="secondary" size="sm">
               Go Back
@@ -485,8 +508,18 @@ export default function ModulePage({ params }: ModulePageProps) {
                 <div className="flex items-start justify-between">
                   <div className="space-y-4 flex-1">
                     <div className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 text-sm font-semibold rounded-full border border-blue-200/50">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      <svg
+                        className="w-4 h-4 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                        />
                       </svg>
                       {moduleCode}
                     </div>
@@ -495,22 +528,58 @@ export default function ModulePage({ params }: ModulePageProps) {
                     </h1>
                     <div className="flex flex-wrap items-center gap-4 text-slate-600">
                       <div className="flex items-center">
-                        <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <svg
+                          className="w-5 h-5 mr-2 text-blue-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
                         </svg>
-                        <span className="font-medium">{moduleData.enrollmentsCount} Students</span>
+                        <span className="font-medium">
+                          {moduleData.enrollmentsCount} Students
+                        </span>
                       </div>
                       <div className="flex items-center">
-                        <svg className="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <svg
+                          className="w-5 h-5 mr-2 text-purple-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
                         </svg>
-                        <span className="font-medium">{lessons.length} Lessons</span>
+                        <span className="font-medium">
+                          {lessons.length} Lessons
+                        </span>
                       </div>
                       <div className="flex items-center">
-                        <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        <svg
+                          className="w-5 h-5 mr-2 text-indigo-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                          />
                         </svg>
-                        <span className="font-medium">{assessments.length} Events</span>
+                        <span className="font-medium">
+                          {assessments.length} Events
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -526,11 +595,23 @@ export default function ModulePage({ params }: ModulePageProps) {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">Upcoming Events</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Upcoming Events
+                </h2>
               </div>
               <Button
                 variant="primary"
@@ -540,8 +621,18 @@ export default function ModulePage({ params }: ModulePageProps) {
                 className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all"
               >
                 <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   New Event
                 </span>
@@ -551,12 +642,26 @@ export default function ModulePage({ params }: ModulePageProps) {
             {assessments.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    className="w-10 h-10 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
-                <p className="text-gray-500 text-lg font-medium">No events scheduled yet</p>
-                <p className="text-gray-400 text-sm mt-1">Create your first event to get started</p>
+                <p className="text-gray-500 text-lg font-medium">
+                  No events scheduled yet
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Create your first event to get started
+                </p>
               </div>
             ) : (
               <div className="relative">
@@ -571,8 +676,18 @@ export default function ModulePage({ params }: ModulePageProps) {
                           : "text-gray-300 cursor-not-allowed opacity-50"
                       }`}
                     >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 19l-7-7 7-7"
+                        />
                       </svg>
                     </button>
 
@@ -585,8 +700,18 @@ export default function ModulePage({ params }: ModulePageProps) {
                           : "text-gray-300 cursor-not-allowed opacity-50"
                       }`}
                     >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </button>
                   </>
@@ -599,7 +724,10 @@ export default function ModulePage({ params }: ModulePageProps) {
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
                   {assessments.map((assess) => (
-                    <div key={assess.assessment_id} className="flex-shrink-0 w-80 sm:w-72">
+                    <div
+                      key={assess.assessment_id}
+                      className="flex-shrink-0 w-80 sm:w-72"
+                    >
                       <EducatorEventCard
                         title={assess.title}
                         module={moduleName}
@@ -625,18 +753,34 @@ export default function ModulePage({ params }: ModulePageProps) {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">Lecture Materials</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Lecture Materials
+                </h2>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={handleUpdateKnowledgeBase}
-                  disabled={updatingKnowledgeBase || lessons.length === 0 || evaluationModels.length === 0}
+                  disabled={
+                    updatingKnowledgeBase ||
+                    lessons.length === 0 ||
+                    evaluationModels.length === 0
+                  }
                   className="w-full sm:w-auto shadow hover:shadow-lg transition-all"
                   title={
                     lessons.length === 0
@@ -659,8 +803,18 @@ export default function ModulePage({ params }: ModulePageProps) {
                   className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all"
                 >
                   <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
                     </svg>
                     Add Materials
                   </span>
@@ -679,26 +833,52 @@ export default function ModulePage({ params }: ModulePageProps) {
                 <div className="flex items-start gap-3">
                   {knowledgeBaseStatus.type === "success" ? (
                     <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   ) : (
                     <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   )}
                   <div className="flex-1">
-                    <p className={`font-semibold text-sm ${
-                      knowledgeBaseStatus.type === "success" ? "text-green-800" : "text-red-800"
-                    }`}>
-                      {knowledgeBaseStatus.type === "success" ? "Success!" : "Error"}
+                    <p
+                      className={`font-semibold text-sm ${
+                        knowledgeBaseStatus.type === "success"
+                          ? "text-green-800"
+                          : "text-red-800"
+                      }`}
+                    >
+                      {knowledgeBaseStatus.type === "success"
+                        ? "Success!"
+                        : "Error"}
                     </p>
-                    <p className={`text-sm mt-1 ${
-                      knowledgeBaseStatus.type === "success" ? "text-green-700" : "text-red-700"
-                    }`}>
+                    <p
+                      className={`text-sm mt-1 ${
+                        knowledgeBaseStatus.type === "success"
+                          ? "text-green-700"
+                          : "text-red-700"
+                      }`}
+                    >
                       {knowledgeBaseStatus.message}
                     </p>
                   </div>
@@ -709,17 +889,31 @@ export default function ModulePage({ params }: ModulePageProps) {
             {lessons.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  <svg
+                    className="w-10 h-10 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
                   </svg>
                 </div>
-                <p className="text-gray-500 text-lg font-medium">No lecture materials yet</p>
-                <p className="text-gray-400 text-sm mt-1">Add your first lecture material to get started</p>
+                <p className="text-gray-500 text-lg font-medium">
+                  No lecture materials yet
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Add your first lecture material to get started
+                </p>
               </div>
             ) : educatorId ? (
               <div className="space-y-4">
                 {lessons.map((lesson, index) => (
-                  <div 
+                  <div
                     key={lesson.lesson_id}
                     className="transform transition-all duration-200 hover:scale-[1.01]"
                     style={{ animationDelay: `${index * 50}ms` }}
@@ -773,7 +967,7 @@ export default function ModulePage({ params }: ModulePageProps) {
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
-        
+
         @keyframes fadeIn {
           from {
             opacity: 0;
@@ -784,7 +978,7 @@ export default function ModulePage({ params }: ModulePageProps) {
             transform: translateY(0);
           }
         }
-        
+
         .space-y-4 > * {
           animation: fadeIn 0.3s ease-out forwards;
           opacity: 0;

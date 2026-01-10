@@ -33,21 +33,24 @@ model Educator {
   official_email      String @unique
   education_institute String
 
-  user             User               @relation(fields: [user_id], references: [user_id])
-  modules          Module[]
-  assessments      Assessment[]
-  subscriptions    Subscription[]
-  Lesson           Lesson[]
-  Lecture_Material Lecture_Material[]
+  user                    User                     @relation(fields: [user_id], references: [user_id])
+  modules                 Module[]
+  assessments             Assessment[]
+  subscriptions           Subscription[]
+  Lesson                  Lesson[]
+  Lecture_Material        Lecture_Material[]
+  bubblesheet_answer_keys BubbleSheet_Answer_Key[]
 }
 
 model Student {
-  user_id             String       @id
-  registration_number String       @unique
+  user_id             String                       @id
+  registration_number String                       @unique
   education_institute String
-  user                User         @relation(fields: [user_id], references: [user_id])
+  user                User                         @relation(fields: [user_id], references: [user_id])
   enrollments         Enrollment[]
   submissions         Submission[]
+  bubblesheet_answers BubbleSheet_Student_Answer[]
+  bubblesheet_results BubbleSheet_Result[]
 }
 
 enum Role {
@@ -82,6 +85,10 @@ model Module {
   assessments Assessment[]
   enrollments Enrollment[]
   lessons     Lesson[]
+
+  bubblesheet_student_answers BubbleSheet_Student_Answer[]
+  bubblesheet_answer_keys     BubbleSheet_Answer_Key[]
+  bubblesheet_results         BubbleSheet_Result[]
 }
 
 model Enrollment {
@@ -164,6 +171,7 @@ enum assessmentType {
   midExam
   assignment
   quiz
+  bubbleSheet
 }
 
 enum QuestionType {
@@ -212,6 +220,10 @@ model Assessment {
   questions          Question[]
   Assessment_Grading Assessment_Grading[]
   Assessment_Grade   Assessment_Grade[]
+
+  bubblesheet_student_answers BubbleSheet_Student_Answer[]
+  bubblesheet_answer_keys     BubbleSheet_Answer_Key[]
+  bubblesheet_results         BubbleSheet_Result[]
 }
 
 model Question_Paper {
@@ -491,4 +503,69 @@ model Assessment_Grade {
   @@index([model_id])
   @@index([submission_id])
   @@index([assessment_id])
+}
+
+// Store student's bubble sheet answers
+model BubbleSheet_Student_Answer {
+  id              String   @id @default(uuid())
+  student_id      String
+  assessment_id   String
+  module_id       String
+  question_number Int
+  selected_option String // A, B, C, D
+  created_on      DateTime @default(now()) @db.Timestamptz(6)
+  updated_on      DateTime @default(now()) @db.Timestamptz(6)
+
+  student    Student    @relation(fields: [student_id], references: [user_id])
+  assessment Assessment @relation(fields: [assessment_id], references: [assessment_id])
+  module     Module     @relation(fields: [module_id], references: [module_id])
+
+  @@unique([student_id, assessment_id, question_number])
+  @@index([assessment_id])
+  @@index([student_id])
+  @@index([module_id])
+}
+
+// Store educator's correct answers (answer key)
+model BubbleSheet_Answer_Key {
+  id              String   @id @default(uuid())
+  assessment_id   String
+  module_id       String
+  question_number Int
+  correct_option  String // A, B, C, D
+  created_by      String
+  created_on      DateTime @default(now()) @db.Timestamptz(6)
+  updated_on      DateTime @default(now()) @db.Timestamptz(6)
+
+  assessment Assessment @relation(fields: [assessment_id], references: [assessment_id])
+  module     Module     @relation(fields: [module_id], references: [module_id])
+  educator   Educator   @relation(fields: [created_by], references: [user_id])
+
+  @@unique([assessment_id, question_number])
+  @@index([assessment_id])
+  @@index([module_id])
+}
+
+// Store bubble sheet evaluation results
+model BubbleSheet_Result {
+  id                String   @id @default(uuid())
+  student_id        String
+  assessment_id     String
+  module_id         String
+  total_questions   Int
+  correct_answers   Int
+  incorrect_answers Int
+  unanswered        Int
+  total_marks       Decimal  @db.Decimal(5, 2)
+  percentage        Decimal  @db.Decimal(5, 2)
+  evaluated_on      DateTime @default(now()) @db.Timestamptz(6)
+
+  student    Student    @relation(fields: [student_id], references: [user_id])
+  assessment Assessment @relation(fields: [assessment_id], references: [assessment_id])
+  module     Module     @relation(fields: [module_id], references: [module_id])
+
+  @@unique([student_id, assessment_id])
+  @@index([assessment_id])
+  @@index([student_id])
+  @@index([module_id])
 }

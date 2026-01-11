@@ -626,6 +626,7 @@ export default function AssessmentPage() {
       });
 
       const data = await response.json();
+      console.log("Evaluation response data:", data);
 
       if (!response.ok) {
         throw new Error(data.detail || "Failed to grade submissions");
@@ -635,7 +636,12 @@ export default function AssessmentPage() {
         evaluationModels.find((m) => m.id === selectedModelId)?.model_name ||
         "AI";
 
-      let statusMessage = `✅ Successfully graded ${data.count} questions with ${selectedModelName}!`;
+      // ✅ FIX: COUNT UNIQUE SUBMISSION IDs
+      const uniqueSubmissionCount = data.results
+        ? new Set(data.results.map((r: any) => r.submission_id)).size
+        : 0;
+
+      let statusMessage = `✅ Successfully graded ${uniqueSubmissionCount} submissions with ${selectedModelName}!`;
 
       if (data.model_answer_embedded) {
         statusMessage += "\n📝 Model answer was processed and embedded.";
@@ -646,14 +652,13 @@ export default function AssessmentPage() {
       }
 
       setEvaluationStatus(statusMessage);
-      toast.success(
-        `Evaluation completed successfully!`
-      );
+      toast.success("Evaluation completed successfully!");
 
       await refetchAssessment();
     } catch (error) {
       console.error("Error during evaluation:", error);
       setEvaluationStatus("❌ Evaluation failed");
+
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to complete evaluation: ${errorMessage}`);

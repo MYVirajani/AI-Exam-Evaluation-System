@@ -8,7 +8,7 @@ import { FaTag, FaClock, FaFileUpload, FaTimes, FaCalendarAlt, FaGraduationCap }
 import { siteConfig } from "@/config/site";
 
 export interface EventFormData {
-  type: "assignment" | "quiz" | "exam";
+  type: "assignment" | "quiz" | "exam" | "bubbleSheet";
   moduleId: string;
   title: string;
   description?: string;

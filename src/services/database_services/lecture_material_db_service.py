@@ -304,27 +304,18 @@ class LectureMaterialDBService(BaseRelationalDB):
     # ----------------------------------------------------
     # FETCH MATERIAL IDs BY LESSON LIST
     # ----------------------------------------------------
-    def get_lecture_material_ids_by_lessons(self, lesson_ids: list, created_by: str = None):
+    def get_lecture_material_ids_by_lessons(self, lesson_ids: list):
         try:
-            if created_by:
-                sql = """
-                    SELECT id
-                    FROM "Lecture_Material"
-                    WHERE lesson_id = ANY(%s)
-                      AND created_by = %s
-                    ORDER BY created_on DESC;
-                """
-                params = (lesson_ids, created_by)
-            else:
-                sql = """
-                    SELECT id
-                    FROM "Lecture_Material"
-                    WHERE lesson_id = ANY(%s)
-                    ORDER BY created_on DESC;
-                """
-                params = (lesson_ids,)
-
-            self.cursor.execute(sql, params)
+            if not lesson_ids:
+                return []
+            lesson_ids = [str(lid) for lid in lesson_ids]
+            sql = """
+            SELECT id
+            FROM "Lecture_Material"
+            WHERE lesson_id = ANY(%s)
+            ORDER BY created_on DESC;
+        """
+            self.cursor.execute(sql, (lesson_ids,))
             rows = self.cursor.fetchall()
 
             return [row[0] for row in rows]

@@ -145,9 +145,9 @@ class RAGGrader:
             return False
 
     # =======================================================================
-    def grade_submissions_answers(self, submission_ids: List[str], model_paper_id: str,
+    def grade_submissions_answers(self, submission_ids: List[str], 
                                   assessment_id: str, lecturer_id: str, module_id: str,
-                                  top_k: int = 5, question_numbers: Optional[List[str]] = None):
+                                  top_k: int = 5, question_numbers: Optional[List[str]] = None, model_paper_id: str=None,):
         """
         Grade all submissions and return a list of GradingResultRecord objects (in-memory).
         Commits results at the end. Rolls back on errors.
@@ -199,8 +199,8 @@ class RAGGrader:
                         )
 
                     # --- IMPORTANT CHANGE: fetch model_answer EARLY so we can always obtain max_marks ---
-                    model_data = self.model_answer_db.get_model_answer(
-                        model_answer_paper_id=model_paper_id,
+                    model_data = self.model_answer_db.get_model_answer_by_id(
+                        question_id=question_id,
                         assessment_id=assessment_id,
                         question_number=question_number
                     )
@@ -213,6 +213,7 @@ class RAGGrader:
                         guideline_text = ""
                         model_answer_text = ""
                     else:
+                        question_type= model_data.get("type")
                         question_id = model_data.get("model_answer_id", None)
                         question_text = model_data.get("question_text", "")
                         guideline_text = model_data.get("guideline_text", "")
@@ -239,7 +240,7 @@ class RAGGrader:
                         try:
                             self.result_db.save_result(record=record)
                         except Exception as e:
-                            log.error(f"Failed saving grading result (empty answer) for {submission_id}/{question_number}: {e}", exc_info=True)
+                            log.error(f"Failed saving grading resu0lt (empty answer) for {submission_id}/{question_number}: {e}", exc_info=True)
                             self.result_db.rollback()
                             continue
 

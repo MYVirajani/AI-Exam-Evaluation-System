@@ -27,6 +27,7 @@ interface Grade {
   score: number;
   max_marks: number;
   updated_on: string;
+  status: string; // Added from API response
 }
 
 interface Submission {
@@ -38,7 +39,7 @@ interface Submission {
     registration_number: string;
     user: User;
   };
-  grades: Grade[]; // Changed from grade?: Grade | null to grades: Grade[]
+  grades: Grade[];
 }
 
 interface EvaluationModel {
@@ -160,26 +161,92 @@ export default function AssessmentPage() {
   };
 
   const getSubmissionStatus = (
-    submission: Submission
+    submission: Submission,
+    modelId: string = selectedModelId
   ): "Graded" | "Pending" => {
-    // Check if submission has any grade for the selectedModelId
+    // Check if submission has any grade for the selected model
     const gradeForModel = submission.grades.find(
-      (grade) => grade.model_id === selectedModelId
+      (grade) => grade.model_id === modelId
     );
 
-    return gradeForModel ? "Graded" : "Pending";
+    // If no grade exists, it's pending
+    if (!gradeForModel) {
+      return "Pending";
+    }
+
+    // Check the status from the grade object
+    const status = gradeForModel.status?.toLowerCase() || "";
+    
+    // Return based on the status
+    if (status === "graded" || status === "completed") {
+      return "Graded";
+    }
+    
+    // For any other status or if status field is missing but score exists
+    if (gradeForModel.score !== undefined) {
+      return "Graded";
+    }
+    
+    return "Pending";
   };
 
-  // 3. Update getAssessmentGradingStats to work with grades array
+  const getDetailedStatus = (submission: Submission, modelId: string = selectedModelId) => {
+    const gradeForModel = submission.grades.find(
+      (grade) => grade.model_id === modelId
+    );
+    
+    if (!gradeForModel) {
+      return { display: "Pending", details: "Not graded yet", color: "yellow" };
+    }
+    
+    const status = gradeForModel.status?.toLowerCase() || "";
+    
+    switch (status) {
+      case "graded":
+      case "completed":
+        return { 
+          display: "Graded", 
+          details: `Scored ${gradeForModel.score}/${gradeForModel.max_marks}`, 
+          color: "green" 
+        };
+      case "processing":
+        return { 
+          display: "Processing", 
+          details: "Grading in progress", 
+          color: "blue" 
+        };
+      case "failed":
+        return { 
+          display: "Failed", 
+          details: "Grading failed", 
+          color: "red" 
+        };
+      default:
+        return { 
+          display: "Pending", 
+          details: status || "Not graded yet", 
+          color: "yellow" 
+        };
+    }
+  };
+
+  // 3. Update getAssessmentGradingStats to work with grades array and status
   const getAssessmentGradingStats = () => {
     if (!assessment || !assessment.model_id) {
       return { graded: 0, pending: 0, percentage: 0 };
     }
 
-    // Count submissions that have a grade for the assessment's default model
-    const graded = assessment.submissions.filter((sub) =>
-      sub.grades.some((grade) => grade.model_id === assessment.model_id)
-    ).length;
+    // Count submissions that have a grade with "Graded" status for the assessment's default model
+    const graded = assessment.submissions.filter((sub) => {
+      const gradeForModel = sub.grades.find(
+        (grade) => grade.model_id === assessment.model_id
+      );
+      
+      if (!gradeForModel) return false;
+      
+      const status = gradeForModel.status?.toLowerCase() || "";
+      return status === "graded" || status === "completed";
+    }).length;
 
     const total = assessment.submissions.length;
     const pending = total - graded;
@@ -774,43 +841,7 @@ export default function AssessmentPage() {
           )}
         </div>
 
-        {/* Grading Statistics Card - NEW */}
-        {/* {selectedModelId && (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Grading Progress for{" "}
-                {evaluationModels.find((m) => m.id === assessment.model_id)
-                  ?.model_name || "Selected Model"}
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">
-                  Total Submissions
-                </div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {assessment.submissions.length}
-                </div>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Graded</div>
-                <div className="text-2xl font-bold text-green-600">
-                  {stats.graded}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {stats.percentage}% complete
-                </div>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Pending</div>
-                <div className="text-2xl font-bold text-orange-600">
-                  {stats.pending}
-                </div>
-              </div>
-            </div>
-          </div>
-        )} */}
+        {/* Grading Statistics Card */}
         {assessment?.model_id && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -1250,7 +1281,8 @@ export default function AssessmentPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedSubmissions.map((sub) => {
                   const status = getSubmissionStatus(sub);
-
+                  const detailedStatus = getDetailedStatus(sub);
+                  
                   // Find the grade for the selected model
                   const gradeForSelectedModel = sub.grades.find(
                     (grade) => grade.model_id === selectedModelId
@@ -1314,12 +1346,25 @@ export default function AssessmentPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            status === "Graded"
+                            detailedStatus.color === "green"
                               ? "bg-green-100 text-green-800"
+                              : detailedStatus.color === "blue"
+                              ? "bg-blue-100 text-blue-800"
+                              : detailedStatus.color === "red"
+                              ? "bg-red-100 text-red-800"
                               : "bg-yellow-100 text-yellow-800"
                           }`}
+                          title={detailedStatus.details}
                         >
-                          {status}
+                          {detailedStatus.display}
+                          {gradeForSelectedModel?.status && 
+                           gradeForSelectedModel.status.toLowerCase() !== "graded" && 
+                           gradeForSelectedModel.status.toLowerCase() !== "completed" && 
+                           gradeForSelectedModel.status.toLowerCase() !== "pending" ? (
+                            <span className="ml-1 text-xs opacity-75">
+                              ({gradeForSelectedModel.status})
+                            </span>
+                          ) : null}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

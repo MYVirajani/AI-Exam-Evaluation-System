@@ -27,7 +27,7 @@ interface Grade {
   score: number;
   max_marks: number;
   updated_on: string;
-  status: string; // Added from API response
+  status: string; 
 }
 
 interface Submission {

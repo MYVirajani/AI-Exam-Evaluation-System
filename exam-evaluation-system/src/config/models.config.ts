@@ -1,6 +1,15 @@
 // src/config/models.config.ts
 
-export type ProviderValue = 'openai' | 'gemini' | 'deepseek' | 'anthropic';
+// =====================
+// Types
+// =====================
+
+export type ProviderValue =
+  | 'openai'
+  | 'anthropic'
+  | 'gemini'
+  | 'deepseek'
+  | 'finetuneddeepseek';
 
 export interface ProviderOption {
   value: ProviderValue;
@@ -15,123 +24,134 @@ export interface ModelOption {
   description?: string;
 }
 
+// =====================
 // Provider configurations
+// =====================
+
 export const PROVIDERS: ProviderOption[] = [
   {
     value: 'openai',
     label: 'OpenAI',
-    description: 'GPT models from OpenAI'
+    description: 'GPT models provided by OpenAI'
   },
   {
     value: 'anthropic',
     label: 'Anthropic',
-    description: 'Claude models from Anthropic'
+    description: 'Claude models provided by Anthropic'
   },
   {
     value: 'gemini',
     label: 'Google Gemini',
-    description: 'Gemini models from Google'
+    description: 'Gemini models provided by Google'
   },
   {
     value: 'deepseek',
     label: 'DeepSeek',
-    description: 'DeepSeek AI models'
+    description: 'Base DeepSeek AI models'
+  },
+  {
+    value: 'finetuneddeepseek',
+    label: 'DeepSeek (Fine-tuned)',
+    description: 'Fine-tuned DeepSeek models for specialized tasks'
   }
 ];
 
+// =====================
 // Chat model configurations
+// =====================
+
 export const CHAT_MODELS: ModelOption[] = [
-  // OpenAI Models
-  {
-    value: 'gpt-4-turbo',
-    label: 'GPT-4 Turbo',
-    provider: 'openai',
-    description: 'Most capable GPT-4 model'
-  },
+  // OpenAI
+  // {
+  //   value: 'gpt-4-turbo',
+  //   label: 'GPT-4 Turbo',
+  //   provider: 'openai',
+  //   description: 'Most capable GPT-4 Turbo model'
+  // },
   {
     value: 'gpt-4',
     label: 'GPT-4',
     provider: 'openai',
-    description: 'High-intelligence flagship model'
+    description: 'High-intelligence flagship GPT-4 model'
   },
   {
     value: 'gpt-4o',
     label: 'GPT-4o',
     provider: 'openai',
-    description: 'Optimized GPT-4 model'
+    description: 'Optimized multimodal GPT-4 model'
   },
-  {
-    value: 'gpt-3.5-turbo',
-    label: 'GPT-3.5 Turbo',
-    provider: 'openai',
-    description: 'Fast and efficient model'
-  },
+  // {
+  //   value: 'gpt-3.5-turbo',
+  //   label: 'GPT-3.5 Turbo',
+  //   provider: 'openai',
+  //   description: 'Fast and cost-efficient model'
+  // },
 
-  // Anthropic Models
-  {
-    value: 'claude-3-opus',
-    label: 'Claude 3 Opus',
-    provider: 'anthropic',
-    description: 'Most capable Claude model'
-  },
+  // Anthropic
+  // {
+  //   value: 'claude-3-opus',
+  //   label: 'Claude 3 Opus',
+  //   provider: 'anthropic',
+  //   description: 'Most capable Claude 3 model'
+  // },
   {
     value: 'claude-3-sonnet',
     label: 'Claude 3 Sonnet',
     provider: 'anthropic',
     description: 'Balanced performance and speed'
   },
-  {
-    value: 'claude-3-haiku',
-    label: 'Claude 3 Haiku',
-    provider: 'anthropic',
-    description: 'Fast and compact model'
-  },
-  {
-    value: 'claude-2.1',
-    label: 'Claude 2.1',
-    provider: 'anthropic',
-    description: 'Previous generation Claude'
-  },
+  // {
+  //   value: 'claude-3-haiku',
+  //   label: 'Claude 3 Haiku',
+  //   provider: 'anthropic',
+  //   description: 'Fast, lightweight model'
+  // },
+  // {
+  //   value: 'claude-2.1',
+  //   label: 'Claude 2.1',
+  //   provider: 'anthropic',
+  //   description: 'Previous-generation Claude model'
+  // },
 
-  // Google Gemini Models
+  // Google Gemini
   {
     value: 'gemini-2.0-flash',
     label: 'Gemini 2.0 Flash',
     provider: 'gemini',
-    description: 'Latest generation Gemini with improved speed'
+    description: 'Latest Gemini model optimized for speed'
   },
-  {
-    value: 'gemini-pro',
-    label: 'Gemini Pro',
-    provider: 'gemini',
-    description: 'Advanced reasoning and generation'
-  },
-  {
-    value: 'gemini-pro-vision',
-    label: 'Gemini Pro Vision',
-    provider: 'gemini',
-    description: 'Multimodal capabilities'
-  },
-  {
-    value: 'gemini-ultra',
-    label: 'Gemini Ultra',
-    provider: 'gemini',
-    description: 'Most capable Gemini model'
-  },
+  // {
+  //   value: 'gemini-pro',
+  //   label: 'Gemini Pro',
+  //   provider: 'gemini',
+  //   description: 'Advanced reasoning and generation'
+  // },
+  // {
+  //   value: 'gemini-pro-vision',
+  //   label: 'Gemini Pro Vision',
+  //   provider: 'gemini',
+  //   description: 'Multimodal text + vision model'
+  // },
+  // {
+  //   value: 'gemini-ultra',
+  //   label: 'Gemini Ultra',
+  //   provider: 'gemini',
+  //   description: 'Most capable Gemini model'
+  // },
 
-  // DeepSeek Models
-  {
-    value: 'deepseek-chat',
-    label: 'DeepSeek Chat',
-    provider: 'deepseek',
-    description: 'General purpose chat model'
-  },
-  {
-    value: 'deepseek-coder',
-    label: 'DeepSeek Coder',
-    provider: 'deepseek',
-    description: 'Optimized for coding tasks'
-  },
+  // DeepSeek
+  // {
+  //   value: 'deepseek-chat',
+  //   label: 'DeepSeek Chat',
+  //   provider: 'deepseek',
+  //   description: 'General-purpose chat model'
+  // },
+  // {
+  //   value: 'deepseek-coder',
+  //   label: 'DeepSeek Coder',
+  //   provider: 'deepseek',
+  //   description: 'Optimized for coding tasks'
+  // },
   {
     value: 'deepseek-r1:7b',
     label: 'DeepSeek R1 7B',
@@ -140,93 +160,94 @@ export const CHAT_MODELS: ModelOption[] = [
   }
 ];
 
+// =====================
 // Embedding model configurations
+// =====================
+
 export const EMBEDDING_MODELS: ModelOption[] = [
-  // OpenAI Embeddings
-  {
-    value: 'text-embedding-3-large',
-    label: 'Text Embedding 3 Large',
-    provider: 'openai',
-    description: 'Most capable OpenAI embedding'
-  },
+  // OpenAI
+  // {
+  //   value: 'text-embedding-3-large',
+  //   label: 'Text Embedding 3 Large',
+  //   provider: 'openai',
+  //   description: 'Most capable OpenAI embedding model'
+  // },
   {
     value: 'text-embedding-3-small',
     label: 'Text Embedding 3 Small',
     provider: 'openai',
-    description: 'Efficient and cost-effective'
+    description: 'Efficient and cost-effective embedding'
   },
-  {
-    value: 'text-embedding-ada-002',
-    label: 'Text Embedding Ada 002',
-    provider: 'openai',
-    description: 'Previous generation embedding'
-  },
+  // {
+  //   value: 'text-embedding-ada-002',
+  //   label: 'Text Embedding Ada 002',
+  //   provider: 'openai',
+  //   description: 'Legacy OpenAI embedding model'
+  // },
 
-  // Anthropic Embeddings
-  {
-    value: 'claude-embedding-v1',
-    label: 'Claude Embedding v1',
-    provider: 'anthropic',
-    description: 'Anthropic embedding model'
-  },
+  // Anthropic
+  // {
+  //   value: 'claude-embedding-v1',
+  //   label: 'Claude Embedding v1',
+  //   provider: 'anthropic',
+  //   description: 'Anthropic embedding model'
+  // },
 
-  // Google Gemini Embeddings
+  // Google Gemini
   {
     value: 'embedding-001',
     label: 'Gemini Embedding 001',
     provider: 'gemini',
     description: 'Google embedding model'
   },
-  {
-    value: 'text-embedding-004',
-    label: 'Gemini Text Embedding 004',
-    provider: 'gemini',
-    description: 'Latest Google embedding'
-  },
+  // {
+  //   value: 'text-embedding-004',
+  //   label: 'Gemini Text Embedding 004',
+  //   provider: 'gemini',
+  //   description: 'Latest Gemini embedding model'
+  // },
 
-  // DeepSeek Embeddings
-  {
-    value: 'deepseek-embedding',
-    label: 'DeepSeek Embedding',
-    provider: 'deepseek',
-    description: 'DeepSeek embedding model'
-  }
+  // DeepSeek
+  // {
+  //   value: 'deepseek-embedding',
+  //   label: 'DeepSeek Embedding',
+  //   provider: 'deepseek',
+  //   description: 'DeepSeek embedding model'
+  // }
 ];
 
+// =====================
 // Helper functions
-export const getProviderLabel = (value: ProviderValue): string => {
-  return PROVIDERS.find(p => p.value === value)?.label || value;
-};
+// =====================
 
-export const getProviderValue = (label: string): ProviderValue | undefined => {
-  return PROVIDERS.find(p => p.label === label)?.value;
-};
+export const getProviderLabel = (value: ProviderValue): string =>
+  PROVIDERS.find(p => p.value === value)?.label || value;
 
-// ⭐ Modified: DeepSeek should show ALL embedding models
-export const getEmbeddingModelsByProvider = (provider: ProviderValue): ModelOption[] => {
-  if (provider === 'deepseek' || provider === 'anthropic') {
-    // return every embedding model from all providers
+export const getProviderValue = (label: string): ProviderValue | undefined =>
+  PROVIDERS.find(p => p.label === label)?.value;
+
+export const getChatModelsByProvider = (provider: ProviderValue): ModelOption[] =>
+  CHAT_MODELS.filter(m => m.provider === provider);
+
+// ⭐ Business rule:
+// DeepSeek & Anthropic can access ALL embedding models
+export const getEmbeddingModelsByProvider = (
+  provider: ProviderValue
+): ModelOption[] => {
+  if (provider === 'deepseek' || provider === 'finetuneddeepseek' || provider === 'anthropic') {
     return EMBEDDING_MODELS;
   }
   return EMBEDDING_MODELS.filter(m => m.provider === provider);
 };
 
-export const getChatModelsByProvider = (provider: ProviderValue): ModelOption[] => {
-  return CHAT_MODELS.filter(m => m.provider === provider);
-};
+export const getChatModelLabel = (value: string): string =>
+  CHAT_MODELS.find(m => m.value === value)?.label || value;
 
-export const getChatModelLabel = (value: string): string => {
-  return CHAT_MODELS.find(m => m.value === value)?.label || value;
-};
+export const getEmbeddingModelLabel = (value: string): string =>
+  EMBEDDING_MODELS.find(m => m.value === value)?.label || value;
 
-export const getEmbeddingModelLabel = (value: string): string => {
-  return EMBEDDING_MODELS.find(m => m.value === value)?.label || value;
-};
+export const getChatModelValue = (label: string): string | undefined =>
+  CHAT_MODELS.find(m => m.label === label)?.value;
 
-export const getChatModelValue = (label: string): string | undefined => {
-  return CHAT_MODELS.find(m => m.label === label)?.value;
-};
-
-export const getEmbeddingModelValue = (label: string): string | undefined => {
-  return EMBEDDING_MODELS.find(m => m.label === label)?.value;
-};
+export const getEmbeddingModelValue = (label: string): string | undefined =>
+  EMBEDDING_MODELS.find(m => m.label === label)?.value;

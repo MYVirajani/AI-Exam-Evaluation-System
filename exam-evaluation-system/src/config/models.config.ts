@@ -48,11 +48,6 @@ export const PROVIDERS: ProviderOption[] = [
     value: 'deepseek',
     label: 'DeepSeek',
     description: 'Base DeepSeek AI models'
-  },
-  {
-    value: 'finetuneddeepseek',
-    label: 'DeepSeek (Fine-tuned)',
-    description: 'Fine-tuned DeepSeek models for specialized tasks'
   }
 ];
 
@@ -157,6 +152,12 @@ export const CHAT_MODELS: ModelOption[] = [
     label: 'DeepSeek R1 7B',
     provider: 'deepseek',
     description: 'Local DeepSeek R1 7B model'
+  },
+  {
+    value: 'deepseek-r1:7b',
+    label: 'DeepSeek (Fine-tuned)',
+    provider: 'finetuneddeepseek',
+    description: 'Local DeepSeek R1 7B fine-tuned model'
   }
 ];
 
@@ -226,8 +227,16 @@ export const getProviderLabel = (value: ProviderValue): string =>
 export const getProviderValue = (label: string): ProviderValue | undefined =>
   PROVIDERS.find(p => p.label === label)?.value;
 
-export const getChatModelsByProvider = (provider: ProviderValue): ModelOption[] =>
-  CHAT_MODELS.filter(m => m.provider === provider);
+export const getChatModelsByProvider = (provider: ProviderValue): ModelOption[] => {
+  if (provider === 'deepseek') {
+    return CHAT_MODELS.filter(
+      m => m.provider === 'deepseek' || m.provider === 'finetuneddeepseek'
+    );
+  }
+
+  return CHAT_MODELS.filter(m => m.provider === provider);
+};
+
 
 // ⭐ Business rule:
 // DeepSeek & Anthropic can access ALL embedding models

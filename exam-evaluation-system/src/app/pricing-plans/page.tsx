@@ -15,20 +15,25 @@ interface PricingPlan {
   pricing_plan_id: string;
   name: string;
   billing_period: string;
-  price: number;
+  price: string;
   description?: string;
   features: string[];
+  stripe_price_id?: string;
+  stripe_product_id?: string;
+  created_on: string;
+  model_id: string;
   evaluation_model: EvaluationModel;
+  isSubscribed: boolean;
 }
 
 const BILLING_PERIOD_LABELS: Record<string, string> = {
-  day: "Daily",
-  week: "Weekly",
-  month: "Monthly",
-  year: "Yearly",
-  "3_months": "Every 3 months",
-  "6_months": "Every 6 months",
-  custom: "Custom",
+  DAILY: "Daily",
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly",
+  YEARLY: "Yearly",
+  "3_MONTHS": "Every 3 months",
+  "6_MONTHS": "Every 6 months",
+  CUSTOM: "Custom",
 };
 
 export default function PricingPlansPage() {
@@ -79,13 +84,18 @@ export default function PricingPlansPage() {
       return;
     }
 
+    // If already subscribed, do nothing
+    if (plan.isSubscribed) {
+      return;
+    }
+
     try {
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pricing_plan_id: plan.pricing_plan_id,
-          educator_id: educatorId, // ✅ use ID from session
+          educator_id: educatorId,
         }),
       });
 

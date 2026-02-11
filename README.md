@@ -6,7 +6,6 @@ An AI-driven web-based platform designed to automate the evaluation of digital a
 
 Manual exam grading is time-consuming, inconsistent, and prone to bias. This project introduces a unified, scalable, and AI-powered automated grading framework capable of evaluating:
 
-* Multiple Choice Questions (MCQs)
 * Short Answers
 * List-type Answers
 * Essay-type Answers
@@ -15,5 +14,6 @@ Manual exam grading is time-consuming, inconsistent, and prone to bias. This pro
 * Diagrams
 * Graphs
 * Handwritten Scripts
+* Multiple Choice Questions (MCQs)
 
 The system ensures fairness, consistency, efficiency, and analytical insights while reducing examiner workload.

@@ -66,3 +66,24 @@ Converted into embeddings for semantic comparison.
 * Model configuration
 * Pricing plan management
 * Grading model customization
+
+# 🏗️ System Architecture
+
+The system consists of:
+
+1. **Frontend (Web Application)**
+   * Role-based access control
+   * Educator, Student, Admin dashboards
+
+2. **Backend**
+   * REST APIs
+   * JWT Authentication
+   * ORM integration
+
+3. **AI Pipeline**
+   * Document preprocessing
+   * OCR (TrOCR)
+   * Embedding generation
+   * Vector search (PgVector)
+   * RAG-enhanced LLM grading
+   * Result aggregation & analytics

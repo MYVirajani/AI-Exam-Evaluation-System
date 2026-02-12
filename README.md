@@ -2,6 +2,8 @@
 
 An AI-driven web-based platform designed to automate the evaluation of digital and handwritten exam papers using Large Language Models (LLMs), Retrieval-Augmented Generation (RAG), and Computer Vision techniques.
 
+------------------------------------------------------------------------
+
 # 📌 Overview
 
 Manual exam grading is time-consuming, inconsistent, and prone to bias. This project introduces a unified, scalable, and AI-powered automated grading framework capable of evaluating:
@@ -17,6 +19,8 @@ Manual exam grading is time-consuming, inconsistent, and prone to bias. This pro
 * Multiple Choice Questions (MCQs)
 
 The system ensures fairness, consistency, efficiency, and analytical insights while reducing examiner workload.
+
+------------------------------------------------------------------------
 
 # 🚀 Key Features
 
@@ -67,6 +71,8 @@ Converted into embeddings for semantic comparison.
 * Pricing plan management
 * Grading model customization
 
+------------------------------------------------------------------------
+
 # 🏗️ System Architecture
 
 The system consists of:
@@ -87,3 +93,5 @@ The system consists of:
    * Vector search (PgVector)
    * RAG-enhanced LLM grading
    * Result aggregation & analytics
+
+------------------------------------------------------------------------

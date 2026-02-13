@@ -149,3 +149,12 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 
 ## 🔹 Real Paper Evaluation (Database Domain)
 * Highest correlation: 0.763 (Claude)
+
+------------------------------------------------------------------------
+
+# 📈 Fairness & Reliability
+
+* Temperature sensitivity analysis performed
+* Few-shot prompting improves grading stability
+* Tolerance-based evaluation increases robustness
+* Fairness analysis conducted to reduce bias

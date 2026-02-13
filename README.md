@@ -158,3 +158,24 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 * Few-shot prompting improves grading stability
 * Tolerance-based evaluation increases robustness
 * Fairness analysis conducted to reduce bias
+
+------------------------------------------------------------------------
+
+# 👥 User Roles
+
+## 👩‍🏫 Educator
+* Create modules & exams
+* Upload question papers & model answers
+* View analytics dashboard
+* Review and adjust grades
+
+## 👨‍🎓 Student
+* Enroll in modules
+* Attempt quizzes
+* View graded results
+
+## 🛠️ Admin
+* Manage users
+* Configure grading models
+* Manage pricing plans
+* Monitor system performance

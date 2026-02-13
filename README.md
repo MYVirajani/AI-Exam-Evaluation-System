@@ -123,3 +123,29 @@ The system consists of:
 * JWT Authentication
 * Role-Based Access Control
 * TLS support
+
+------------------------------------------------------------------------
+
+# 📊 Experimental Results
+
+The system was benchmarked under controlled temperature settings (0.0 and 0.2).
+
+## 🔹 Text-Based Evaluation
+* Short Answers – 72% accuracy (Gemini)
+* List-type Answers – 80% accuracy (OpenAI)
+* Essays – 60% accuracy (Claude)
+
+## 🔹 Equation Evaluation
+* Best accuracy: 63.43% (OpenAI)
+
+## 🔹 Diagram Evaluation
+* Highest correlation: r = 0.784 (Claude)
+
+## 🔹 Graph Evaluation
+* Highest correlation: r = 0.787 (Gemini)
+
+## 🔹 Multi-Format Script Evaluation
+* ±10% tolerance accuracy: 67.67% (Gemini)
+
+## 🔹 Real Paper Evaluation (Database Domain)
+* Highest correlation: 0.763 (Claude)

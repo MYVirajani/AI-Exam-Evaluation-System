@@ -152,7 +152,7 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 
 ------------------------------------------------------------------------
 
-# 📈 Fairness & Reliability
+## 📈 Fairness & Reliability
 
 * Temperature sensitivity analysis performed
 * Few-shot prompting improves grading stability
@@ -161,7 +161,7 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 
 ------------------------------------------------------------------------
 
-# 👥 User Roles
+## 👥 User Roles
 
 ## 👩‍🏫 Educator
 * Create modules & exams
@@ -181,7 +181,7 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 * Monitor system performance
 ------------------------------------------------------------------------
 
-# 🎯 Objectives Achieved
+## 🎯 Objectives Achieved
 
 * ✔ Automated grading for diverse question types
 * ✔ Reduced manual workload

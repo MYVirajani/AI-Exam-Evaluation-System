@@ -126,7 +126,7 @@ The system consists of:
 
 ------------------------------------------------------------------------
 
-# 📊 Experimental Results
+## 📊 Experimental Results
 
 The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 

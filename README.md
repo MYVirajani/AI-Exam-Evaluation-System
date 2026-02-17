@@ -96,30 +96,30 @@ The system consists of:
 
 ------------------------------------------------------------------------
 
-# 🧠 Core Technologies
+## 🧠 Core Technologies
 
-## 🔹 Artificial Intelligence
+### 🔹 Artificial Intelligence
 * Large Language Models (LLMs)
 * Retrieval-Augmented Generation (RAG)
 * Few-shot Prompt Engineering
 * Fine-Tuning (DeepSeek)
 
-## 🔹 NLP & Embeddings
+### 🔹 NLP & Embeddings
 * OpenAI Embeddings
 * Semantic similarity matching
 * Contextual grading
 
-## 🔹 Computer Vision
+### 🔹 Computer Vision
 * TrOCR (Transformer-based OCR)
 * Image preprocessing (CLAHE, filtering)
 * Bubble sheet detection
 
-## 🔹 Database
+### 🔹 Database
 * PostgreSQL
 * PgVector Extension
 * Relational + Vector storage
 
-## 🔹 Security
+### 🔹 Security
 * JWT Authentication
 * Role-Based Access Control
 * TLS support

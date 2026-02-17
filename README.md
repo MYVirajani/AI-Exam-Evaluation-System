@@ -193,12 +193,7 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 
 ## 🏆 Achievements
 
-Research papers submitted to:
-
-ECRISA Conference 2025
-
-AIMDA 2026 International Conference
-
-Vice Chancellor’s Awards 2026
-
-Participation in AI competitions
+* Finalist, IEEE Sri Lanka Section Final Year Project Competition 2025
+* Paper accepted at ECRISA Conference 2025
+* Paper accepted at Vice Chancellor’s Awards & Academic Sessions 2026, University of Ruhuna
+* Paper accepted at AIMDA 2026 International Conference

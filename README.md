@@ -130,24 +130,24 @@ The system consists of:
 
 The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 
-## 🔹 Text-Based Evaluation
+### 🔹 Text-Based Evaluation
 * Short Answers – 72% accuracy (Gemini)
 * List-type Answers – 80% accuracy (OpenAI)
 * Essays – 60% accuracy (Claude)
 
-## 🔹 Equation Evaluation
+### 🔹 Equation Evaluation
 * Best accuracy: 63.43% (OpenAI)
 
-## 🔹 Diagram Evaluation
+### 🔹 Diagram Evaluation
 * Highest correlation: r = 0.784 (Claude)
 
-## 🔹 Graph Evaluation
+### 🔹 Graph Evaluation
 * Highest correlation: r = 0.787 (Gemini)
 
-## 🔹 Multi-Format Script Evaluation
+### 🔹 Multi-Format Script Evaluation
 * ±10% tolerance accuracy: 67.67% (Gemini)
 
-## 🔹 Real Paper Evaluation (Database Domain)
+### 🔹 Real Paper Evaluation (Database Domain)
 * Highest correlation: 0.763 (Claude)
 
 ------------------------------------------------------------------------
@@ -163,18 +163,18 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 
 ## 👥 User Roles
 
-## 👩‍🏫 Educator
+### 👩‍🏫 Educator
 * Create modules & exams
 * Upload question papers & model answers
 * View analytics dashboard
 * Review and adjust grades
 
-## 👨‍🎓 Student
+### 👨‍🎓 Student
 * Enroll in modules
 * Attempt quizzes
 * View graded results
 
-## 🛠️ Admin
+### 🛠️ Admin
 * Manage users
 * Configure grading models
 * Manage pricing plans
@@ -191,7 +191,7 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 
 ------------------------------------------------------------------------
 
-🏆 Achievements
+## 🏆 Achievements
 
 Research papers submitted to:
 

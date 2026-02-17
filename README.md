@@ -188,3 +188,17 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 * ✔ Improved grading consistency
 * ✔ Integrated handwritten script evaluation
 * ✔ Delivered analytical insights via dashboards
+
+------------------------------------------------------------------------
+
+🏆 Achievements
+
+Research papers submitted to:
+
+ECRISA Conference 2025
+
+AIMDA 2026 International Conference
+
+Vice Chancellor’s Awards 2026
+
+Participation in AI competitions

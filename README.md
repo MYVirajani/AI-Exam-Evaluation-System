@@ -200,10 +200,10 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 
 ## 👩‍💻 Team Members
 
-Poornima K.N.
+* Poornima K.N.
 
-Udayanthika K.D.S.
+* Udayanthika K.D.S.
 
-Virajani M.Y.
+* Virajani M.Y.
 
-Wahalathanthri W.A.S.
+* Wahalathanthri W.A.S.

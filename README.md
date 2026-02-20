@@ -198,6 +198,8 @@ The system was benchmarked under controlled temperature settings (0.0 and 0.2).
 * Paper accepted at Vice Chancellor’s Awards & Academic Sessions 2026, University of Ruhuna
 * Paper accepted at AIMDA 2026 International Conference
 
+------------------------------------------------------------------------
+
 ## 👩‍💻 Team Members
 
 * Poornima K.N.

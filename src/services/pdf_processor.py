@@ -1,4 +1,4 @@
-# src/services/pdf_processor.py
+
 """PDF processing service for extracting text and structure from student papers."""
 import logging
 from typing import List, Dict, Tuple, Optional

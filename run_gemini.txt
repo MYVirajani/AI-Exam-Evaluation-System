@@ -1,0 +1,25 @@
+@echo off
+REM Set UTF-8 encoding to handle Unicode characters
+set PYTHONIOENCODING=utf-8
+
+REM Run embed_lecture_materials in gemini
+echo Running embed_lecture_materials in gemini...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.embed_lecture_materials --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001"
+
+REM Run extract_and_save in gemini
+echo Running extract_and_save in gemini...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.run_extract_and_save --provider GoogleGemini --model gemini-2.0-flash --from-db"
+
+REM Run embed_from_db in gemini
+echo Running embed_from_db in gemini...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.embed_from_db --provider GoogleGemini --model models/embedding-001 --module_code EE3350 --year 2025 --month June"
+
+REM Run embed_model_answers in gemini
+echo Running embed_model_answers in gemini...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.embed_model_answers --provider GoogleGemini --model gemini-2.0-flash --embedder models/embedding-001"
+
+REM Run mark_all_papers in gemini
+echo Running mark_all_papers in gemini...
+cmd /c "set PYTHONIOENCODING=utf-8 && venv\Scripts\activate && python -m src.scripts.mark_all_papers --provider GoogleGemini --llm gemini-2.0-flash --embedder embedding-001 --module EE3350 --year 2025 --month JUNE"
+
+echo All commands completed!

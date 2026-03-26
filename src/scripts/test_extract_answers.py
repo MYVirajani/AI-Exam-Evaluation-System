@@ -2,7 +2,6 @@ import sys
 import os
 from docx import Document
 
-# ✅ Fix import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.services.answer_extractor import AnswerExtractor

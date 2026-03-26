@@ -1,9 +1,46 @@
-# Ignore virtual environment
+
+# # Ignore environment variables file
+# .env
+
+# # Byte-compiled / cache files
+# __pycache__/
+# *.py[cod]
+
+# Ignore all virtual environments
 venv/
+.venv/
+env/
+.env/
+venv_*/
+
+
 
 # Ignore environment variables file
 .env
+.env.*
 
-# Byte-compiled / cache files
+# Python bytecode/cache
 __pycache__/
 *.py[cod]
+
+# Ignore data folders
+data/
+src/data/
+*.pyo
+
+# VS Code and JetBrains IDE settings
+.vscode/
+.idea/
+
+# macOS and Windows system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Pytest cache
+.pytest_cache/

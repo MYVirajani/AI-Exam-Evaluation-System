@@ -3,9 +3,10 @@ from typing import Optional
 
 @dataclass
 class LectureChunk:
-    module_code: str                # EE6250, CS3002, ...
-    source_file: str                # filename.pdf
-    chunk_id: int                   # 0-based within that file
+    assessment_id: str      
+    module_code: str               
+    source_file: str               
+    chunk_id: int                   
     text: str
 
     def embedding_payload(self) -> str:

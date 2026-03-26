@@ -1,101 +1,9 @@
-# from .base_db_service import BaseDBService
-# import logging
-
-# logger = logging.getLogger(__name__)
-
-# # class StudentEmbeddingService(BaseDBService):
-# #     def initialize_table(self):
-# #         self.cursor.execute("""
-# #             CREATE TABLE IF NOT EXISTS student_answer_embeddings (
-# #                 student_index VARCHAR PRIMARY KEY,
-# #                 q1_i vector(1536), q1_ii vector(1536), q1_iii vector(1536), q1_iv vector(1536), q1_v vector(1536),
-# #                 q2_i vector(1536), q2_ii vector(1536), q2_iii vector(1536), q2_iv vector(1536), q2_v vector(1536),
-# #                 q3_i vector(1536), q3_ii vector(1536), q3_iii vector(1536), q3_iv vector(1536), q3_v vector(1536),
-# #                 q4_i vector(1536), q4_ii vector(1536), q4_iii vector(1536), q4_iv vector(1536), q4_v vector(1536),
-# #                 q5_i vector(1536), q5_ii vector(1536), q5_iii vector(1536), q5_iv vector(1536), q5_v vector(1536)
-# #             )
-# #         """)
-# #         self.commit()
-
-# #     def save_student_embeddings(self, student_index: str, embeddings_map: dict):
-# #         columns = list(embeddings_map.keys())
-# #         values = list(embeddings_map.values())
-# #         insert_columns = ["student_index"] + columns
-# #         placeholders = ["%s"] * len(insert_columns)
-
-# #         from psycopg2 import sql
-# #         query = sql.SQL("""
-# #             INSERT INTO student_answer_embeddings ({fields})
-# #             VALUES ({values})
-# #             ON CONFLICT (student_index) DO UPDATE SET
-# #             {updates}
-# #         """).format(
-# #             fields=sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
-# #             values=sql.SQL(", ").join(sql.Placeholder() * len(insert_columns)),
-# #             updates=sql.SQL(", ").join(
-# #                 sql.Composed([sql.Identifier(col), sql.SQL(" = EXCLUDED."), sql.Identifier(col)])
-# #                 for col in columns
-# #             )
-# #         )
-
-# #         self.cursor.execute(query, [student_index] + values)
-# #         self.commit()
-
-
-# from .base_db_service import BaseDBService
-# from psycopg2 import sql
-# from typing import Dict, List
-
-# class StudentEmbeddingService(BaseDBService):
-#     def initialize_table(self):
-#         self.cursor.execute("""
-#             CREATE EXTENSION IF NOT EXISTS vector;
-#         """)
-#         self.cursor.execute("""
-#             CREATE TABLE IF NOT EXISTS student_answer_embeddings (
-#                 student_index VARCHAR PRIMARY KEY,
-#                 q1_i vector(1536), q1_ii vector(1536), q1_iii vector(1536), q1_iv vector(1536), q1_v vector(1536),
-#                 q2_i vector(1536), q2_ii vector(1536), q2_iii vector(1536), q2_iv vector(1536), q2_v vector(1536),
-#                 q3_i vector(1536), q3_ii vector(1536), q3_iii vector(1536), q3_iv vector(1536), q3_v vector(1536),
-#                 q4_i vector(1536), q4_ii vector(1536), q4_iii vector(1536), q4_iv vector(1536), q4_v vector(1536),
-#                 q5_i vector(1536), q5_ii vector(1536), q5_iii vector(1536), q5_iv vector(1536), q5_v vector(1536)
-#             )
-#         """)
-#         self.commit()
-
-#     def save_student_embeddings(self, student_index: str, embeddings_map: Dict[str, List[float]]):
-#         columns = list(embeddings_map.keys())
-#         vectors = [embeddings_map[col] for col in columns]
-
-#         insert_columns = ["student_index"] + columns
-#         placeholders = ["%s"] * len(insert_columns)
-#         insert_values = [student_index] + vectors
-
-#         query = sql.SQL("""
-#             INSERT INTO student_answer_embeddings ({fields})
-#             VALUES ({values})
-#             ON CONFLICT (student_index) DO UPDATE SET
-#             {updates}
-#         """).format(
-#             fields=sql.SQL(', ').join(map(sql.Identifier, insert_columns)),
-#             values=sql.SQL(', ').join(sql.Placeholder() * len(insert_columns)),
-#             updates=sql.SQL(', ').join(
-#                 sql.Composed([
-#                     sql.Identifier(col),
-#                     sql.SQL(" = EXCLUDED."),
-#                     sql.Identifier(col)
-#                 ]) for col in columns
-#             )
-#         )
-
-#         # Execute insert/update
-#         self.cursor.execute(query, insert_values)
-#         self.commit()
 
 
 # import logging
 # from typing import List
 # from pgvector.psycopg2 import register_vector
+
 # from .base_vector_db_service import BaseVectorDBService
 # from ..embedding.abstract_embedder import AbstractEmbedder
 # from ...models.student_answer import StudentAnswer
@@ -104,10 +12,12 @@
 
 # class StudentAnswerEmbeddingDB(BaseVectorDBService):
 #     def __init__(self, embedder: AbstractEmbedder):
-#         super().__init__()
+#         super().__init__(embedder)  # << pass embedder to parent
 #         self.embedder = embedder
+#         self.suffix = embedder.get_table_suffix()  # "openai" or "gemini"
+#         self.table_name = f"student_answer_embeddings_{self.suffix}"  # << FIXED here
 #         register_vector(self.conn)
-#         self.table_name = "student_answer_embeddings"
+#         logging.info(f"[VectorDB] Using table: {self.table_name}")
 #         self._create_table()
 
 #     def _create_table(self):
@@ -123,67 +33,8 @@
 #                 module_code TEXT,
 #                 exam_year INT,
 #                 exam_month TEXT,
-#                 embedding vector({dim})
-#             );
-#         """)
-#         self.commit()
-
-#     def save_embeddings(self, answers: List[StudentAnswer]):
-#         texts = [a.answer_text for a in answers]
-#         vectors = self.embedder.embed(texts)
-
-#         for answer, vector in zip(answers, vectors):
-#             self.cursor.execute(f"""
-#                 INSERT INTO {self.table_name} (
-#                     student_index, question_id, sub_question_id, sub_sub_question_id,
-#                     full_question_id, module_code, exam_year, exam_month, embedding
-#                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-#             """, (
-#                 answer.student_index,
-#                 answer.question_id,
-#                 answer.sub_question_id,
-#                 answer.sub_sub_question_id,
-#                 answer.full_question_id,
-#                 answer.module_code,
-#                 answer.exam_year,
-#                 answer.exam_month,
-#                 vector
-#             ))
-#         self.commit()
-
-# src/services/database_services/student_embedding_db.py
-
-# import logging
-# from typing import List
-# from pgvector.psycopg2 import register_vector
-# from .base_vector_db_service import BaseVectorDBService
-# from ..embedding.abstract_embedder import AbstractEmbedder
-# from ...models.student_answer import StudentAnswer
-
-# logger = logging.getLogger(__name__)
-
-# class StudentAnswerEmbeddingDB(BaseVectorDBService):
-#     def __init__(self, embedder: AbstractEmbedder):
-#         super().__init__()
-#         self.embedder = embedder
-#         register_vector(self.conn)
-#         self.table_name = "student_answer_embeddings"
-#         self._create_table()
-
-#     def _create_table(self):
-#         dim = self.embedder.get_embedding_dimension()
-#         self.cursor.execute(f"""
-#             CREATE TABLE IF NOT EXISTS {self.table_name} (
-#                 id SERIAL PRIMARY KEY,
-#                 student_index TEXT,
-#                 question_id TEXT,
-#                 sub_question_id TEXT,
-#                 sub_sub_question_id TEXT,
-#                 full_question_id TEXT,
-#                 module_code TEXT,
-#                 exam_year INT,
-#                 exam_month TEXT,
-#                 embedding vector({dim})
+#                 embedding vector({dim}),
+#                 UNIQUE (student_index, module_code, exam_year, exam_month, full_question_id)
 #             );
 #         """)
 #         self.commit()
@@ -202,6 +53,8 @@
 #                     student_index, question_id, sub_question_id, sub_sub_question_id,
 #                     full_question_id, module_code, exam_year, exam_month, embedding
 #                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+#                 ON CONFLICT (student_index, module_code, exam_year, exam_month, full_question_id)
+#                 DO UPDATE SET embedding = EXCLUDED.embedding
 #             """, (
 #                 answer.student_index,
 #                 answer.question_id,
@@ -213,13 +66,29 @@
 #                 answer.exam_month,
 #                 vector
 #             ))
+
 #         self.commit()
+#         logger.info(f"✅ Saved embeddings for {len(answers)} answers to table: {self.table_name}")
+   
+#     def get_embedding(self, student_index: str, full_question_id: str, module_code: str, exam_year: int, exam_month: str) -> list[float] | None:
+#         self.cursor.execute(f"""
+#             SELECT embedding FROM {self.table_name}
+#             WHERE student_index = %s
+#             AND full_question_id = %s
+#             AND module_code = %s
+#             AND exam_year = %s
+#             AND exam_month = %s
+#         """, (student_index, full_question_id, module_code, exam_year, exam_month))
+
+#         row = self.cursor.fetchone()
+#         if row:
+#             return row[0]  # Returns the vector
+#         return None
 
 
 import logging
-from typing import Dict, Tuple, List
+from typing import List
 from pgvector.psycopg2 import register_vector
-
 from .base_vector_db_service import BaseVectorDBService
 from ..embedding.abstract_embedder import AbstractEmbedder
 from ...models.student_answer import StudentAnswer
@@ -228,10 +97,12 @@ logger = logging.getLogger(__name__)
 
 class StudentAnswerEmbeddingDB(BaseVectorDBService):
     def __init__(self, embedder: AbstractEmbedder):
-        super().__init__()
+        super().__init__(embedder)  # << pass embedder to parent
         self.embedder = embedder
+        self.suffix = embedder.get_table_suffix()  # "openai" or "gemini"
+        self.table_name = f"student_answer_embeddings_{self.suffix}"  # << FIXED here
         register_vector(self.conn)
-        self.table_name = "student_answer_embeddings"
+        logging.info(f"[VectorDB] Using table: {self.table_name}")
         self._create_table()
 
     def _create_table(self):
@@ -247,16 +118,67 @@ class StudentAnswerEmbeddingDB(BaseVectorDBService):
                 module_code TEXT,
                 exam_year INT,
                 exam_month TEXT,
+                assessment_id TEXT,
+                submission_id TEXT,
                 embedding vector({dim}),
-                UNIQUE (student_index, module_code, exam_year, exam_month, full_question_id)
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (student_index, module_code, exam_year, exam_month, full_question_id, assessment_id)
             );
         """)
+        
+        # Add indexes for better performance
+        self.cursor.execute(f"""
+        CREATE INDEX IF NOT EXISTS idx_{self.table_name.replace('student_answer_embeddings_', '')}_assessment 
+        ON {self.table_name} (assessment_id);
+        """)
+        
+        self.cursor.execute(f"""
+        CREATE INDEX IF NOT EXISTS idx_{self.table_name.replace('student_answer_embeddings_', '')}_submission 
+        ON {self.table_name} (submission_id);
+        """)
+        
+        # Migration: Add columns to existing tables if they don't exist
+        self.cursor.execute(f"""
+        DO $$ 
+        BEGIN
+            BEGIN
+                ALTER TABLE {self.table_name} ADD COLUMN assessment_id TEXT;
+            EXCEPTION
+                WHEN duplicate_column THEN
+                    -- Column already exists, do nothing
+            END;
+            BEGIN
+                ALTER TABLE {self.table_name} ADD COLUMN submission_id TEXT;
+            EXCEPTION
+                WHEN duplicate_column THEN
+                    -- Column already exists, do nothing
+            END;
+            BEGIN
+                ALTER TABLE {self.table_name} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+            EXCEPTION
+                WHEN duplicate_column THEN
+                    -- Column already exists, do nothing
+            END;
+            BEGIN
+                ALTER TABLE {self.table_name} ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+            EXCEPTION
+                WHEN duplicate_column THEN
+                    -- Column already exists, do nothing
+            END;
+        END $$;
+        """)
+        
         self.commit()
 
-    def save_embeddings(self, answers: List[StudentAnswer]):
+    def save_embeddings(self, answers: List[StudentAnswer], assessment_id: str = None, submission_id: str = None):
         """
-        Save vector embeddings for each StudentAnswer, question-wise.
-        If a record already exists for a question, it will be updated.
+        Save embeddings with assessment and submission tracking.
+        
+        Args:
+            answers: List of StudentAnswer objects
+            assessment_id: Assessment ID for tracking
+            submission_id: Submission ID for tracking
         """
         if not answers:
             logger.warning("No answers provided for embedding.")
@@ -269,10 +191,14 @@ class StudentAnswerEmbeddingDB(BaseVectorDBService):
             self.cursor.execute(f"""
                 INSERT INTO {self.table_name} (
                     student_index, question_id, sub_question_id, sub_sub_question_id,
-                    full_question_id, module_code, exam_year, exam_month, embedding
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (student_index, module_code, exam_year, exam_month, full_question_id)
-                DO UPDATE SET embedding = EXCLUDED.embedding
+                    full_question_id, module_code, exam_year, exam_month, 
+                    assessment_id, submission_id, embedding
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (student_index, module_code, exam_year, exam_month, full_question_id, assessment_id)
+                DO UPDATE SET 
+                    embedding = EXCLUDED.embedding,
+                    submission_id = EXCLUDED.submission_id,
+                    updated_at = CURRENT_TIMESTAMP
             """, (
                 answer.student_index,
                 answer.question_id,
@@ -282,41 +208,137 @@ class StudentAnswerEmbeddingDB(BaseVectorDBService):
                 answer.module_code,
                 answer.exam_year,
                 answer.exam_month,
+                assessment_id,
+                submission_id,
                 vector
             ))
 
         self.commit()
-        logger.info(f"Saved embeddings for {len(answers)} answers.")
+        logger.info(f"✅ Saved embeddings for {len(answers)} answers to table: {self.table_name}")
+        print(f"💾 Saved embeddings: Assessment {assessment_id} | Submission {submission_id} | {len(answers)} answers")
 
-    # def get_all_answers_grouped(self) -> Dict[Tuple[str, str, int, str], List[StudentAnswer]]:
-    #     """
-    #     Group all student answers question-wise for all papers.
-    #     Output: { (student_index, module_code, year, month): [StudentAnswer, ...] }
-    #     """
-    #     self.cursor.execute("""
-    #         SELECT student_index, module_code, exam_year, exam_month, answers
-    #         FROM student_answers
-    #     """)
-    #     rows = self.cursor.fetchall()
+    def get_embedding(self, student_index: str, full_question_id: str, module_code: str, 
+                     exam_year: int, exam_month: str, assessment_id: str = None) -> list[float] | None:
+        """Get embedding with optional assessment filtering."""
+        if assessment_id:
+            self.cursor.execute(f"""
+                SELECT embedding FROM {self.table_name}
+                WHERE student_index = %s
+                AND full_question_id = %s
+                AND module_code = %s
+                AND exam_year = %s
+                AND exam_month = %s
+                AND assessment_id = %s
+            """, (student_index, full_question_id, module_code, exam_year, exam_month, assessment_id))
+        else:
+            self.cursor.execute(f"""
+                SELECT embedding FROM {self.table_name}
+                WHERE student_index = %s
+                AND full_question_id = %s
+                AND module_code = %s
+                AND exam_year = %s
+                AND exam_month = %s
+            """, (student_index, full_question_id, module_code, exam_year, exam_month))
+        
+        row = self.cursor.fetchone()
+        if row:
+            return row[0]  # Returns the vector
+        return None
 
-    #     grouped: Dict[Tuple[str, str, int, str], List[StudentAnswer]] = {}
+    def get_embeddings_by_assessment(self, assessment_id: str) -> List[dict]:
+        """Get all embeddings for a specific assessment."""
+        self.cursor.execute(f"""
+            SELECT student_index, full_question_id, module_code, exam_year, exam_month, 
+                   submission_id, embedding, created_at
+            FROM {self.table_name}
+            WHERE assessment_id = %s
+            ORDER BY student_index, full_question_id
+        """, (assessment_id,))
+        
+        results = []
+        for row in self.cursor.fetchall():
+            results.append({
+                'student_index': row[0],
+                'full_question_id': row[1],
+                'module_code': row[2],
+                'exam_year': row[3],
+                'exam_month': row[4],
+                'submission_id': row[5],
+                'embedding': row[6],
+                'created_at': row[7]
+            })
+        
+        return results
 
-    #     for student_index, module_code, year, month, answers_json in rows:
-    #         structured_answers = []
-    #         for full_qid, answer_text in answers_json.items():
-    #             parts = full_qid.split("_")
-    #             structured_answers.append(StudentAnswer(
-    #                 question_id=parts[0],
-    #                 sub_question_id=parts[1] if len(parts) > 1 else None,
-    #                 sub_sub_question_id=parts[2] if len(parts) > 2 else None,
-    #                 answer_text=answer_text,
-    #                 full_question_id=full_qid,
-    #                 student_index=student_index,
-    #                 module_code=module_code,
-    #                 exam_year=year,
-    #                 exam_month=month
-    #             ))
+    def get_embeddings_by_submission(self, submission_id: str) -> List[dict]:
+        """Get all embeddings for a specific submission."""
+        self.cursor.execute(f"""
+            SELECT student_index, full_question_id, module_code, exam_year, exam_month, 
+                   assessment_id, embedding, created_at
+            FROM {self.table_name}
+            WHERE submission_id = %s
+            ORDER BY full_question_id
+        """, (submission_id,))
+        
+        results = []
+        for row in self.cursor.fetchall():
+            results.append({
+                'student_index': row[0],
+                'full_question_id': row[1],
+                'module_code': row[2],
+                'exam_year': row[3],
+                'exam_month': row[4],
+                'assessment_id': row[5],
+                'embedding': row[6],
+                'created_at': row[7]
+            })
+        
+        return results
 
-    #         grouped[(student_index, module_code, year, month)] = structured_answers
+    def delete_embeddings_by_assessment(self, assessment_id: str) -> int:
+        """Delete all embeddings for a specific assessment. Returns number of deleted records."""
+        self.cursor.execute(f"""
+        DELETE FROM {self.table_name}
+        WHERE assessment_id = %s
+        """, (assessment_id,))
+        
+        deleted_count = self.cursor.rowcount
+        self.commit()
+        
+        print(f"🗑️ Deleted {deleted_count} embedding records from {self.table_name} for assessment {assessment_id}")
+        return deleted_count
 
-    #     return grouped
+    def delete_embeddings_by_submission(self, submission_id: str) -> int:
+        """Delete embeddings for a specific submission. Returns number of deleted records."""
+        self.cursor.execute(f"""
+        DELETE FROM {self.table_name}
+        WHERE submission_id = %s
+        """, (submission_id,))
+        
+        deleted_count = self.cursor.rowcount
+        self.commit()
+        
+        print(f"🗑️ Deleted {deleted_count} embedding records from {self.table_name} for submission {submission_id}")
+        return deleted_count
+
+    def get_embedding_stats_by_assessment(self, assessment_id: str) -> dict:
+        """Get statistics about embeddings for a specific assessment."""
+        stats = {}
+        
+        # Total embeddings for assessment
+        self.cursor.execute(f"SELECT COUNT(*) FROM {self.table_name} WHERE assessment_id = %s", (assessment_id,))
+        stats['total_embeddings'] = self.cursor.fetchone()[0]
+        
+        # Unique students
+        self.cursor.execute(f"SELECT COUNT(DISTINCT student_index) FROM {self.table_name} WHERE assessment_id = %s", (assessment_id,))
+        stats['unique_students'] = self.cursor.fetchone()[0]
+        
+        # Unique questions
+        self.cursor.execute(f"SELECT COUNT(DISTINCT full_question_id) FROM {self.table_name} WHERE assessment_id = %s", (assessment_id,))
+        stats['unique_questions'] = self.cursor.fetchone()[0]
+        
+        # Unique submissions
+        self.cursor.execute(f"SELECT COUNT(DISTINCT submission_id) FROM {self.table_name} WHERE assessment_id = %s AND submission_id IS NOT NULL", (assessment_id,))
+        stats['unique_submissions'] = self.cursor.fetchone()[0]
+        
+        return stats

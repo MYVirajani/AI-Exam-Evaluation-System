@@ -1,1158 +1,457 @@
 
-# # """Service for extracting student answers from processed PDF text."""
-# # import logging
-# # from typing import List, Dict, Optional, Tuple
-# # import re
-# # from ..models.student_answer import StudentAnswer
-# # from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
-
-
-# # logger = logging.getLogger(__name__)
-
-# # class AnswerExtractor:
-# #     """Service for extracting individual student answers from paper text."""
-    
-# #     def __init__(self):
-# #         """Initialize answer extractor."""
-# #         self.answer_patterns = self._initialize_answer_patterns()
-# #         logger.info("Answer extractor initialized")
-
-# #     def extract_answers(self, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> List[StudentAnswer]:
-# #         """
-# #         Extract student answers from the processed paper text.
-        
-# #         Args:
-# #             page_texts: Dictionary mapping page numbers to text content
-# #             paper_structure: Detected structure from PDF processor
-            
-# #         Returns:
-# #             List of StudentAnswer objects
-# #         """
-# #         answers = []
-# #         questions = paper_structure.get('questions', [])
-        
-# #         logger.info(f"Extracting answers for {len(questions)} detected questions")
-        
-# #         for question_info in questions:
-# #             question_id = question_info['id']
-            
-# #             main_answer = self._extract_question_answer(question_id, page_texts, paper_structure)
-# #             if main_answer:
-# #                 answers.append(main_answer)
-            
-# #             if 'sub_questions' in question_info:
-# #                 for sub_question in question_info['sub_questions']:
-# #                     sub_answer = self._extract_sub_question_answer(question_id, sub_question['id'], page_texts, paper_structure)
-# #                     if sub_answer:
-# #                         answers.append(sub_answer)
-        
-# #         logger.info(f"Extracted {len(answers)} answers from paper")
-# #         return answers
-
-# #     def _extract_question_answer(self, question_id: str, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> Optional[StudentAnswer]:
-# #         boundaries = paper_structure.get('question_boundaries', {}).get(question_id, {})
-# #         if not boundaries:
-# #             logger.warning(f"No boundaries found for question {question_id}")
-# #             return None
-
-# #         start_page = boundaries.get('start_page', 1)
-# #         end_page = boundaries.get('end_page', start_page)
-
-# #         relevant_text = "\n".join([page_texts.get(page_num, '') for page_num in range(start_page, end_page + 1)])
-# #         answer_text = self._find_answer_in_text(question_id, relevant_text)
-
-# #         return StudentAnswer(
-# #             question_id=question_id,
-# #             sub_question_id=None,
-# #             answer_text=answer_text.strip(),
-# #             page_number=start_page,
-# #             coordinates=self._estimate_coordinates(answer_text, relevant_text)
-# #         ) if answer_text else None
-
-# #     def _extract_sub_question_answer(self, question_id: str, sub_question_id: str, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> Optional[StudentAnswer]:
-# #         boundaries = paper_structure.get('question_boundaries', {}).get(question_id, {})
-# #         if not boundaries:
-# #             return None
-
-# #         start_page = boundaries.get('start_page', 1)
-# #         end_page = boundaries.get('end_page', start_page)
-# #         relevant_text = "\n".join([page_texts.get(page_num, '') for page_num in range(start_page, end_page + 1)])
-
-# #         answer_text = self._find_sub_answer_in_text(sub_question_id, relevant_text)
-
-# #         return StudentAnswer(
-# #             question_id=question_id,
-# #             sub_question_id=sub_question_id,
-# #             answer_text=answer_text.strip(),
-# #             page_number=start_page,
-# #             coordinates=self._estimate_coordinates(answer_text, relevant_text)
-# #         ) if answer_text else None
-
-# #     def _find_answer_in_text(self, question_id: str, text: str) -> str:
-# #         question_num = re.search(r'(\d+)', question_id)
-# #         if not question_num:
-# #             return ""
-
-# #         q_num = question_num.group(1)
-# #         patterns = [
-# #             rf'(?:Question\s*)?{q_num}[\.\)]\s*.*?\n\s*(.+?)(?=(?:Question\s*)?\d+[\.\)]|$)',
-# #             rf'Q{q_num}[\.\)]\s*.*?\n\s*(.+?)(?=Q\d+[\.\)]|$)',
-# #             rf'{q_num}[\.\)]\s*(.+?)(?=\d+[\.\)]|$)',
-# #             rf'(?:Question\s*)?{q_num}[\.\)]\s*(.+?)(?=(?:Question\s*)?\d+[\.\)]|\Z)',
-# #         ]
-
-# #         for pattern in patterns:
-# #             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-# #             if match:
-# #                 answer = self._clean_answer_text(match.group(1))
-# #                 if len(answer) > 10:
-# #                     return answer
-
-# #         return self._extract_fallback_answer(q_num, text)
-
-# #     def _find_sub_answer_in_text(self, sub_question_id: str, text: str) -> str:
-# #         sub_patterns = [
-# #             rf'{sub_question_id}[\.\)]\s*(.+?)(?=\n[a-zA-Z][\.\)]|\n\d+[\.\)]|\Z)',
-# #             rf'\({sub_question_id}\)\s*(.+?)(?=\n\([a-zA-Z]\)|\n\d+[\.\)]|\Z)'
-# #         ]
-# #         for pattern in sub_patterns:
-# #             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-# #             if match:
-# #                 answer = self._clean_answer_text(match.group(1))
-# #                 if len(answer) > 5:
-# #                     return answer
-# #         return ""
-
-# #     def _clean_answer_text(self, text: str) -> str:
-# #         return re.sub(r'\s+', ' ', text).strip()
-
-# #     def _extract_fallback_answer(self, question_num: str, text: str) -> str:
-# #         fallback = re.search(rf'{question_num}[\.\)]\s*(.+)', text, re.IGNORECASE | re.DOTALL)
-# #         return self._clean_answer_text(fallback.group(1)) if fallback else ""
-
-# #     def _estimate_coordinates(self, answer_text: str, page_text: str) -> Tuple[float, float, float, float]:
-# #         return (0.0, 0.0, 0.0, 0.0)  # Placeholder
-
-# #     def _initialize_answer_patterns(self) -> List[str]:
-# #         return [r'Q(\d+)', r'Question\s+(\d+)', r'(\d+)[\.\)]']
-
 
 # # import logging
-# # import re
 # # import os
-# # import openai
-# # from openai import OpenAI 
 # # import json
-# # from typing import List, Dict, Optional, Tuple
+# # from typing import List, Dict, Optional
+# # from dotenv import load_dotenv
+# # from openai import OpenAI as OpenAIClient
+# # import google.generativeai as genai
+
 # # from ..models.student_answer import StudentAnswer
 # # from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
 
 # # logger = logging.getLogger(__name__)
+# # load_dotenv()
 
 # # class AnswerExtractor:
-# #     """Service for extracting individual student answers from paper text."""
-    
-# #     def __init__(self):
-# #         """Initialize answer extractor."""
-# #         self.answer_patterns = self._initialize_answer_patterns()
-# #         openai.api_key = os.getenv("OPENAI_API_KEY")
-# #         logger.info("Answer extractor initialized")
+# #     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
+# #         self.selected_provider = selected_provider
+# #         self.selected_model = selected_model
+# #         self.temperature = temperature
 
-# #     def extract_answers(self, page_texts: Dict[int, str], paper_structure: Dict[str, any], use_llm: bool = False) -> List[StudentAnswer]:
-# #         """
-# #         Extract student answers from the processed paper text or raw text.
-
-# #         Args:
-# #             page_texts: Dictionary mapping page numbers to text content
-# #             paper_structure: Detected structure from PDF processor
-# #             use_llm: Optional boolean to force GPT-based extraction
-
-# #         Returns:
-# #             List of StudentAnswer objects
-# #         """
-# #         if use_llm or not paper_structure.get('questions'):
-# #             logger.warning("Falling back to GPT-based structured extraction")
-# #             full_text = "\n".join([text for text in page_texts.values()])
-# #             return self.extract_answers_with_llm(full_text)
-
-# #         answers = []
-# #         questions = paper_structure.get('questions', [])
-# #         logger.info(f"Extracting answers for {len(questions)} detected questions")
-        
-# #         for question_info in questions:
-# #             question_id = question_info['id']
-            
-# #             main_answer = self._extract_question_answer(question_id, page_texts, paper_structure)
-# #             if main_answer:
-# #                 answers.append(main_answer)
-            
-# #             if 'sub_questions' in question_info:
-# #                 for sub_question in question_info['sub_questions']:
-# #                     sub_answer = self._extract_sub_question_answer(question_id, sub_question['id'], page_texts, paper_structure)
-# #                     if sub_answer:
-# #                         answers.append(sub_answer)
-        
-# #         logger.info(f"Extracted {len(answers)} answers from paper")
-# #         return answers
-
-# #     # def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
-# #     #     """
-# #     #     Use GPT-4o to extract answers structured by main and sub-question numbers.
-# #     #     """
-# #     #     logger.info("Invoking GPT-4 to extract answers from raw text")
-# #     #     try:
-# #     #         response = openai.ChatCompletion.create(
-# #     #             model="gpt-4",
-# #     #             messages=[
-# #     #                 {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-# #     #                 {"role": "user", "content": raw_text}
-# #     #             ],
-# #     #             temperature=0,
-# #     #             max_tokens=3000
-# #     #         )
-# #     #         content = response['choices'][0]['message']['content']
-# #     #         structured = json.loads(content)
-# #     #     except Exception as e:
-# #     #         logger.error(f"Failed to extract with GPT: {e}")
-# #     #         return []
-
-# #     #     answers = []
-# #     #     for q_id, sub_questions in structured.items():
-# #     #         for sub_id, answer in sub_questions.items():
-# #     #             answers.append(StudentAnswer(
-# #     #                 question_id=q_id,
-# #     #                 sub_question_id=sub_id,
-# #     #                 answer_text=answer.strip(),
-# #     #                 page_number=0,
-# #     #                 coordinates=(0.0, 0.0, 0.0, 0.0)
-# #     #             ))
-
-# #     #     logger.info(f"LLM extracted {len(answers)} structured answers")
-# #     #     return answers
+# #         if selected_provider == "OpenAI":
+# #             self.api_key = os.getenv("OPENAI_API_KEY")
+# #             self.client = OpenAIClient(api_key=self.api_key)
+# #         elif selected_provider == "GoogleGemini":
+# #             self.api_key = os.getenv("GOOGLE_API_KEY")
+# #             genai.configure(api_key=self.api_key)
+# #             self.client = genai.GenerativeModel(
+# #                 model_name=self.selected_model,
+# #                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
+# #                 generation_config={"temperature": temperature}
+# #             )
+# #         else:
+# #             raise ValueError("Unsupported provider")
 
 # #     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
-# #         """
-# #         Use GPT-4 to extract answers structured by main and sub-question numbers.
-# #         """
-# #         logger.info("Invoking GPT-4 to extract answers from raw text")
-        
-# #         try:
-# #             client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # ✅ New client-based usage
+# #         logger.info(f"Extracting answers using {self.selected_provider} - {self.selected_model}")
 
-# #             response = client.chat.completions.create(
-# #                 model="gpt-4",
-# #                 messages=[
-# #                     {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-# #                     {"role": "user", "content": raw_text}
-# #                 ],
-# #                 temperature=0,
-# #                 max_tokens=3000
-# #             )
-# #             content = response.choices[0].message.content  # ✅ New access path
+# #         try:
+# #             if self.selected_provider == "OpenAI":
+# #                 response = self.client.chat.completions.create(
+# #                     model=self.selected_model,
+# #                     messages=[
+# #                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
+# #                         {"role": "user", "content": raw_text}
+# #                     ],
+# #                     temperature=self.temperature,
+# #                     max_tokens=4000
+# #                 )
+# #                 content = response.choices[0].message.content.strip()
+# #             else:
+# #                 response = self.client.generate_content([raw_text])
+# #                 content = response.text.strip()
+
+# #             if content.startswith("```"):
+# #                 content = content.strip("`").replace("json", "").strip()
+
 # #             structured = json.loads(content)
 
+# #             metadata = structured.get("metadata", {})
+# #             answers_json = structured.get("answers", {})
+
 # #         except Exception as e:
-# #             logger.error(f"Failed to extract with GPT: {e}")
+# #             logger.error(f"LLM extraction failed: {e}")
 # #             return []
 
-# #         answers = []
-# #         for q_id, sub_questions in structured.items():
-# #             for sub_id, answer in sub_questions.items():
-# #                 answers.append(StudentAnswer(
-# #                     question_id=q_id,
-# #                     sub_question_id=sub_id,
-# #                     answer_text=answer.strip(),
-# #                     page_number=0,
-# #                     coordinates=(0.0, 0.0, 0.0, 0.0)
-# #                 ))
+# #         return self._flatten_structure(
+# #             answers_json,
+# #             metadata.get("student_index"),
+# #             metadata.get("module_code"),
+# #             metadata.get("exam_year"),
+# #             metadata.get("exam_month")
+# #         )
 
-# #         logger.info(f"LLM extracted {len(answers)} structured answers")
+# #     def _flatten_structure(
+# #         self,
+# #         nested: dict,
+# #         student_index: Optional[str],
+# #         module_code: Optional[str],
+# #         exam_year: Optional[int],
+# #         exam_month: Optional[int]
+# #     ) -> List[StudentAnswer]:
+# #         answers = []
+
+# #         def recurse(keys: List[str], value):
+# #             if isinstance(value, str):
+# #                 answer = StudentAnswer(
+# #                     question_id=keys[0] if len(keys) > 0 else None,
+# #                     sub_question_id=keys[1] if len(keys) > 1 else None,
+# #                     sub_sub_question_id=keys[2] if len(keys) > 2 else None,
+# #                     sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
+# #                     answer_text=value.strip(),
+# #                     student_index=student_index,
+# #                     module_code=module_code,
+# #                     exam_year=exam_year,
+# #                     exam_month=exam_month
+# #                 )
+# #                 answers.append(answer)
+# #             elif isinstance(value, dict):
+# #                 for sub_key, sub_value in value.items():
+# #                     recurse(keys + [sub_key], sub_value)
+
+# #         for main_q, subs in nested.items():
+# #             recurse([main_q], subs)
+
 # #         return answers
 
 
-# #     def _extract_question_answer(self, question_id: str, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> Optional[StudentAnswer]:
-# #         boundaries = paper_structure.get('question_boundaries', {}).get(question_id, {})
-# #         if not boundaries:
-# #             logger.warning(f"No boundaries found for question {question_id}")
-# #             return None
-
-# #         start_page = boundaries.get('start_page', 1)
-# #         end_page = boundaries.get('end_page', start_page)
-# #         relevant_text = "\n".join([page_texts.get(page_num, '') for page_num in range(start_page, end_page + 1)])
-# #         answer_text = self._find_answer_in_text(question_id, relevant_text)
-
-# #         return StudentAnswer(
-# #             question_id=question_id,
-# #             sub_question_id=None,
-# #             answer_text=answer_text.strip(),
-# #             page_number=start_page,
-# #             coordinates=self._estimate_coordinates(answer_text, relevant_text)
-# #         ) if answer_text else None
-
-# #     def _extract_sub_question_answer(self, question_id: str, sub_question_id: str, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> Optional[StudentAnswer]:
-# #         boundaries = paper_structure.get('question_boundaries', {}).get(question_id, {})
-# #         if not boundaries:
-# #             return None
-
-# #         start_page = boundaries.get('start_page', 1)
-# #         end_page = boundaries.get('end_page', start_page)
-# #         relevant_text = "\n".join([page_texts.get(page_num, '') for page_num in range(start_page, end_page + 1)])
-# #         answer_text = self._find_sub_answer_in_text(sub_question_id, relevant_text)
-
-# #         return StudentAnswer(
-# #             question_id=question_id,
-# #             sub_question_id=sub_question_id,
-# #             answer_text=answer_text.strip(),
-# #             page_number=start_page,
-# #             coordinates=self._estimate_coordinates(answer_text, relevant_text)
-# #         ) if answer_text else None
-
-# #     def _find_answer_in_text(self, question_id: str, text: str) -> str:
-# #         question_num = re.search(r'(\d+)', question_id)
-# #         if not question_num:
-# #             return ""
-# #         q_num = question_num.group(1)
-# #         patterns = [
-# #             rf'(?:Question\s*)?{q_num}[\.\)]\s*.*?\n\s*(.+?)(?=(?:Question\s*)?\d+[\.\)]|$)',
-# #             rf'Q{q_num}[\.\)]\s*.*?\n\s*(.+?)(?=Q\d+[\.\)]|$)',
-# #             rf'{q_num}[\.\)]\s*(.+?)(?=\d+[\.\)]|$)',
-# #             rf'(?:Question\s*)?{q_num}[\.\)]\s*(.+?)(?=(?:Question\s*)?\d+[\.\)]|\Z)',
-# #         ]
-# #         for pattern in patterns:
-# #             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-# #             if match:
-# #                 answer = self._clean_answer_text(match.group(1))
-# #                 if len(answer) > 10:
-# #                     return answer
-# #         return self._extract_fallback_answer(q_num, text)
-
-# #     def _find_sub_answer_in_text(self, sub_question_id: str, text: str) -> str:
-# #         sub_patterns = [
-# #             rf'{sub_question_id}[\.\)]\s*(.+?)(?=\n[a-zA-Z][\.\)]|\n\d+[\.\)]|\Z)',
-# #             rf'\({sub_question_id}\)\s*(.+?)(?=\n\([a-zA-Z]\)|\n\d+[\.\)]|\Z)'
-# #         ]
-# #         for pattern in sub_patterns:
-# #             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-# #             if match:
-# #                 answer = self._clean_answer_text(match.group(1))
-# #                 if len(answer) > 5:
-# #                     return answer
-# #         return ""
-
-# #     def _clean_answer_text(self, text: str) -> str:
-# #         return re.sub(r'\s+', ' ', text).strip()
-
-# #     def _extract_fallback_answer(self, question_num: str, text: str) -> str:
-# #         fallback = re.search(rf'{question_num}[\.\)]\s*(.+)', text, re.IGNORECASE | re.DOTALL)
-# #         return self._clean_answer_text(fallback.group(1)) if fallback else ""
-
-# #     def _estimate_coordinates(self, answer_text: str, page_text: str) -> Tuple[float, float, float, float]:
-# #         return (0.0, 0.0, 0.0, 0.0)
-
-# #     def _initialize_answer_patterns(self) -> List[str]:
-# #         return [r'Q(\d+)', r'Question\s+(\d+)', r'(\d+)[\.\)]']
-# import logging
-# import re
-# import os
-# import json
-# import openai
-# import google.generativeai as genai
-# from openai import OpenAI as OpenAIClient
-# from typing import List, Dict, Optional, Tuple
-# from dotenv import load_dotenv
-# from ..models.student_answer import StudentAnswer
-# from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
-
-# logger = logging.getLogger(__name__)
-# load_dotenv()
-
-
-# class AnswerExtractor:
-#     """Service for extracting individual student answers from paper text."""
-
-#     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
-#         """Initialize answer extractor."""
-#         self.answer_patterns = self._initialize_answer_patterns()
-#         self.selected_provider = selected_provider
-#         self.selected_model = selected_model
-#         self.temperature = temperature
-
-#         if self.selected_provider == "OpenAI":
-#             self.api_key = os.getenv("OPENAI_API_KEY")
-#             self.client = OpenAIClient(api_key=self.api_key)
-#             logger.info(f"Initialized OpenAI client with model: {self.selected_model}")
-#         elif self.selected_provider == "GoogleGemini":
-#             self.api_key = os.getenv("GOOGLE_API_KEY")
-#             genai.configure(api_key=self.api_key)
-#             self.client = genai.GenerativeModel(
-#                 model_name=self.selected_model,
-#                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
-#                 generation_config={"temperature": self.temperature}
-#             )
-#             logger.info(f"Initialized Google Gemini client with model: {self.selected_model}")
-#         else:
-#             raise ValueError("Unsupported LLM provider. Use 'OpenAI' or 'GoogleGemini'.")
-
-#     def extract_answers(self, page_texts: Dict[int, str], paper_structure: Dict[str, any], use_llm: bool = False) -> List[StudentAnswer]:
-#         if use_llm or not paper_structure.get('questions'):
-#             logger.warning("Falling back to LLM-based structured extraction.")
-#             full_text = "\n".join([text for text in page_texts.values()])
-#             return self.extract_answers_with_llm(full_text)
-
-#         answers = []
-#         questions = paper_structure.get('questions', [])
-#         logger.info(f"Extracting answers for {len(questions)} detected questions")
-
-#         for question_info in questions:
-#             question_id = question_info['id']
-
-#             main_answer = self._extract_question_answer(question_id, page_texts, paper_structure)
-#             if main_answer:
-#                 answers.append(main_answer)
-
-#             if 'sub_questions' in question_info:
-#                 for sub_question in question_info['sub_questions']:
-#                     sub_answer = self._extract_sub_question_answer(question_id, sub_question['id'], page_texts, paper_structure)
-#                     if sub_answer:
-#                         answers.append(sub_answer)
-
-#         logger.info(f"Extracted {len(answers)} answers using non-LLM extraction")
-#         return answers
-
-#     # def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
-#     #     """Extract answers from raw text using the selected LLM."""
-#     #     logger.info(f"Extracting answers with {self.selected_provider} model: {self.selected_model}")
-
-#     #     try:
-#     #         if self.selected_provider == "OpenAI":
-#     #             response = self.client.chat.completions.create(
-#     #                 model=self.selected_model,
-#     #                 messages=[
-#     #                     {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-#     #                     {"role": "user", "content": raw_text}
-#     #                 ],
-#     #                 temperature=0,
-#     #                 max_tokens=3000
-#     #             )
-#     #             content = response.choices[0].message.content
-
-#     #         elif self.selected_provider == "GoogleGemini":
-#     #             response = self.client.generate_content([
-#     #                 raw_text
-#     #             ])
-#     #             content = response.text
-
-#     #         structured = json.loads(content)
-
-#     #     except Exception as e:
-#     #         logger.error(f"Failed to extract with {self.selected_provider}: {e}")
-#     #         return []
-
-#     #     answers = []
-#     #     for q_id, sub_questions in structured.items():
-#     #         for sub_id, answer in sub_questions.items():
-#     #             answers.append(StudentAnswer(
-#     #                 question_id=q_id,
-#     #                 sub_question_id=sub_id,
-#     #                 answer_text=answer.strip(),
-#     #                 page_number=0,
-#     #                 coordinates=(0.0, 0.0, 0.0, 0.0)
-#     #             ))
-
-#     #     logger.info(f"{self.selected_provider} extracted {len(answers)} answers")
-#     #     return answers
-#     # def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
-#     #     """Extract answers from raw text using the selected LLM."""
-#     #     logger.info(f"Extracting answers with {self.selected_provider} model: {self.selected_model}")
-
-#     #     try:
-#     #         if self.selected_provider == "OpenAI":
-#     #             response = self.client.chat.completions.create(
-#     #                 model=self.selected_model,
-#     #                 messages=[
-#     #                     {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-#     #                     {"role": "user", "content": raw_text}
-#     #                 ],
-#     #                 temperature=0,
-#     #                 max_tokens=3000
-#     #             )
-#     #             content = response.choices[0].message.content
-#     #         elif self.selected_provider == "GoogleGemini":
-#     #             response = self.client.generate_content([raw_text])
-#     #             content = response.text
-#     #         else:
-#     #             raise ValueError("Unsupported provider.")
-
-#     #         if not content:
-#     #             logger.error(f"{self.selected_provider} returned empty content.")
-#     #             return []
-
-#     #         # Log entire output to debug what's returned
-#     #         logger.warning(f"RAW LLM OUTPUT:\n{content}")
-
-#     #         try:
-#     #             structured = json.loads(content)
-#     #         except json.JSONDecodeError as e:
-#     #             logger.error(f"Failed to parse JSON: {e}")
-#     #             return []
-
-#     #     except Exception as e:
-#     #         logger.error(f"Failed to extract with {self.selected_provider}: {e}")
-#     #         return []
-
-#     #     answers = []
-#     #     for q_id, sub_questions in structured.items():
-#     #         for sub_id, answer in sub_questions.items():
-#     #             answers.append(StudentAnswer(
-#     #                 question_id=q_id,
-#     #                 sub_question_id=sub_id,
-#     #                 answer_text=answer.strip(),
-#     #                 page_number=0,
-#     #                 coordinates=(0.0, 0.0, 0.0, 0.0)
-#     #             ))
-
-#     #     logger.info(f"{self.selected_provider} extracted {len(answers)} answers")
-#     #     return answers
-#     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
-#         """Extract answers from raw text using the selected LLM."""
-#         logger.info(f"Extracting answers with {self.selected_provider} model: {self.selected_model}")
-
-#         try:
-#             if self.selected_provider == "OpenAI":
-#                 response = self.client.chat.completions.create(
-#                     model=self.selected_model,
-#                     messages=[
-#                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-#                         {"role": "user", "content": raw_text}
-#                     ],
-#                     temperature=0,
-#                     max_tokens=3000
-#                 )
-#                 content = response.choices[0].message.content.strip()
-
-#             elif self.selected_provider == "GoogleGemini":
-#                 response = self.client.generate_content([raw_text])
-#                 content = response.text.strip()
-
-#             else:
-#                 raise ValueError("Unsupported provider.")
-
-#             if not content:
-#                 logger.error(f"{self.selected_provider} returned empty content. Check API response or prompt.")
-#                 return []
-
-#             # Log the raw output to help debug formatting issues
-#             logger.warning(f"RAW LLM OUTPUT:\n{content}")
-
-#             try:
-#                 structured = json.loads(content)
-#             except json.JSONDecodeError as json_err:
-#                 logger.error(f"Failed to parse JSON from {self.selected_provider} output:\n{content}")
-#                 logger.error(f"JSON Error: {json_err}")
-#                 return []
-
-#         except Exception as e:
-#             logger.error(f"Failed to extract with {self.selected_provider}: {e}")
-#             return []
-
-#         answers = []
-#         for q_id, sub_questions in structured.items():
-#             for sub_id, answer in sub_questions.items():
-#                 answers.append(StudentAnswer(
-#                     question_id=q_id,
-#                     sub_question_id=sub_id,
-#                     answer_text=answer.strip(),
-#                     page_number=0,
-#                     coordinates=(0.0, 0.0, 0.0, 0.0)
-#                 ))
-
-#         logger.info(f"{self.selected_provider} extracted {len(answers)} answers")
-#         return answers
-
-
-#     def _extract_question_answer(self, question_id: str, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> Optional[StudentAnswer]:
-#         boundaries = paper_structure.get('question_boundaries', {}).get(question_id, {})
-#         if not boundaries:
-#             logger.warning(f"No boundaries found for question {question_id}")
-#             return None
-
-#         start_page = boundaries.get('start_page', 1)
-#         end_page = boundaries.get('end_page', start_page)
-#         relevant_text = "\n".join([page_texts.get(page_num, '') for page_num in range(start_page, end_page + 1)])
-#         answer_text = self._find_answer_in_text(question_id, relevant_text)
-
-#         return StudentAnswer(
-#             question_id=question_id,
-#             sub_question_id=None,
-#             answer_text=answer_text.strip(),
-#             page_number=start_page,
-#             coordinates=self._estimate_coordinates(answer_text, relevant_text)
-#         ) if answer_text else None
-
-#     def _extract_sub_question_answer(self, question_id: str, sub_question_id: str, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> Optional[StudentAnswer]:
-#         boundaries = paper_structure.get('question_boundaries', {}).get(question_id, {})
-#         if not boundaries:
-#             return None
-
-#         start_page = boundaries.get('start_page', 1)
-#         end_page = boundaries.get('end_page', start_page)
-#         relevant_text = "\n".join([page_texts.get(page_num, '') for page_num in range(start_page, end_page + 1)])
-#         answer_text = self._find_sub_answer_in_text(sub_question_id, relevant_text)
-
-#         return StudentAnswer(
-#             question_id=question_id,
-#             sub_question_id=sub_question_id,
-#             answer_text=answer_text.strip(),
-#             page_number=start_page,
-#             coordinates=self._estimate_coordinates(answer_text, relevant_text)
-#         ) if answer_text else None
-
-#     def _find_answer_in_text(self, question_id: str, text: str) -> str:
-#         question_num = re.search(r'(\d+)', question_id)
-#         if not question_num:
-#             return ""
-#         q_num = question_num.group(1)
-#         patterns = [
-#             rf'(?:Question\s*)?{q_num}[\.\)]\s*.*?\n\s*(.+?)(?=(?:Question\s*)?\d+[\.\)]|$)',
-#             rf'Q{q_num}[\.\)]\s*.*?\n\s*(.+?)(?=Q\d+[\.\)]|$)',
-#             rf'{q_num}[\.\)]\s*(.+?)(?=\d+[\.\)]|$)',
-#             rf'(?:Question\s*)?{q_num}[\.\)]\s*(.+?)(?=(?:Question\s*)?\d+[\.\)]|\Z)',
-#         ]
-#         for pattern in patterns:
-#             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-#             if match:
-#                 answer = self._clean_answer_text(match.group(1))
-#                 if len(answer) > 10:
-#                     return answer
-#         return self._extract_fallback_answer(q_num, text)
-
-#     def _find_sub_answer_in_text(self, sub_question_id: str, text: str) -> str:
-#         sub_patterns = [
-#             rf'{sub_question_id}[\.\)]\s*(.+?)(?=\n[a-zA-Z][\.\)]|\n\d+[\.\)]|\Z)',
-#             rf'\({sub_question_id}\)\s*(.+?)(?=\n\([a-zA-Z]\)|\n\d+[\.\)]|\Z)'
-#         ]
-#         for pattern in sub_patterns:
-#             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-#             if match:
-#                 answer = self._clean_answer_text(match.group(1))
-#                 if len(answer) > 5:
-#                     return answer
-#         return ""
-
-#     def _clean_answer_text(self, text: str) -> str:
-#         return re.sub(r'\s+', ' ', text).strip()
-
-#     def _extract_fallback_answer(self, question_num: str, text: str) -> str:
-#         fallback = re.search(rf'{question_num}[\.\)]\s*(.+)', text, re.IGNORECASE | re.DOTALL)
-#         return self._clean_answer_text(fallback.group(1)) if fallback else ""
-
-#     def _estimate_coordinates(self, answer_text: str, page_text: str) -> Tuple[float, float, float, float]:
-#         return (0.0, 0.0, 0.0, 0.0)
-
-#     def _initialize_answer_patterns(self) -> List[str]:
-#         return [r'Q(\d+)', r'Question\s+(\d+)', r'(\d+)[\.\)]']
-# import logging
-# import re
-# import os
-# import json
-# import openai
-# import google.generativeai as genai
-# from openai import OpenAI as OpenAIClient
-# from typing import List, Dict, Optional, Tuple
-# from dotenv import load_dotenv
-# from ..models.student_answer import StudentAnswer
-# from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
-
-# logger = logging.getLogger(__name__)
-# load_dotenv()
-
-
-# class AnswerExtractor:
-#     """Service for extracting individual student answers from paper text."""
-
-#     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
-#         """Initialize answer extractor."""
-#         self.answer_patterns = self._initialize_answer_patterns()
-#         self.selected_provider = selected_provider
-#         self.selected_model = selected_model
-#         self.temperature = temperature
-
-#         if self.selected_provider == "OpenAI":
-#             self.api_key = os.getenv("OPENAI_API_KEY")
-#             self.client = OpenAIClient(api_key=self.api_key)
-#             logger.info(f"Initialized OpenAI client with model: {self.selected_model}")
-#         elif self.selected_provider == "GoogleGemini":
-#             self.api_key = os.getenv("GOOGLE_API_KEY")
-#             genai.configure(api_key=self.api_key)
-#             self.client = genai.GenerativeModel(
-#                 model_name=self.selected_model,
-#                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
-#                 generation_config={"temperature": self.temperature}
-#             )
-#             logger.info(f"Initialized Google Gemini client with model: {self.selected_model}")
-#         else:
-#             raise ValueError("Unsupported LLM provider. Use 'OpenAI' or 'GoogleGemini'.")
-
-#     def extract_answers(self, page_texts: Dict[int, str], paper_structure: Dict[str, any], use_llm: bool = False) -> List[StudentAnswer]:
-#         if use_llm or not paper_structure.get('questions'):
-#             logger.warning("Falling back to LLM-based structured extraction.")
-#             full_text = "\n".join([text for text in page_texts.values()])
-#             return self.extract_answers_with_llm(full_text)
-
-#         answers = []
-#         questions = paper_structure.get('questions', [])
-#         logger.info(f"Extracting answers for {len(questions)} detected questions")
-
-#         for question_info in questions:
-#             question_id = question_info['id']
-
-#             main_answer = self._extract_question_answer(question_id, page_texts, paper_structure)
-#             if main_answer:
-#                 answers.append(main_answer)
-
-#             if 'sub_questions' in question_info:
-#                 for sub_question in question_info['sub_questions']:
-#                     sub_answer = self._extract_sub_question_answer(question_id, sub_question['id'], page_texts, paper_structure)
-#                     if sub_answer:
-#                         answers.append(sub_answer)
-
-#         logger.info(f"Extracted {len(answers)} answers using non-LLM extraction")
-#         return answers
-
-#     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
-#         """Extract answers from raw text using the selected LLM."""
-#         logger.info(f"Extracting answers with {self.selected_provider} model: {self.selected_model}")
-
-#         try:
-#             if self.selected_provider == "OpenAI":
-#                 response = self.client.chat.completions.create(
-#                     model=self.selected_model,
-#                     messages=[
-#                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-#                         {"role": "user", "content": raw_text}
-#                     ],
-#                     temperature=0,
-#                     max_tokens=3000
-#                 )
-#                 content = response.choices[0].message.content.strip()
-
-#             elif self.selected_provider == "GoogleGemini":
-#                 response = self.client.generate_content([raw_text])
-#                 content = response.text.strip()
-
-#             else:
-#                 raise ValueError("Unsupported provider.")
-
-#             if not content:
-#                 logger.error(f"{self.selected_provider} returned empty content. Check API response or prompt.")
-#                 return []
-
-#             logger.warning(f"RAW LLM OUTPUT:\n{content}")
-
-#             # Strip markdown-style backticks and json hint
-#             if content.startswith("```"):
-#                 content = content.strip().strip("`")
-#                 if content.lower().startswith("json"):
-#                     content = content[4:].strip()
-
-#             try:
-#                 structured = json.loads(content)
-#             except json.JSONDecodeError as json_err:
-#                 logger.error(f"Failed to parse JSON from {self.selected_provider} output:\n{content}")
-#                 logger.error(f"JSON Error: {json_err}")
-#                 return []
-
-#         except Exception as e:
-#             logger.error(f"Failed to extract with {self.selected_provider}: {e}")
-#             return []
-
-#         answers = []
-#         for q_id, sub_questions in structured.items():
-#             for sub_id, answer in sub_questions.items():
-#                 answers.append(StudentAnswer(
-#                     question_id=q_id,
-#                     sub_question_id=sub_id,
-#                     answer_text=answer.strip(),
-#                     page_number=0,
-#                     coordinates=(0.0, 0.0, 0.0, 0.0)
-#                 ))
-
-#         logger.info(f"{self.selected_provider} extracted {len(answers)} answers")
-#         return answers
-
-#     def _extract_question_answer(self, question_id: str, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> Optional[StudentAnswer]:
-#         boundaries = paper_structure.get('question_boundaries', {}).get(question_id, {})
-#         if not boundaries:
-#             logger.warning(f"No boundaries found for question {question_id}")
-#             return None
-
-#         start_page = boundaries.get('start_page', 1)
-#         end_page = boundaries.get('end_page', start_page)
-#         relevant_text = "\n".join([page_texts.get(page_num, '') for page_num in range(start_page, end_page + 1)])
-#         answer_text = self._find_answer_in_text(question_id, relevant_text)
-
-#         return StudentAnswer(
-#             question_id=question_id,
-#             sub_question_id=None,
-#             answer_text=answer_text.strip(),
-#             page_number=start_page,
-#             coordinates=self._estimate_coordinates(answer_text, relevant_text)
-#         ) if answer_text else None
-
-#     def _extract_sub_question_answer(self, question_id: str, sub_question_id: str, page_texts: Dict[int, str], paper_structure: Dict[str, any]) -> Optional[StudentAnswer]:
-#         boundaries = paper_structure.get('question_boundaries', {}).get(question_id, {})
-#         if not boundaries:
-#             return None
-
-#         start_page = boundaries.get('start_page', 1)
-#         end_page = boundaries.get('end_page', start_page)
-#         relevant_text = "\n".join([page_texts.get(page_num, '') for page_num in range(start_page, end_page + 1)])
-#         answer_text = self._find_sub_answer_in_text(sub_question_id, relevant_text)
-
-#         return StudentAnswer(
-#             question_id=question_id,
-#             sub_question_id=sub_question_id,
-#             answer_text=answer_text.strip(),
-#             page_number=start_page,
-#             coordinates=self._estimate_coordinates(answer_text, relevant_text)
-#         ) if answer_text else None
-
-#     def _find_answer_in_text(self, question_id: str, text: str) -> str:
-#         question_num = re.search(r'(\d+)', question_id)
-#         if not question_num:
-#             return ""
-#         q_num = question_num.group(1)
-#         patterns = [
-#             rf'(?:Question\s*)?{q_num}[\.\)]\s*.*?\n\s*(.+?)(?=(?:Question\s*)?\d+[\.\)]|$)',
-#             rf'Q{q_num}[\.\)]\s*.*?\n\s*(.+?)(?=Q\d+[\.\)]|$)',
-#             rf'{q_num}[\.\)]\s*(.+?)(?=\d+[\.\)]|$)',
-#             rf'(?:Question\s*)?{q_num}[\.\)]\s*(.+?)(?=(?:Question\s*)?\d+[\.\)]|\Z)',
-#         ]
-#         for pattern in patterns:
-#             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-#             if match:
-#                 answer = self._clean_answer_text(match.group(1))
-#                 if len(answer) > 10:
-#                     return answer
-#         return self._extract_fallback_answer(q_num, text)
-
-#     def _find_sub_answer_in_text(self, sub_question_id: str, text: str) -> str:
-#         sub_patterns = [
-#             rf'{sub_question_id}[\.\)]\s*(.+?)(?=\n[a-zA-Z][\.\)]|\n\d+[\.\)]|\Z)',
-#             rf'\({sub_question_id}\)\s*(.+?)(?=\n\([a-zA-Z]\)|\n\d+[\.\)]|\Z)'
-#         ]
-#         for pattern in sub_patterns:
-#             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-#             if match:
-#                 answer = self._clean_answer_text(match.group(1))
-#                 if len(answer) > 5:
-#                     return answer
-#         return ""
-
-#     def _clean_answer_text(self, text: str) -> str:
-#         return re.sub(r'\s+', ' ', text).strip()
-
-#     def _extract_fallback_answer(self, question_num: str, text: str) -> str:
-#         fallback = re.search(rf'{question_num}[\.\)]\s*(.+)', text, re.IGNORECASE | re.DOTALL)
-#         return self._clean_answer_text(fallback.group(1)) if fallback else ""
-
-#     def _estimate_coordinates(self, answer_text: str, page_text: str) -> Tuple[float, float, float, float]:
-#         return (0.0, 0.0, 0.0, 0.0)
-
-#     def _initialize_answer_patterns(self) -> List[str]:
-#         return [r'Q(\d+)', r'Question\s+(\d+)', r'(\d+)[\.\)]']
-# import logging
-# import os
-# import json
-# import openai
-# import google.generativeai as genai
-# from openai import OpenAI as OpenAIClient
-# from typing import List, Dict, Tuple
-# from dotenv import load_dotenv
-# from ..models.student_answer import StudentAnswer
-# from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
-
-# logger = logging.getLogger(__name__)
-# load_dotenv()
-
-# class AnswerExtractor:
-#     """Service for extracting student answers from text using LLMs only."""
-
-#     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
-#         self.selected_provider = selected_provider
-#         self.selected_model = selected_model
-#         self.temperature = temperature
-
-#         if self.selected_provider == "OpenAI":
-#             self.api_key = os.getenv("OPENAI_API_KEY")
-#             self.client = OpenAIClient(api_key=self.api_key)
-#             logger.info(f"Initialized OpenAI client with model: {self.selected_model}")
-#         elif self.selected_provider == "GoogleGemini":
-#             self.api_key = os.getenv("GOOGLE_API_KEY")
-#             genai.configure(api_key=self.api_key)
-#             self.client = genai.GenerativeModel(
-#                 model_name=self.selected_model,
-#                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
-#                 generation_config={"temperature": self.temperature}
-#             )
-#             logger.info(f"Initialized Google Gemini client with model: {self.selected_model}")
-#         else:
-#             raise ValueError("Unsupported LLM provider. Use 'OpenAI' or 'GoogleGemini'.")
-
-#     def extract_answers(self, page_texts: Dict[int, str]) -> List[StudentAnswer]:
-#         full_text = "\n".join([text for text in page_texts.values()])
-#         return self.extract_answers_with_llm(full_text)
-
-#     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
-#         logger.info(f"Extracting answers with {self.selected_provider} model: {self.selected_model}")
-
-#         try:
-#             if self.selected_provider == "OpenAI":
-#                 response = self.client.chat.completions.create(
-#                     model=self.selected_model,
-#                     messages=[
-#                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-#                         {"role": "user", "content": raw_text}
-#                     ],
-#                     temperature=0,
-#                     max_tokens=3000
-#                 )
-#                 content = response.choices[0].message.content.strip()
-
-#             elif self.selected_provider == "GoogleGemini":
-#                 response = self.client.generate_content([raw_text])
-#                 content = response.text.strip()
-#             else:
-#                 raise ValueError("Unsupported provider.")
-
-#             if not content:
-#                 logger.error(f"{self.selected_provider} returned empty content.")
-#                 return []
-
-#             logger.warning(f"RAW LLM OUTPUT:\n{content}")
-
-#             # Handle code-style blocks or JSON markers
-#             if content.startswith("```"):
-#                 content = content.strip("`")
-#                 if content.lower().startswith("json"):
-#                     content = content[4:].strip()
-
-#             try:
-#                 structured = json.loads(content)
-#             except json.JSONDecodeError as e:
-#                 logger.error(f"Failed to parse JSON:\n{content}")
-#                 logger.error(f"JSON Error: {e}")
-#                 return []
-
-#         except Exception as e:
-#             logger.error(f"Failed to extract with {self.selected_provider}: {e}")
-#             return []
-
-#         answers = []
-#         for q_id, sub_questions in structured.items():
-#             for sub_id, answer in sub_questions.items():
-#                 answers.append(StudentAnswer(
-#                     question_id=q_id,
-#                     sub_question_id=sub_id,
-#                     answer_text=answer.strip(),
-#                     page_number=0,
-#                     coordinates=(0.0, 0.0, 0.0, 0.0)
-#                 ))
-
-#         logger.info(f"{self.selected_provider} extracted {len(answers)} answers")
-#         return answers
-
-# import logging
-# import os
-# import json
-# import openai
-# import google.generativeai as genai
-# from openai import OpenAI as OpenAIClient
-# from typing import List, Dict, Tuple, Optional
-# from dotenv import load_dotenv
-# from ..models.student_answer import StudentAnswer
-# from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
-
-# logger = logging.getLogger(__name__)
-# load_dotenv()
-
-# class AnswerExtractor:
-#     """Service for extracting student answers from text using LLMs only."""
-
-#     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
-#         self.selected_provider = selected_provider
-#         self.selected_model = selected_model
-#         self.temperature = temperature
-
-#         if self.selected_provider == "OpenAI":
-#             self.api_key = os.getenv("OPENAI_API_KEY")
-#             self.client = OpenAIClient(api_key=self.api_key)
-#             logger.info(f"Initialized OpenAI client with model: {self.selected_model}")
-#         elif self.selected_provider == "GoogleGemini":
-#             self.api_key = os.getenv("GOOGLE_API_KEY")
-#             genai.configure(api_key=self.api_key)
-#             self.client = genai.GenerativeModel(
-#                 model_name=self.selected_model,
-#                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
-#                 generation_config={"temperature": self.temperature}
-#             )
-#             logger.info(f"Initialized Google Gemini client with model: {self.selected_model}")
-#         else:
-#             raise ValueError("Unsupported LLM provider. Use 'OpenAI' or 'GoogleGemini'.")
-
-#     def extract_answers(self, page_texts: Dict[int, str], student_index: Optional[str] = None) -> List[StudentAnswer]:
-#         full_text = "\n".join([text for text in page_texts.values()])
-#         return self.extract_answers_with_llm(full_text, student_index=student_index)
-
-#     def extract_answers_with_llm(self, raw_text: str, student_index: Optional[str] = None) -> List[StudentAnswer]:
-#         logger.info(f"Extracting answers with {self.selected_provider} model: {self.selected_model}")
-
-#         try:
-#             if self.selected_provider == "OpenAI":
-#                 response = self.client.chat.completions.create(
-#                     model=self.selected_model,
-#                     messages=[
-#                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-#                         {"role": "user", "content": raw_text}
-#                     ],
-#                     temperature=0,
-#                     max_tokens=3000
-#                 )
-#                 content = response.choices[0].message.content.strip()
-
-#             elif self.selected_provider == "GoogleGemini":
-#                 response = self.client.generate_content([raw_text])
-#                 content = response.text.strip()
-#             else:
-#                 raise ValueError("Unsupported provider.")
-
-#             if not content:
-#                 logger.error(f"{self.selected_provider} returned empty content.")
-#                 return []
-
-#             logger.warning(f"RAW LLM OUTPUT:\n{content}")
-
-#             if content.startswith("```"):
-#                 content = content.strip("`")
-#                 if content.lower().startswith("json"):
-#                     content = content[4:].strip()
-
-#             try:
-#                 structured = json.loads(content)
-#             except json.JSONDecodeError as e:
-#                 logger.error(f"Failed to parse JSON:\n{content}")
-#                 logger.error(f"JSON Error: {e}")
-#                 return []
-
-#         except Exception as e:
-#             logger.error(f"Failed to extract with {self.selected_provider}: {e}")
-#             return []
-
-#         answers = []
-#         for q_id, sub_questions in structured.items():
-#             for sub_id, answer in sub_questions.items():
-#                 answers.append(StudentAnswer(
-#                     question_id=q_id,
-#                     sub_question_id=sub_id,
-#                     answer_text=answer.strip(),
-#                     page_number=0,
-#                     coordinates=(0.0, 0.0, 0.0, 0.0),
-#                 ))
-
-#         logger.info(f"{self.selected_provider} extracted {len(answers)} answers")
-#         return answers
+# # # # import logging
+# # # # import os
+# # # # import json
+# # # # from typing import List, Dict, Optional
+# # # # from dotenv import load_dotenv
+
+# # # # from openai import OpenAI as OpenAIClient  # Only causes issue if openai is not installed
+
+# # # # from ..models.student_answer import StudentAnswer
+# # # # from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
+
+# # # # logger = logging.getLogger(__name__)
+# # # # load_dotenv()
+
+
+# # # # class AnswerExtractor:
+# # # #     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
+# # # #         self.selected_provider = selected_provider
+# # # #         self.selected_model = selected_model
+# # # #         self.temperature = temperature
+
+# # # #         if selected_provider == "OpenAI":
+# # # #             self.api_key = os.getenv("OPENAI_API_KEY")
+# # # #             self.client = OpenAIClient(api_key=self.api_key)
+
+# # # #         elif selected_provider == "GoogleGemini":
+# # # #             # ✅ Import Gemini only if needed
+# # # #             import google.generativeai as genai
+
+# # # #             self.api_key = os.getenv("GOOGLE_API_KEY")
+# # # #             genai.configure(api_key=self.api_key)
+
+# # # #             self.client = genai.GenerativeModel(
+# # # #                 model_name=self.selected_model,
+# # # #                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
+# # # #                 generation_config={"temperature": temperature}
+# # # #             )
+
+# # # #         else:
+# # # #             raise ValueError(f"Unsupported provider: {selected_provider}")
+
+# # # #     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
+# # # #         logger.info(f"Extracting answers using {self.selected_provider} - {self.selected_model}")
+
+# # # #         try:
+# # # #             if self.selected_provider == "OpenAI":
+# # # #                 response = self.client.chat.completions.create(
+# # # #                     model=self.selected_model,
+# # # #                     messages=[
+# # # #                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
+# # # #                         {"role": "user", "content": raw_text}
+# # # #                     ],
+# # # #                     temperature=self.temperature,
+# # # #                     max_tokens=4000
+# # # #                 )
+# # # #                 content = response.choices[0].message.content.strip()
+# # # #             else:
+# # # #                 response = self.client.generate_content([raw_text])
+# # # #                 content = response.text.strip()
+
+# # # #             if content.startswith("```"):
+# # # #                 content = content.strip("`").replace("json", "").strip()
+
+# # # #             structured = json.loads(content)
+# # # #             metadata = structured.get("metadata", {})
+# # # #             answers_json = structured.get("answers", {})
+
+# # # #         except Exception as e:
+# # # #             logger.error(f"LLM extraction failed: {e}")
+# # # #             return []
+
+# # # #         return self._flatten_structure(
+# # # #             answers_json,
+# # # #             metadata.get("student_index"),
+# # # #             metadata.get("module_code"),
+# # # #             metadata.get("exam_year"),
+# # # #             metadata.get("exam_month")
+# # # #         )
+
+# # # #     def _flatten_structure(
+# # # #         self,
+# # # #         nested: dict,
+# # # #         student_index: Optional[str],
+# # # #         module_code: Optional[str],
+# # # #         exam_year: Optional[int],
+# # # #         exam_month: Optional[int]
+# # # #     ) -> List[StudentAnswer]:
+# # # #         answers = []
+
+# # # #         def recurse(keys: List[str], value):
+# # # #             if isinstance(value, str):
+# # # #                 answer = StudentAnswer(
+# # # #                     question_id=keys[0] if len(keys) > 0 else None,
+# # # #                     sub_question_id=keys[1] if len(keys) > 1 else None,
+# # # #                     sub_sub_question_id=keys[2] if len(keys) > 2 else None,
+# # # #                     sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
+# # # #                     answer_text=value.strip(),
+# # # #                     student_index=student_index,
+# # # #                     module_code=module_code,
+# # # #                     exam_year=exam_year,
+# # # #                     exam_month=exam_month
+# # # #                 )
+# # # #                 answers.append(answer)
+# # # #             elif isinstance(value, dict):
+# # # #                 for sub_key, sub_value in value.items():
+# # # #                     recurse(keys + [sub_key], sub_value)
+
+# # # #         for main_q, subs in nested.items():
+# # # #             recurse([main_q], subs)
+
+# # # #         return answers
+
+
+# # # import logging
+# # # import os
+# # # import json
+# # # from typing import List, Dict, Optional
+# # # from dotenv import load_dotenv
+
+# # # from ..models.student_answer import StudentAnswer
+# # # from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
+
+# # # logger = logging.getLogger(__name__)
+# # # load_dotenv()
+
+
+# # # class AnswerExtractor:
+# # #     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
+# # #         self.selected_provider = selected_provider
+# # #         self.selected_model = selected_model
+# # #         self.temperature = temperature
+
+# # #         if selected_provider == "OpenAI":
+# # #             # ✅ Import OpenAI client only if needed
+# # #             from openai import OpenAI as OpenAIClient
+# # #             self.api_key = os.getenv("OPENAI_API_KEY")
+# # #             self.client = OpenAIClient(api_key=self.api_key)
+
+# # #         elif selected_provider == "GoogleGemini":
+# # #             # ✅ Import Gemini only if needed
+# # #             import google.generativeai as genai
+# # #             self.api_key = os.getenv("GOOGLE_API_KEY")
+# # #             genai.configure(api_key=self.api_key)
+# # #             self.client = genai.GenerativeModel(
+# # #                 model_name=self.selected_model,
+# # #                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
+# # #                 generation_config={"temperature": temperature}
+# # #             )
+
+# # #         else:
+# # #             raise ValueError(f"Unsupported provider: {selected_provider}")
+
+# # #     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
+# # #         logger.info(f"Extracting answers using {self.selected_provider} - {self.selected_model}")
+
+# # #         try:
+# # #             if self.selected_provider == "OpenAI":
+# # #                 response = self.client.chat.completions.create(
+# # #                     model=self.selected_model,
+# # #                     messages=[
+# # #                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
+# # #                         {"role": "user", "content": raw_text}
+# # #                     ],
+# # #                     temperature=self.temperature,
+# # #                     max_tokens=4000
+# # #                 )
+# # #                 content = response.choices[0].message.content.strip()
+# # #             else:
+# # #                 response = self.client.generate_content([raw_text])
+# # #                 content = response.text.strip()
+
+# # #             if content.startswith("```"):
+# # #                 content = content.strip("`").replace("json", "").strip()
+
+# # #             structured = json.loads(content)
+# # #             metadata = structured.get("metadata", {})
+# # #             answers_json = structured.get("answers", {})
+
+# # #         except Exception as e:
+# # #             logger.error(f"LLM extraction failed: {e}")
+# # #             return []
+
+# # #         return self._flatten_structure(
+# # #             answers_json,
+# # #             metadata.get("student_index"),
+# # #             metadata.get("module_code"),
+# # #             metadata.get("exam_year"),
+# # #             metadata.get("exam_month")
+# # #         )
+
+# # #     def _flatten_structure(
+# # #         self,
+# # #         nested: dict,
+# # #         student_index: Optional[str],
+# # #         module_code: Optional[str],
+# # #         exam_year: Optional[int],
+# # #         exam_month: Optional[int]
+# # #     ) -> List[StudentAnswer]:
+# # #         answers = []
+
+# # #         def recurse(keys: List[str], value):
+# # #             if isinstance(value, str):
+# # #                 answer = StudentAnswer(
+# # #                     question_id=keys[0] if len(keys) > 0 else None,
+# # #                     sub_question_id=keys[1] if len(keys) > 1 else None,
+# # #                     sub_sub_question_id=keys[2] if len(keys) > 2 else None,
+# # #                     sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
+# # #                     answer_text=value.strip(),
+# # #                     student_index=student_index,
+# # #                     module_code=module_code,
+# # #                     exam_year=exam_year,
+# # #                     exam_month=exam_month
+# # #                 )
+# # #                 answers.append(answer)
+# # #             elif isinstance(value, dict):
+# # #                 for sub_key, sub_value in value.items():
+# # #                     recurse(keys + [sub_key], sub_value)
+
+# # #         for main_q, subs in nested.items():
+# # #             recurse([main_q], subs)
+
+# # #         return answers
+
+# # # import logging
+# # # import os
+# # # import json
+# # # from typing import List, Dict, Optional
+# # # from dotenv import load_dotenv
+
+# # # from ..models.student_answer import StudentAnswer
+# # # from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
+
+# # # logger = logging.getLogger(__name__)
+# # # load_dotenv()
+
+
+# # # class AnswerExtractor:
+# # #     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
+# # #         self.selected_provider = selected_provider
+# # #         self.selected_model = selected_model
+# # #         self.temperature = temperature
+
+# # #         if selected_provider == "OpenAI":
+# # #             try:
+# # #                 from openai import OpenAI as OpenAIClient
+# # #                 self.api_key = os.getenv("OPENAI_API_KEY")
+# # #                 self.client = OpenAIClient(api_key=self.api_key)
+# # #             except ImportError:
+# # #                 raise ImportError("OpenAI SDK is not installed. Please install `openai` package in this environment.")
+
+# # #         elif selected_provider == "GoogleGemini":
+# # #             try:
+# # #                 import google.generativeai as genai
+# # #                 self.api_key = os.getenv("GOOGLE_API_KEY")
+# # #                 genai.configure(api_key=self.api_key)
+# # #                 self.client = genai.GenerativeModel(
+# # #                     model_name=self.selected_model,
+# # #                     system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
+# # #                     generation_config={"temperature": temperature}
+# # #                 )
+# # #             except ImportError:
+# # #                 raise ImportError("Google Gemini SDK is not installed. Please install `google-generativeai` package in this environment.")
+
+# # #         else:
+# # #             raise ValueError(f"Unsupported provider: {selected_provider}")
+
+# # #     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
+# # #         logger.info(f"Extracting answers using {self.selected_provider} - {self.selected_model}")
+
+# # #         try:
+# # #             if self.selected_provider == "OpenAI":
+# # #                 response = self.client.chat.completions.create(
+# # #                     model=self.selected_model,
+# # #                     messages=[
+# # #                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
+# # #                         {"role": "user", "content": raw_text}
+# # #                     ],
+# # #                     temperature=self.temperature,
+# # #                     max_tokens=4000
+# # #                 )
+# # #                 content = response.choices[0].message.content.strip()
+
+# # #             elif self.selected_provider == "GoogleGemini":
+# # #                 response = self.client.generate_content([raw_text])
+# # #                 content = response.text.strip()
+# # #             else:
+# # #                 raise ValueError("Unsupported provider during LLM extraction")
+
+# # #             # Clean markdown-style response if present
+# # #             if content.startswith("```"):
+# # #                 content = content.strip("`").replace("json", "").strip()
+
+# # #             structured = json.loads(content)
+# # #             metadata = structured.get("metadata", {})
+# # #             answers_json = structured.get("answers", {})
+
+# # #         except Exception as e:
+# # #             logger.error(f"LLM extraction failed: {e}")
+# # #             return []
+
+# # #         return self._flatten_structure(
+# # #             answers_json,
+# # #             metadata.get("student_index"),
+# # #             metadata.get("module_code"),
+# # #             metadata.get("exam_year"),
+# # #             metadata.get("exam_month")
+# # #         )
+
+# # #     def _flatten_structure(
+# # #         self,
+# # #         nested: dict,
+# # #         student_index: Optional[str],
+# # #         module_code: Optional[str],
+# # #         exam_year: Optional[int],
+# # #         exam_month: Optional[int]
+# # #     ) -> List[StudentAnswer]:
+# # #         answers = []
+
+# # #         def recurse(keys: List[str], value):
+# # #             if isinstance(value, str):
+# # #                 answers.append(StudentAnswer(
+# # #                     question_id=keys[0] if len(keys) > 0 else None,
+# # #                     sub_question_id=keys[1] if len(keys) > 1 else None,
+# # #                     sub_sub_question_id=keys[2] if len(keys) > 2 else None,
+# # #                     sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
+# # #                     answer_text=value.strip(),
+# # #                     student_index=student_index,
+# # #                     module_code=module_code,
+# # #                     exam_year=exam_year,
+# # #                     exam_month=exam_month
+# # #                 ))
+# # #             elif isinstance(value, dict):
+# # #                 for sub_key, sub_value in value.items():
+# # #                     recurse(keys + [sub_key], sub_value)
+
+# # #         for main_q, subs in nested.items():
+# # #             recurse([main_q], subs)
+
+# # #         return answers
 
 
 # import logging
 # import os
 # import json
-# from typing import List, Dict, Optional, Tuple
-# from dotenv import load_dotenv
-# from openai import OpenAI as OpenAIClient
-# import google.generativeai as genai
-# from ..models.student_answer import StudentAnswer
-# from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
-
-# logger = logging.getLogger(__name__)
-# load_dotenv()
-
-# class AnswerExtractor:
-#     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
-#         self.selected_provider = selected_provider
-#         self.selected_model = selected_model
-#         self.temperature = temperature
-
-#         if selected_provider == "OpenAI":
-#             self.api_key = os.getenv("OPENAI_API_KEY")
-#             self.client = OpenAIClient(api_key=self.api_key)
-#         elif selected_provider == "GoogleGemini":
-#             self.api_key = os.getenv("GOOGLE_API_KEY")
-#             genai.configure(api_key=self.api_key)
-#             self.client = genai.GenerativeModel(
-#                 model_name=self.selected_model,
-#                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
-#                 generation_config={"temperature": temperature}
-#             )
-#         else:
-#             raise ValueError("Unsupported provider")
-
-#     def extract_answers_with_llm(self, raw_text: str, student_index: Optional[str] = None) -> List[StudentAnswer]:
-#         logger.info(f"Extracting answers using {self.selected_provider}")
-
-#         try:
-#             if self.selected_provider == "OpenAI":
-#                 response = self.client.chat.completions.create(
-#                     model=self.selected_model,
-#                     messages=[
-#                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-#                         {"role": "user", "content": raw_text}
-#                     ],
-#                     temperature=0.3,
-#                     max_tokens=4000
-#                 )
-#                 content = response.choices[0].message.content.strip()
-#             else:
-#                 response = self.client.generate_content([raw_text])
-#                 content = response.text.strip()
-
-#             if content.startswith("```"):
-#                 content = content.strip("`").replace("json", "").strip()
-
-#             structured = json.loads(content)
-
-#         except Exception as e:
-#             logger.error(f"LLM extraction failed: {e}")
-#             return []
-
-#         return self._flatten_structure(structured, student_index)
-
-#     def _flatten_structure(self, nested: dict, student_index: Optional[str]) -> List[StudentAnswer]:
-#         answers = []
-
-#         def recurse(qid, sub_dict, parent_keys=[]):
-#             for sub_id, value in sub_dict.items():
-#                 if isinstance(value, str):  # Base case
-#                     answer = StudentAnswer(
-#                         question_id=qid,
-#                         sub_question_id=parent_keys[0] if len(parent_keys) > 0 else None,
-#                         sub_sub_question_id=parent_keys[1] if len(parent_keys) > 1 else None,
-#                         answer_text=value.strip(),
-#                         student_index=student_index
-#                     )
-#                     answers.append(answer)
-#                 elif isinstance(value, dict):  # Recurse deeper
-#                     recurse(qid, value, parent_keys + [sub_id])
-
-#         for main_q, subs in nested.items():
-#             recurse(main_q, subs)
-
-#         return answers
-
-
-# import logging
-# import os
-# import json
-# from typing import List, Dict, Optional, Tuple
+# from typing import List, Dict, Optional
 # from dotenv import load_dotenv
 # from openai import OpenAI as OpenAIClient
 # import google.generativeai as genai
@@ -1172,125 +471,14 @@
 #         if selected_provider == "OpenAI":
 #             self.api_key = os.getenv("OPENAI_API_KEY")
 #             self.client = OpenAIClient(api_key=self.api_key)
+
 #         elif selected_provider == "GoogleGemini":
 #             self.api_key = os.getenv("GOOGLE_API_KEY")
 #             genai.configure(api_key=self.api_key)
 #             self.client = genai.GenerativeModel(
-#                 model_name=self.selected_model,
-#                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
-#                 generation_config={"temperature": temperature}
+#                 model_name=self.selected_model
 #             )
-#         else:
-#             raise ValueError("Unsupported provider")
 
-#     def extract_answers_with_llm(
-#         self,
-#         raw_text: str,
-#         student_index: Optional[str] = None,
-#         module_code: Optional[str] = None,
-#         exam_year: Optional[int] = None,
-#         exam_month: Optional[int] = None
-#     ) -> List[StudentAnswer]:
-
-#         logger.info(f"Extracting answers using {self.selected_provider} - {self.selected_model}")
-
-#         try:
-#             if self.selected_provider == "OpenAI":
-#                 response = self.client.chat.completions.create(
-#                     model=self.selected_model,
-#                     messages=[
-#                         {"role": "system", "content": EXTRACT_STUDENT_ANSWERS_PROMPT},
-#                         {"role": "user", "content": raw_text}
-#                     ],
-#                     temperature=self.temperature,
-#                     max_tokens=4000
-#                 )
-#                 content = response.choices[0].message.content.strip()
-#             else:
-#                 response = self.client.generate_content([raw_text])
-#                 content = response.text.strip()
-
-#             if content.startswith("```"):
-#                 content = content.strip("`").replace("json", "").strip()
-
-#             structured = json.loads(content)
-
-#         except Exception as e:
-#             logger.error(f"LLM extraction failed: {e}")
-#             return []
-
-#         return self._flatten_structure(
-#             structured,
-#             student_index,
-#             module_code,
-#             exam_year,
-#             exam_month
-#         )
-
-#     def _flatten_structure(
-#         self,
-#         nested: dict,
-#         student_index: Optional[str],
-#         module_code: Optional[str],
-#         exam_year: Optional[int],
-#         exam_month: Optional[int]
-#     ) -> List[StudentAnswer]:
-#         answers = []
-
-#         def recurse(qid, sub_dict, parent_keys=[]):
-#             for sub_id, value in sub_dict.items():
-#                 if isinstance(value, str):  # Base case
-#                     answer = StudentAnswer(
-#                         question_id=qid,
-#                         sub_question_id=parent_keys[0] if len(parent_keys) > 0 else None,
-#                         sub_sub_question_id=parent_keys[1] if len(parent_keys) > 1 else None,
-#                         answer_text=value.strip(),
-#                         student_index=student_index,
-#                         module_code=module_code,
-#                         exam_year=exam_year,
-#                         exam_month=exam_month
-#                     )
-#                     answers.append(answer)
-#                 elif isinstance(value, dict):  # Recurse deeper
-#                     recurse(qid, value, parent_keys + [sub_id])
-
-#         for main_q, subs in nested.items():
-#             recurse(main_q, subs)
-
-#         return answers
-
-
-# import logging
-# import os
-# import json
-# from typing import List, Dict, Optional, Tuple
-# from dotenv import load_dotenv
-# from openai import OpenAI as OpenAIClient
-# import google.generativeai as genai
-
-# from ..models.student_answer import StudentAnswer
-# from ..prompts.extract_answers_prompt import EXTRACT_STUDENT_ANSWERS_PROMPT
-
-# logger = logging.getLogger(__name__)
-# load_dotenv()
-
-# class AnswerExtractor:
-#     def __init__(self, selected_provider: str, selected_model: str, temperature: float = 0.3):
-#         self.selected_provider = selected_provider
-#         self.selected_model = selected_model
-#         self.temperature = temperature
-
-#         if selected_provider == "OpenAI":
-#             self.api_key = os.getenv("OPENAI_API_KEY")
-#             self.client = OpenAIClient(api_key=self.api_key)
-#         elif selected_provider == "GoogleGemini":
-#             self.api_key = os.getenv("GOOGLE_API_KEY")
-#             genai.configure(api_key=self.api_key)
-#             self.client = genai.GenerativeModel(
-#                 model_name=self.selected_model,
-#                 system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
-#                 generation_config={"temperature": temperature}
-#             )
 #         else:
 #             raise ValueError("Unsupported provider")
 
@@ -1309,8 +497,17 @@
 #                     max_tokens=4000
 #                 )
 #                 content = response.choices[0].message.content.strip()
-#             else:
-#                 response = self.client.generate_content([raw_text])
+
+#             else:  # GoogleGemini
+#                 response = self.client.generate_content(
+#                     contents=[
+#                         {
+#                             "role": "user",
+#                             "parts": [f"{EXTRACT_STUDENT_ANSWERS_PROMPT}\n\n{raw_text}"]
+#                         }
+#                     ],
+#                     generation_config={"temperature": self.temperature}
+#                 )
 #                 content = response.text.strip()
 
 #             if content.startswith("```"):
@@ -1343,28 +540,28 @@
 #     ) -> List[StudentAnswer]:
 #         answers = []
 
-#         def recurse(qid, sub_dict, parent_keys=[]):
-#             for sub_id, value in sub_dict.items():
-#                 if isinstance(value, str):  # Base case
-#                     answer = StudentAnswer(
-#                         question_id=qid,
-#                         sub_question_id=parent_keys[0] if len(parent_keys) > 0 else None,
-#                         sub_sub_question_id=parent_keys[1] if len(parent_keys) > 1 else None,
-#                         answer_text=value.strip(),
-#                         student_index=student_index,
-#                         module_code=module_code,
-#                         exam_year=exam_year,
-#                         exam_month=exam_month
-#                     )
-#                     answers.append(answer)
-#                 elif isinstance(value, dict):  # Recurse deeper
-#                     recurse(qid, value, parent_keys + [sub_id])
+#         def recurse(keys: List[str], value):
+#             if isinstance(value, str):
+#                 answer = StudentAnswer(
+#                     question_id=keys[0] if len(keys) > 0 else None,
+#                     sub_question_id=keys[1] if len(keys) > 1 else None,
+#                     sub_sub_question_id=keys[2] if len(keys) > 2 else None,
+#                     sub_sub_sub_question_id=keys[3] if len(keys) > 3 else None,
+#                     answer_text=value.strip(),
+#                     student_index=student_index,
+#                     module_code=module_code,
+#                     exam_year=exam_year,
+#                     exam_month=exam_month
+#                 )
+#                 answers.append(answer)
+#             elif isinstance(value, dict):
+#                 for sub_key, sub_value in value.items():
+#                     recurse(keys + [sub_key], sub_value)
 
 #         for main_q, subs in nested.items():
-#             recurse(main_q, subs)
+#             recurse([main_q], subs)
 
 #         return answers
-
 
 import logging
 import os
@@ -1389,18 +586,22 @@ class AnswerExtractor:
         if selected_provider == "OpenAI":
             self.api_key = os.getenv("OPENAI_API_KEY")
             self.client = OpenAIClient(api_key=self.api_key)
+
         elif selected_provider == "GoogleGemini":
             self.api_key = os.getenv("GOOGLE_API_KEY")
             genai.configure(api_key=self.api_key)
             self.client = genai.GenerativeModel(
-                model_name=self.selected_model,
-                system_instruction=EXTRACT_STUDENT_ANSWERS_PROMPT,
-                generation_config={"temperature": temperature}
+                model_name=self.selected_model
             )
+
         else:
             raise ValueError("Unsupported provider")
 
     def extract_answers_with_llm(self, raw_text: str) -> List[StudentAnswer]:
+        """
+        Extract answers using LLM - only extracts question IDs and answer text.
+        Metadata (student_index, module_code, etc.) should be set separately from database mapping.
+        """
         logger.info(f"Extracting answers using {self.selected_provider} - {self.selected_model}")
 
         try:
@@ -1415,8 +616,17 @@ class AnswerExtractor:
                     max_tokens=4000
                 )
                 content = response.choices[0].message.content.strip()
-            else:
-                response = self.client.generate_content([raw_text])
+
+            else:  # GoogleGemini
+                response = self.client.generate_content(
+                    contents=[
+                        {
+                            "role": "user",
+                            "parts": [f"{EXTRACT_STUDENT_ANSWERS_PROMPT}\n\n{raw_text}"]
+                        }
+                    ],
+                    generation_config={"temperature": self.temperature}
+                )
                 content = response.text.strip()
 
             if content.startswith("```"):
@@ -1424,20 +634,53 @@ class AnswerExtractor:
 
             structured = json.loads(content)
 
+            # Extract metadata if present (for backward compatibility)
             metadata = structured.get("metadata", {})
             answers_json = structured.get("answers", {})
 
+            # Create answers with extracted question structure
+            answers = self._flatten_structure(
+                answers_json,
+                metadata.get("student_index"),
+                metadata.get("module_code"), 
+                metadata.get("exam_year"),
+                metadata.get("exam_month")
+            )
+            
+            logger.info(f"Successfully extracted {len(answers)} answers from document")
+            return answers
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing failed: {e}")
+            logger.error(f"LLM response content: {content[:500]}...")
+            return []
         except Exception as e:
             logger.error(f"LLM extraction failed: {e}")
             return []
 
-        return self._flatten_structure(
-            answers_json,
-            metadata.get("student_index"),
-            metadata.get("module_code"),
-            metadata.get("exam_year"),
-            metadata.get("exam_month")
-        )
+    def extract_answers_with_db_mapping(self, raw_text: str, student_index: str, module_code: str, 
+                                      exam_year: int, exam_month: str) -> List[StudentAnswer]:
+        """
+        Extract answers and immediately apply database-mapped metadata.
+        This ensures all answers have correct metadata from database regardless of what LLM extracts.
+        """
+        logger.info(f"Extracting answers with database mapping for {student_index} | {module_code} | {exam_year}-{exam_month}")
+        
+        # First extract answers normally
+        answers = self.extract_answers_with_llm(raw_text)
+        
+        if not answers:
+            return []
+        
+        # Override all metadata with database-mapped values
+        for answer in answers:
+            answer.student_index = student_index
+            answer.module_code = module_code.upper()  # Normalize to uppercase
+            answer.exam_year = exam_year
+            answer.exam_month = exam_month
+        
+        logger.info(f"Applied database mapping to {len(answers)} answers")
+        return answers
 
     def _flatten_structure(
         self,
@@ -1445,8 +688,12 @@ class AnswerExtractor:
         student_index: Optional[str],
         module_code: Optional[str],
         exam_year: Optional[int],
-        exam_month: Optional[int]
+        exam_month: Optional[str]
     ) -> List[StudentAnswer]:
+        """
+        Flatten nested answer structure into list of StudentAnswer objects.
+        Note: Metadata parameters are kept for backward compatibility but can be overridden later.
+        """
         answers = []
 
         def recurse(keys: List[str], value):
@@ -1471,3 +718,136 @@ class AnswerExtractor:
             recurse([main_q], subs)
 
         return answers
+
+    def validate_extracted_answers(self, answers: List[StudentAnswer], 
+                                 expected_student_index: str = None,
+                                 expected_module_code: str = None) -> Dict[str, any]:
+        """
+        Validate extracted answers against expected values and provide diagnostics.
+        """
+        validation_result = {
+            'valid': True,
+            'total_answers': len(answers),
+            'issues': [],
+            'metadata_consistency': True
+        }
+        
+        if not answers:
+            validation_result['valid'] = False
+            validation_result['issues'].append("No answers extracted")
+            return validation_result
+        
+        # Check for empty answers
+        empty_answers = [ans for ans in answers if not ans.answer_text.strip()]
+        if empty_answers:
+            validation_result['issues'].append(f"{len(empty_answers)} empty answers found")
+        
+        # Check metadata consistency
+        unique_students = set(ans.student_index for ans in answers if ans.student_index)
+        unique_modules = set(ans.module_code for ans in answers if ans.module_code)
+        unique_years = set(ans.exam_year for ans in answers if ans.exam_year)
+        unique_months = set(ans.exam_month for ans in answers if ans.exam_month)
+        
+        if len(unique_students) > 1:
+            validation_result['issues'].append(f"Inconsistent student indexes: {unique_students}")
+            validation_result['metadata_consistency'] = False
+        
+        if len(unique_modules) > 1:
+            validation_result['issues'].append(f"Inconsistent module codes: {unique_modules}")
+            validation_result['metadata_consistency'] = False
+            
+        # Check against expected values if provided
+        if expected_student_index and unique_students:
+            actual_student = list(unique_students)[0]
+            if actual_student != expected_student_index:
+                validation_result['issues'].append(
+                    f"Student index mismatch: expected {expected_student_index}, got {actual_student}"
+                )
+        
+        if expected_module_code and unique_modules:
+            actual_module = list(unique_modules)[0]
+            if actual_module.upper() != expected_module_code.upper():
+                validation_result['issues'].append(
+                    f"Module code mismatch: expected {expected_module_code}, got {actual_module}"
+                )
+        
+        # Check question ID patterns
+        question_ids = [ans.full_question_id for ans in answers]
+        duplicate_ids = []
+        seen_ids = set()
+        for qid in question_ids:
+            if qid in seen_ids:
+                duplicate_ids.append(qid)
+            seen_ids.add(qid)
+        
+        if duplicate_ids:
+            validation_result['issues'].append(f"Duplicate question IDs: {duplicate_ids}")
+        
+        validation_result['question_ids'] = sorted(question_ids)
+        validation_result['metadata_summary'] = {
+            'students': list(unique_students),
+            'modules': list(unique_modules), 
+            'years': list(unique_years),
+            'months': list(unique_months)
+        }
+        
+        # Overall validation
+        if validation_result['issues']:
+            validation_result['valid'] = len(validation_result['issues']) == 0
+        
+        return validation_result
+
+    def extract_with_retry(self, raw_text: str, max_retries: int = 3, 
+                          student_index: str = None, module_code: str = None,
+                          exam_year: int = None, exam_month: str = None) -> List[StudentAnswer]:
+        """
+        Extract answers with retry logic and optional database mapping.
+        """
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Extraction attempt {attempt + 1}/{max_retries}")
+                
+                if all([student_index, module_code, exam_year, exam_month]):
+                    # Use database mapping if all parameters provided
+                    answers = self.extract_answers_with_db_mapping(
+                        raw_text, student_index, module_code, exam_year, exam_month
+                    )
+                else:
+                    # Use standard extraction
+                    answers = self.extract_answers_with_llm(raw_text)
+                
+                if answers:
+                    # Validate the results
+                    validation = self.validate_extracted_answers(
+                        answers, student_index, module_code
+                    )
+                    
+                    if validation['valid'] or attempt == max_retries - 1:
+                        # Accept results if valid or this is the last attempt
+                        if not validation['valid']:
+                            logger.warning(f"Final attempt has validation issues: {validation['issues']}")
+                        
+                        logger.info(f"Successfully extracted {len(answers)} answers on attempt {attempt + 1}")
+                        return answers
+                    else:
+                        logger.warning(f"Validation failed on attempt {attempt + 1}: {validation['issues']}")
+                        if attempt < max_retries - 1:
+                            logger.info(f"Retrying extraction...")
+                            continue
+                
+                else:
+                    logger.warning(f"No answers extracted on attempt {attempt + 1}")
+                    if attempt < max_retries - 1:
+                        logger.info(f"Retrying extraction...")
+                        continue
+                
+            except Exception as e:
+                logger.error(f"Error on extraction attempt {attempt + 1}: {e}")
+                if attempt == max_retries - 1:
+                    logger.error("All extraction attempts failed")
+                    raise e
+                else:
+                    logger.info(f"Waiting before retry...")
+                    continue
+        
+        return []

@@ -5,14 +5,14 @@ from typing import List, Optional
 class SubQuestion:
     id: str
     text: str
-    marks: int
+    marks: float
     model_answer: str
 
 @dataclass
 class Question:
     id: str
     text: str
-    total_marks: int
+    total_marks: float
     model_answer: str
     sub_questions: List[SubQuestion] = field(default_factory=list)
 
